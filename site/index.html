@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Public App Development Observatory — Pilot</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <span class="eyebrow">WINDOWS APP DISCOVERY / RESEARCH PILOT</span>
+    <h1>Public App Development Observatory</h1>
+    <p>Recent public activity. Source-level technology evidence. Transparent denominators.</p>
+    <nav aria-label="Main">
+      <a href="#overview">Overview</a>
+      <a href="#windows">Windows</a>
+      <a href="#repositories">Repositories</a>
+      <a href="#methodology">Methodology</a>
+    </nav>
+  </header>
+  <main>
+    <aside class="notice">
+      <strong>Bounded, non-representative pilot — not a census of GitHub.</strong>
+      This cohort is selected from recent issue/PR search results, not randomly sampled.
+      Percentages describe the successfully analyzed cohort only. Platform, framework,
+      application-type, and component categories overlap.
+    </aside>
+    <p id="status" role="status" aria-live="polite">Loading analysis…</p>
+    <section id="overview" aria-labelledby="overview-heading">
+      <h2 id="overview-heading">30-day activity snapshot</h2>
+      <p id="window"></p>
+      <div id="cards" class="cards"></div>
+      <details>
+        <summary>Discovery coverage and limitations</summary>
+        <div id="coverage"></div>
+      </details>
+      <div class="charts">
+        <article><h3>Target platforms &amp; environments</h3><p>OS targets plus evidenced runtimes and deployment environments.
+          Categories overlap. Runtime evidence does not establish OS support.
+          Unknown means no target or environment indicator was detected.</p><div id="platforms"></div></article>
+        <article><h3>OS targets only</h3><p>Unspecified means no supported operating system was established by the rules,
+          even when a runtime or deployment environment is recognized.</p><div id="os_targets"></div></article>
+        <article><h3>Primary programming language</h3><p>One primary GitHub language per complete repository.</p><div id="languages"></div></article>
+        <article><h3>Framework evidence</h3><p>Detected declarations and source patterns, not verified runtime use.</p><div id="frameworks"></div></article>
+      </div>
+    </section>
+    <section id="windows" aria-labelledby="windows-heading">
+      <h2 id="windows-heading">Windows application development</h2>
+      <p>Headline metrics require an explicit executable/application indicator, a Windows
+        target indicator, and a complete Microsoft Application Inspector scan.
+        Libraries and unresolved repository purposes are excluded from this denominator.</p>
+      <div class="charts">
+        <article><h3>Windows application types</h3><div id="application_types"></div></article>
+        <article><h3>Windows component adoption</h3><p>Share of eligible Windows application repositories detecting each component.
+          A repository can detect both Win32 and COM.</p><div id="components"></div></article>
+      </div>
+      <article class="candidate-chart">
+        <h3>Exploratory: all Windows-targeting candidates</h3>
+        <p>This broader denominator includes libraries, tools, and unknown repository purposes.
+          It is <strong>not</strong> an application-development distribution. Only complete scans
+          are included; component detections can overlap.</p>
+        <div id="candidate_components"></div>
+      </article>
+    </section>
+    <section id="repositories" aria-labelledby="repositories-heading">
+      <h2 id="repositories-heading">Repository explorer</h2>
+      <div class="controls">
+        <label>Filter repositories <input id="filter" type="search" placeholder="Name, platform, framework, component…"></label>
+        <label>Scan status <select id="scan-status">
+          <option value="">All statuses</option><option>success</option><option>partial</option><option>failed</option>
+          <option value="not_applicable">No eligible source (N/A)</option>
+        </select></label>
+        <a href="data/latest.json" download>Download full JSON</a>
+        <button id="csv" type="button" disabled>Download CSV</button>
+      </div>
+      <p id="repository-count"></p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Repository / activity</th><th>Targets / language</th><th>Framework / purpose</th><th>Windows components</th><th>Scan / evidence</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+    <section id="methodology" aria-labelledby="methodology-heading">
+      <h2 id="methodology-heading">How to read these numbers</h2>
+      <div class="charts">
+        <article><h3>Discovery</h3><p>GraphQL searches examine a bounded, balanced budget of recently updated issues and PRs.
+          Eligible evidence is an issue/PR opening, conversation comment, or submitted PR review in
+          the fixed 30-day UTC window. Closing, pushes, inline review comments, discussions,
+          and releases are not collected in this pilot. The last 20 comments and reviews per item
+          are inspected; omitted connections are counted. Results are ranked by latest observed
+          qualifying activity, not by the latest activity across all of GitHub.</p></article>
+        <article><h3>Human activity approximation</h3><p>GitHub Bot accounts and selected bot-name patterns are excluded.
+          Unresolved actors are not accepted as human evidence. Ordinary User accounts can still
+          operate automation. Issue activity does not necessarily mean code development occurred.</p></article>
+        <article><h3>Static analysis</h3><p>Snapshots are pinned to the default-branch SHA at scan time.
+          Versioned regex/manifest rules infer platform and framework evidence. Windows candidates
+          are scanned by Microsoft Application Inspector with custom pilot rules (bundled rules
+          disabled). No repository code or build scripts are executed. Classification is repository-level,
+          not project-level; monorepos can combine unrelated signals. Comments and strings may
+          produce false positives. Absence of a match is not proof of non-use.</p></article>
+        <article><h3>Denominators and exclusions</h3><p>Platforms, languages, and frameworks use complete scans.
+          Windows application types and components use complete Windows scans with an explicit
+          application indicator. Partial, failed, and no-eligible-source inventories are excluded from headline distributions.
+          A no-eligible-source inventory is not a complete code scan and is shown separately.
+          Zero eligible repositories displays “N/A,” not 0%. Test, sample, generated, vendored, build,
+          and selected dependency directories are excluded. Lock files and known generated
+          artifacts, documentation, datasets, test fixtures, and non-manifest JSON/text assets are
+          outside the declared source scope. Supported source files up to 8 MiB are decoded
+          as UTF-8, BOM-marked UTF-16/UTF-32, or recognizable BOM-less UTF-16, then normalized to UTF-8.
+          Symlinks and submodules are out of scope and never followed. Oversized source archives
+          use bounded GitHub GraphQL blob batches (up to 10,000 files, manifests first), with
+          pinned raw-byte retrieval when GitHub cannot return exact text.
+          Skipped large source files, unsupported encodings, truncated trees, or file/byte retrieval
+          limits make a scan partial.
+          Inspector timeouts, errors, and skipped source also make a scan partial; detected
+          findings are retained, never treated as proof of a complete scan.
+          Forks are retained and labeled, so repositories are not independent applications.</p></article>
+      </div>
+      <p>Component adoption = repositories with a detected component ÷ eligible Windows application repositories.
+        This is the equal-weighted average of per-repository detection indicators, not percentage
+        of source lines or runtime calls. Native/Win32 does not prove a GUI; “console / other / unknown”
+        is deliberately unresolved. No accuracy benchmark has yet established precision or recall.</p>
+      <p id="versions"></p>
+      <p>Sources:
+        <a href="https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api">GitHub GraphQL</a> ·
+        <a href="https://github.com/microsoft/ApplicationInspector">Microsoft Application Inspector</a>
+      </p>
+    </section>
+  </main>
+  <footer>Measured evidence, not a claim of exhaustive coverage.</footer>
+</body>
+</html>
