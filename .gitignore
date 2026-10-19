@@ -2,4 +2,5 @@ __pycache__/
 .tools/
 .cache/
 site/data/
+site/report.pdf
 test-results/

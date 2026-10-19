@@ -54,6 +54,45 @@ RULES = [
 
 COMPILED = [(key, kind, label, re.compile(pattern, re.I)) for key, kind, label, pattern in RULES]
 COMPONENTS = [label for _, kind, label, _ in RULES if kind == "component"]
+
+# Precedence used to assign each complete repository exactly ONE primary category, so the
+# headline distributions are mutually exclusive and sum to 100%. All detected labels stay
+# available per repository. Explicit OS targets win over runtimes; specific deployment
+# environments win over generic language runtimes; tooling/scripts come last.
+ENVIRONMENT_PRECEDENCE = [
+    "Embedded / firmware", "Smart contracts", "WebAssembly", "Web", "Server / backend",
+    "Cloud / infrastructure", "Containers / Kubernetes", ".NET runtime (OS unspecified)",
+    "JVM (OS unspecified)", "Native code (OS unspecified)", "Python runtime (OS unspecified)",
+    "PHP runtime (OS unspecified)", "Node.js tooling/runtime (OS unspecified)",
+    "Shell / automation (OS unspecified)",
+]
+# Most specific application framework first (e.g. Next.js and React Native before React).
+FRAMEWORK_PRECEDENCE = [
+    "Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP", ".NET MAUI", "Avalonia", "Flutter",
+    "Electron", "React Native", "Qt", "Next.js", "Angular", "Svelte", "Vue", "React",
+    "NestJS", "Spring Boot", "Django", "FastAPI", "Flask", "Express",
+]
+
+
+def _first(labels, precedence):
+    ranked = [label for label in precedence if label in labels]
+    return ranked[0] if ranked else (sorted(labels)[0] if labels else None)
+
+
+def primary_platform(platforms):
+    """One mutually exclusive platform category for a repository's detected platform labels."""
+    labels = set(platforms or []) - {"Unknown"}
+    targets = labels & OS_TARGETS
+    if len(targets) == 1:
+        return next(iter(targets))
+    if targets:
+        return "Multiple OS (incl. Windows)" if "Windows" in targets else "Multiple OS (no Windows)"
+    return _first(labels, ENVIRONMENT_PRECEDENCE) or "Unknown"
+
+
+def primary_framework(frameworks):
+    labels = set(frameworks or []) - {"Unknown"}
+    return _first(labels, FRAMEWORK_PRECEDENCE) or "No framework detected"
 FILE_RULES = [
     ("browser-files", "Web", r"\.(?:html?|css|scss|sass|vue|svelte|astro|mdx)$", r"\S"),
     ("python-runtime", "Python runtime (OS unspecified)", r"\.(?:py|pyw)$|(?:^|/)(?:pyproject\.toml|requirements[^/]*\.txt)$", r"\S"),

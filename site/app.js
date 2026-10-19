@@ -19,6 +19,29 @@ function githubLink(text, url) {
   return link;
 }
 
+const clamp = (value) => Math.max(0, Math.min(100, value));
+
+function describeCoverage(coverage, metrics) {
+  const lines = [];
+  if (coverage.representative_sample) {
+    const level = Math.round((metrics.confidence_level || 0) * 100);
+    lines.push([`Uniform random sample of ${metrics.selected} repositories from ${Number(coverage.population_size).toLocaleString("en-US")} public repositories with qualifying human activity in GH Archive (raw hourly files; no BigQuery). Bars show ${level}% Wilson confidence intervals; worst-case margin for complete scans is ±${metrics.margin_of_error ?? "N/A"} percentage points.`]);
+    lines.push([`Seed ${coverage.seed}; ${coverage.hours_processed}/${coverage.hours_expected} archive hours read; ${Number(coverage.qualifying_events).toLocaleString("en-US")} qualifying events of ${Number(coverage.events_scanned).toLocaleString("en-US")} scanned. ${(coverage.excluded_after_sampling || []).length} sampled repositories were deleted or private at analysis time and were replaced by the next random draw.`, "muted"]);
+    const gaps = [...(coverage.missing_hours || []), ...(coverage.unreadable_hours || [])];
+    if (gaps.length) lines.push([`Missing archive hours: ${gaps.join(", ")}`, "muted"]);
+  } else {
+    lines.push([`${coverage.items_examined} issue/PR items examined; ${coverage.eligible_repositories} unique qualifying repositories before selection; ${coverage.truncated_connections} truncated comment/review connections.`]);
+    if (coverage.fallback_reason) lines.push([`GH Archive fallback reason: ${coverage.fallback_reason}`, "muted"]);
+    for (const search of coverage.searches || []) {
+      lines.push([`${search.query} · examined ${search.items_examined} of ${search.matching_items} matches${search.bounded ? " · bounded/truncated" : ""}`, "muted"]);
+    }
+  }
+  if (coverage.rerun) {
+    lines.push([`Rescanned the cohort from ${coverage.source_generated_at}; discovery/activity evidence was not refreshed.`]);
+  }
+  return lines;
+}
+
 function bars(id, values) {
   const container = $(id);
   container.replaceChildren();
@@ -33,12 +56,20 @@ function bars(id, values) {
   for (const value of values) {
     const row = element("div", undefined, "bar-row");
     const label = element("div", undefined, "bar-label");
-    label.append(element("span", value.label), element("span", `${value.percent}% · ${value.count}/${value.denominator}`));
+    const hasInterval = value.ci_low !== undefined && value.ci_low !== null;
+    const interval = hasInterval ? ` (CI ${value.ci_low}–${value.ci_high}%)` : "";
+    label.append(element("span", value.label), element("span", `${value.percent}%${interval} · ${value.count}/${value.denominator}`));
     const track = element("div", undefined, "track");
     track.setAttribute("aria-hidden", "true");
     const fill = element("div", undefined, "fill");
-    fill.style.width = `${Math.max(0, Math.min(100, value.percent))}%`;
+    fill.style.width = `${clamp(value.percent)}%`;
     track.append(fill);
+    if (hasInterval) {
+      const whisker = element("div", undefined, "ci");
+      whisker.style.left = `${clamp(value.ci_low)}%`;
+      whisker.style.width = `${clamp(value.ci_high - value.ci_low)}%`;
+      track.append(whisker);
+    }
     row.append(label, track);
     container.append(row);
   }
@@ -60,9 +91,11 @@ function renderRows() {
     name.append(githubLink(repo.name, `https://github.com/${repo.name}`));
     name.append(element("div", `${repo.fork ? "Fork · " : ""}${repo.archived ? "Archived · " : ""}${repo.last_activity}`, "muted"));
     name.append(githubLink("Activity evidence", repo.activity_evidence));
-    const targets = element("td", `${(repo.platforms || []).join(", ") || "Not analyzed"}`);
+    const targets = element("td", `${repo.primary_platform || "Not analyzed"}`);
+    if (repo.platforms && repo.platforms.length > 1) targets.append(element("div", `All signals: ${repo.platforms.join(", ")}`, "muted"));
     targets.append(element("div", repo.primary_language || "Unknown", "muted"));
-    const framework = element("td", (repo.frameworks || []).join(", ") || "Not analyzed");
+    const framework = element("td", repo.primary_framework || (repo.frameworks || []).join(", ") || "Not analyzed");
+    if (repo.frameworks && repo.frameworks.length > 1) framework.append(element("div", `All signals: ${repo.frameworks.join(", ")}`, "muted"));
     framework.append(element("div", repo.purpose || "Unknown", "muted"));
     const components = element("td", repo.windows_scan === "success"
       ? (repo.components.length ? repo.components.join(", ") : "No selected component patterns detected")
@@ -110,7 +143,8 @@ function csvCell(value) {
 }
 
 function downloadCsv() {
-  const fields = ["name", "status", "last_activity", "primary_language", "platforms",
+  const fields = ["name", "sample_rank", "status", "last_activity", "activity_types", "primary_language",
+    "primary_platform", "primary_framework", "platforms",
     "frameworks", "purpose", "application_types", "components", "os_targets", "sha", "source_method", "files_scanned", "note", "error"];
   const lines = [fields.map(csvCell).join(",")];
   for (const repo of report.repositories) {
@@ -138,24 +172,34 @@ async function load() {
     const cards = [
       ["Selected repositories", metrics.selected], ["Complete scans", metrics.successful],
       ["Partial scans", metrics.partial], ["Failed scans", metrics.failed],
-      ["Windows candidates", metrics.windows_repositories], ["Windows applications", metrics.windows_applications],
     ];
-    if ("not_applicable" in metrics) cards.splice(4, 0, ["No eligible source (N/A)", metrics.not_applicable]);
+    if ("not_applicable" in metrics) cards.push(["No eligible source (N/A)", metrics.not_applicable]);
+    if (report.coverage.representative_sample) {
+      cards.unshift(["Active public repositories (population)", Number(report.coverage.population_size).toLocaleString("en-US")]);
+      $("notice").replaceChildren(
+        element("strong", "Uniform random sample of recently active public repositories. "),
+        element("span", `Percentages estimate the population share with ${Math.round(metrics.confidence_level * 100)}% confidence intervals (±${metrics.margin_of_error ?? "N/A"} pts worst case). Partial/failed scans are nonresponse.`));
+    }
     for (const [label, value] of cards) {
       const card = element("div", undefined, "card");
       card.append(element("strong", value), element("span", label));
       $("cards").append(card);
     }
-    $("coverage").append(element("p",
-      `${report.coverage.items_examined} issue/PR items examined; ${report.coverage.eligible_repositories} unique qualifying repositories before selection; ${report.coverage.truncated_connections} truncated comment/review connections.`));
-    if (report.coverage.rerun) {
-      $("coverage").append(element("p",
-        `Rescanned the cohort from ${report.coverage.source_generated_at}; discovery/activity evidence was not refreshed.`));
+    $("windows-cards-caption").textContent = `Subset of the ${metrics.successful} complete scans`;
+    for (const [label, value] of [["Windows candidates", metrics.windows_repositories],
+      ["Windows applications", metrics.windows_applications]]) {
+      const card = element("div", undefined, "card subset");
+      card.append(element("strong", value), element("span", label),
+        element("small", `of ${metrics.successful} complete scans`));
+      $("windows-cards").append(card);
     }
-    for (const search of report.coverage.searches) {
-      $("coverage").append(element("p", `${search.query} · examined ${search.items_examined} of ${search.matching_items} matches${search.bounded ? " · bounded/truncated" : ""}`, "muted"));
+    for (const id of ["platforms-note", "languages-note", "frameworks-note"]) {
+      $(id).textContent = `Percentages are calculated only from the ${metrics.successful} complete scans, excluding ${metrics.partial} partial scans, ${metrics.failed} failed scans, and ${metrics.not_applicable ?? 0} repositories with no eligible source. Each repository is counted in exactly one category, so shares add up to 100%.`;
     }
-    for (const field of ["platforms", "os_targets", "languages", "frameworks", "application_types", "components", "candidate_components"]) {
+    for (const [text, className] of describeCoverage(report.coverage, metrics)) {
+      $("coverage").append(element("p", text, className));
+    }
+    for (const field of ["platforms", "languages", "frameworks", "application_types", "components", "candidate_components"]) {
       bars(field, metrics[field]);
     }
     $("versions").textContent = `Ruleset ${report.ruleset_version}; Microsoft Application Inspector ${report.inspector_version}. Cached scans retain their original scan timestamps.`;

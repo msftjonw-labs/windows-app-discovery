@@ -20,13 +20,21 @@ a { color: #1455a0; text-underline-offset: .15em; }
 .card, article { background: white; border: 1px solid #dde4ef; border-radius: 10px; padding: 1.3rem; }
 .card strong { display: block; font-size: 2rem; color: #1455a0; }
 .card span, article > p { color: #526179; font-size: .9rem; }
+#cards { margin-bottom: .5rem; }
+#windows-cards { margin-top: .25rem; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+.subset-caption { margin: 1rem 0 0; font-size: .85rem; font-weight: 600; color: #0f6b3a; }
+.card.subset { background: #effaf3; border-color: #9fd8b5; border-left: 5px solid #1f8f52; }
+.card.subset strong { color: #0f6b3a; }
+.card small { display: block; color: #3d6b50; font-size: .78rem; margin-top: .2rem; }
+article > p.denominator-note { color: #1b2a3d; }
 .charts { margin-top: 1.2rem; }
 .candidate-chart { margin-top: 1rem; border-style: dashed; }
 .bar-row { margin-top: .9rem; }
 .bar-label { display: flex; justify-content: space-between; gap: .7rem; font-size: .88rem; }
 .bar-label span:last-child { white-space: nowrap; }
-.track { height: .5rem; background: #eaf0f8; border-radius: 10px; margin-top: .35rem; }
+.track { position: relative; height: .5rem; background: #eaf0f8; border-radius: 10px; margin-top: .35rem; }
 .fill { height: 100%; background: #167d9c; border-radius: 10px; }
+.ci { position: absolute; top: -2px; height: calc(100% + 4px); border: solid #0b2e4f; border-width: 0 2px; border-top: 2px solid #0b2e4f; box-sizing: border-box; opacity: .7; }
 .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin: 1rem 0; }
 label { display: grid; font-size: .85rem; gap: .3rem; }
 input, select, button { font: inherit; padding: .55rem .7rem; border: 1px solid #8b9db5; border-radius: 5px; background: white; color: inherit; }

@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+from statistics import NormalDist
 import subprocess
 import tempfile
 import time
@@ -20,10 +21,11 @@ import urllib.request
 from urllib.parse import quote
 import zipfile
 
+from discovery import gharchive
 from discovery.rules import (
     COMPILED, COMPILED_FILE_RULES, COMPONENTS, EXCLUDED_DIRS, EXTENSIONS,
     EXTENSIONLESS_NAMES, GENERATED_NAMES, JSON_MANIFEST, OS_TARGETS, RULES, RULESET_VERSION,
-    inspector_rules,
+    inspector_rules, primary_framework, primary_platform,
 )
 
 LOG = logging.getLogger("pilot")
@@ -74,7 +76,7 @@ query($search: String!, $cursor: String, $count: Int!) {
 METADATA = """
 query($owner:String!, $name:String!) {
   repository(owner:$owner, name:$name) {
-    id nameWithOwner url isPrivate isFork isArchived
+    id databaseId nameWithOwner url isPrivate isFork isArchived
     primaryLanguage { name }
     languages(first:100, orderBy:{field:SIZE,direction:DESC}) {
       totalSize pageInfo { hasNextPage }
@@ -93,6 +95,10 @@ class DownloadLimitError(PilotError):
     pass
 
 
+class RepositoryUnavailable(PilotError):
+    """The sampled repository was deleted, made private, or cannot be resolved."""
+
+
 def stamp(value):
     return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -104,17 +110,23 @@ def parse_time(value):
     return parsed.astimezone(timezone.utc)
 
 
-def graphql(document, **variables):
+def graphql(document, allow_missing=False, **variables):
     command = ["gh", "api", "graphql", "-f", f"query={document}"]
     for key, value in variables.items():
         if value is not None:
             command += ["-F" if isinstance(value, int) else "-f", f"{key}={value}"]
     for attempt in range(3):
         result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=120)
-        if result.returncode == 0:
+        body = None
+        if result.stdout.strip().startswith("{"):
             body = json.loads(result.stdout)
-            if body.get("errors"):
-                raise PilotError(f"GraphQL errors: {body['errors']}")
+        errors = (body or {}).get("errors")
+        if allow_missing and errors and body.get("data") is not None and all(
+                error.get("type") == "NOT_FOUND" for error in errors):
+            return body["data"]
+        if result.returncode == 0:
+            if errors:
+                raise PilotError(f"GraphQL errors: {errors}")
             return body["data"]
         message = result.stderr.strip()
         if attempt < 2 and any(word in message.lower() for word in ("rate limit", "502", "503", "timeout")):
@@ -128,7 +140,7 @@ def graphql(document, **variables):
 def human(actor):
     return bool(
         actor and actor.get("__typename") == "User"
-        and not re.search(r"\[bot\]$|(?:^|[-_])bot$|^dependabot$|^renovate$", actor["login"], re.I)
+        and not gharchive.is_bot(actor["login"])
     )
 
 
@@ -573,11 +585,33 @@ def application_types(frameworks, components):
     return sorted(types) or ["Console / other / unknown"]
 
 
-def analyze_repository(candidate, inspector, cache):
-    owner, name = candidate["name"].split("/")
-    repo = graphql(METADATA, owner=owner, name=name)["repository"]
+def rest_repository_name(database_id):
+    result = subprocess.run(["gh", "api", f"repositories/{int(database_id)}", "--jq", ".full_name"],
+                            capture_output=True, text=True, encoding="utf-8", timeout=60)
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    if re.search(r"404|Not Found|403|Repository access blocked|451", result.stderr):
+        raise RepositoryUnavailable("Repository was deleted, made private, or blocked since the archived event")
+    raise PilotError(f"Repository lookup failed: {result.stderr.strip()}")
+
+
+def resolve_repository(candidate):
+    """Fetch metadata, following renames/transfers via the archived numeric repository ID."""
+    owner, name = candidate["name"].split("/", 1)
+    repo = graphql(METADATA, allow_missing=True, owner=owner, name=name)["repository"]
+    expected = candidate.get("database_id")
+    if expected and (repo is None or repo["databaseId"] != expected):
+        owner, name = rest_repository_name(expected).split("/", 1)
+        repo = graphql(METADATA, allow_missing=True, owner=owner, name=name)["repository"]
+        if repo is not None and repo["databaseId"] != expected:
+            repo = None
     if repo is None or repo["isPrivate"]:
-        raise PilotError("Repository is missing or no longer public")
+        raise RepositoryUnavailable("Repository is missing or no longer public")
+    return repo
+
+
+def analyze_repository(candidate, inspector, cache):
+    repo = resolve_repository(candidate)
     branch = repo["defaultBranchRef"]
     if not branch or not branch["target"].get("oid"):
         raise PilotError("Repository has no default-branch commit")
@@ -625,19 +659,59 @@ def analyze_repository(candidate, inspector, cache):
     }
 
 
-def distribution(records, field, labels=None):
+def z_score(confidence):
+    if confidence is None:
+        return None
+    if not 0.5 <= confidence < 1:
+        raise ValueError("Confidence must be in [0.5, 1)")
+    return NormalDist().inv_cdf(0.5 + confidence / 2)
+
+
+def wilson(count, total, z):
+    """Wilson score interval, as percentages; stays inside [0, 100] for small or extreme counts."""
+    if not total or z is None:
+        return None, None
+    p = count / total
+    denominator = 1 + z * z / total
+    centre = (p + z * z / (2 * total)) / denominator
+    half = z * ((p * (1 - p) / total + z * z / (4 * total * total)) ** 0.5) / denominator
+    return round(max(0.0, centre - half) * 100, 2), round(min(1.0, centre + half) * 100, 2)
+
+
+def exclusive_percentages(counts, total):
+    """Largest-remainder rounding to 0.01% so mutually exclusive shares display as exactly 100%."""
+    units = 10000
+    raw = {label: count * units / total for label, count in counts.items()}
+    floors = {label: int(value) for label, value in raw.items()}
+    remaining = units - sum(floors.values())
+    for label in sorted(raw, key=lambda key: (floors[key] - raw[key], key))[:remaining]:
+        floors[label] += 1
+    return {label: value / 100 for label, value in floors.items()}
+
+
+def distribution(records, field, labels=None, z=None, exclusive=False):
     counts = Counter()
     for record in records:
         values = record[field]
         counts.update(set(values if isinstance(values, list) else [values]))
     if labels:
         counts.update({label: 0 for label in labels})
-    return [{"label": label, "count": count, "denominator": len(records),
-             "percent": round(count / len(records) * 100, 2) if records else None}
-            for label, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+    shares = exclusive_percentages(counts, len(records)) if exclusive and records else {}
+    rows = []
+    for label, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])):
+        low, high = wilson(count, len(records), z)
+        percent = shares.get(label, round(count / len(records) * 100, 2)) if records else None
+        rows.append({"label": label, "count": count, "denominator": len(records),
+                     "percent": percent, "ci_low": low, "ci_high": high})
+    return rows
 
 
-def aggregate(records):
+def aggregate(records, confidence=None):
+    z = z_score(confidence)
+    for record in records:
+        if "platforms" in record:
+            record["primary_platform"] = primary_platform(record["platforms"])
+            record["primary_framework"] = primary_framework(record["frameworks"])
     complete = [r for r in records if r["status"] == "success"]
     windows = [r for r in complete if "Windows" in r["platforms"]]
     applications = [r for r in windows if r["purpose"] == "Application" and r["windows_scan"] == "success"]
@@ -647,20 +721,68 @@ def aggregate(records):
         "failed": sum(r["status"] == "failed" for r in records),
         "not_applicable": sum(r["status"] == "not_applicable" for r in records),
         "windows_repositories": len(windows), "windows_applications": len(applications),
-        "platforms": distribution(complete, "platforms"),
-        "os_targets": distribution(complete, "os_targets"),
-        "frameworks": distribution(complete, "frameworks"),
-        "languages": distribution(complete, "primary_language"),
-        "application_types": distribution(applications, "application_types"),
-        "components": distribution(applications, "components", COMPONENTS),
-        "candidate_components": distribution(windows, "components", COMPONENTS),
+        "confidence_level": confidence,
+        # Worst case (p = 50%) normal-approximation margin for the complete-scan denominator.
+        "margin_of_error": round(z * (0.25 / len(complete)) ** 0.5 * 100, 2) if z and complete else None,
+        "distribution_method": "exclusive-primary-1",
+        "platforms": distribution(complete, "primary_platform", z=z, exclusive=True),
+        "frameworks": distribution(complete, "primary_framework", z=z, exclusive=True),
+        "languages": distribution(complete, "primary_language", z=z, exclusive=True),
+        "application_types": distribution(applications, "application_types", z=z),
+        "components": distribution(applications, "components", COMPONENTS, z=z),
+        "candidate_components": distribution(windows, "components", COMPONENTS, z=z),
     }
+
+
+GRAPHQL_ACTIVITY = ("Issue/PR openings, conversation comments, submitted PR reviews; last 20 comments/reviews per item. "
+                    "Identified bots excluded; User accounts may still automate.")
+ARCHIVE_ACTIVITY = ("Issue/PR opened or reopened, issue/PR conversation comments, submitted PR reviews, and inline "
+                    "PR review comments from GH Archive. Logins matching bot patterns excluded; User accounts may "
+                    "still automate.")
+
+
+def default_archive_end(now=None):
+    # GH Archive publishes each hour shortly after it closes; stay a few hours behind real time.
+    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    return now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=3)
+
+
+def analyze_candidates(candidates, target, inspector, cache, skip_unavailable):
+    records, excluded = [], []
+    for candidate in candidates:
+        if len(records) >= target:
+            break
+        LOG.info("[%s/%s] %s", len(records) + 1, target, candidate["name"])
+        try:
+            record = analyze_repository(candidate, inspector, cache)
+        except RepositoryUnavailable as error:
+            if skip_unavailable:
+                # Ineligible at analysis time; replacing it keeps the sample uniform over eligible repositories.
+                LOG.warning("%s: %s; drawing the next sampled repository", candidate["name"], error)
+                excluded.append({"name": candidate["name"], "reason": str(error)})
+                continue
+            LOG.error("%s: %s", candidate["name"], error)
+            record = {**candidate, "status": "failed", "error": str(error)}
+        except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
+                zipfile.BadZipFile, OSError, ValueError) as error:
+            LOG.error("%s: %s", candidate["name"], error)
+            record = {**candidate, "status": "failed", "error": str(error)}
+        records.append(record)
+    return records, excluded
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--limit", type=int, default=100, help="Maximum selected repositories (1-100)")
-    parser.add_argument("--end", help="UTC window end, e.g. 2026-10-18T12:00:00Z")
+    parser.add_argument("--limit", type=int, default=100, help="Sample / cohort size (1-100)")
+    parser.add_argument("--end", help="UTC window end on a whole hour, e.g. 2026-10-18T12:00:00Z")
+    parser.add_argument("--discovery", choices=("auto", "gharchive", "graphql-search"), default="auto",
+                        help="auto = GH Archive random sample, falling back to bounded GraphQL search")
+    parser.add_argument("--seed", help="Sampling seed (default: window end timestamp)")
+    parser.add_argument("--confidence", type=float, default=0.95, help="Confidence level for intervals (default 0.95)")
+    parser.add_argument("--archive-workers", type=int, default=6)
+    parser.add_argument("--archive-reserve", type=int, default=300,
+                        help="Randomly ordered candidates drawn so unavailable repositories can be replaced")
+    parser.add_argument("--archive-cache", type=Path, default=ROOT / ".cache" / "gharchive")
     parser.add_argument("--output", type=Path, default=ROOT / "site" / "data" / "latest.json")
     parser.add_argument("--inspector", type=Path)
     parser.add_argument("--install-inspector", action="store_true")
@@ -670,6 +792,10 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     if not 1 <= args.limit <= 100:
         parser.error("--limit must be between 1 and 100")
+    if not 0.5 <= args.confidence < 1:
+        parser.error("--confidence must be at least 0.5 and below 1")
+    if args.archive_reserve < args.limit:
+        parser.error("--archive-reserve must be at least --limit")
     if not shutil.which("gh"):
         parser.error("GitHub CLI is required; install it and run gh auth login")
     inspector = args.inspector
@@ -680,6 +806,7 @@ def main():
         inspector = matches[0] if len(matches) == 1 else None
     if not inspector or not inspector.is_file():
         parser.error("Application Inspector missing; use --install-inspector on Windows x64 or --inspector PATH")
+    sampled = False
     if args.rerun_report:
         if args.end:
             parser.error("--end cannot be combined with --rerun-report")
@@ -689,38 +816,57 @@ def main():
         start, end = (parse_time(previous["window"][key]) for key in ("start", "end"))
         if end - start != timedelta(days=30):
             parser.error("Previous report must use a 30-day window")
-        fields = {"name", "last_activity", "activity_types", "observed_events", "activity_evidence", "sha"}
+        fields = {"name", "last_activity", "activity_types", "observed_events", "activity_evidence", "sha",
+                  "database_id", "sample_rank", "sample_key"}
         candidates = [{key: value for key, value in record.items() if key in fields}
                       for record in previous["repositories"]]
         if not 1 <= len(candidates) <= 100:
             parser.error("Previous report must contain 1-100 repositories")
-        coverage = {**previous["coverage"], "rerun": True,
-                    "source_generated_at": previous["generated_at"]}
+        coverage = {"mode": "bounded-graphql", "representative_sample": False, **previous["coverage"],
+                    "rerun": True, "source_generated_at": previous["generated_at"]}
+        target = len(candidates)
     else:
-        end = parse_time(args.end) if args.end else datetime.now(timezone.utc)
-        start = end - timedelta(days=30)
-        candidates, coverage = discover(args.limit, start, end)
+        coverage, candidates = {}, None
+        if args.discovery in ("auto", "gharchive"):
+            end = parse_time(args.end) if args.end else default_archive_end()
+            start = end - timedelta(days=30)
+            seed = args.seed or stamp(end)
+            try:
+                candidates, coverage = gharchive.discover(
+                    start, end, seed, reserve=args.archive_reserve,
+                    workers=args.archive_workers, cache_dir=args.archive_cache)
+                coverage.update(mode="gharchive-random-sample", representative_sample=True,
+                                activity=ARCHIVE_ACTIVITY)
+                sampled = True
+            except (gharchive.ArchiveUnavailable, ValueError) as error:
+                if args.discovery == "gharchive":
+                    raise PilotError(f"GH Archive discovery failed: {error}") from error
+                LOG.warning("GH Archive unavailable (%s); falling back to bounded GraphQL search", error)
+                coverage = {"fallback_reason": str(error)}
+        if not sampled:
+            end = parse_time(args.end) if args.end else datetime.now(timezone.utc)
+            start = end - timedelta(days=30)
+            candidates, search_coverage = discover(args.limit, start, end)
+            coverage = {**coverage, **search_coverage, "mode": "bounded-graphql",
+                        "representative_sample": False, "activity": GRAPHQL_ACTIVITY}
+        coverage["requested_limit"] = args.limit
+        target = args.limit
     if not candidates:
         raise PilotError("No qualifying repositories discovered; refusing to replace dashboard data")
-    records = []
-    for index, candidate in enumerate(candidates, 1):
-        LOG.info("[%s/%s] %s", index, len(candidates), candidate["name"])
-        try:
-            record = analyze_repository(candidate, inspector.resolve(), args.cache)
-        except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
-                zipfile.BadZipFile, OSError, ValueError) as error:
-            LOG.error("%s: %s", candidate["name"], error)
-            record = {**candidate, "status": "failed", "error": str(error)}
-        records.append(record)
+    records, excluded = analyze_candidates(candidates, target, inspector.resolve(), args.cache, skip_unavailable=sampled)
+    if sampled:
+        coverage.update(excluded_after_sampling=excluded, sample_size=len(records),
+                        candidates_drawn=len(records) + len(excluded))
+        if len(records) < target:
+            LOG.warning("Only %s eligible repositories in the reserve; sample is short of %s", len(records), target)
+    confidence = args.confidence if coverage.get("representative_sample") else None
     report = {
         "schema_version": 1, "ruleset_version": RULESET_VERSION,
         "inspector_version": INSPECTOR_VERSION,
         "generated_at": stamp(datetime.now(timezone.utc)),
         "window": {"start": stamp(start), "end": stamp(end)},
-        "coverage": {**coverage, "mode": "bounded-graphql", "requested_limit": args.limit,
-                     "representative_sample": False,
-                     "activity": "Issue/PR openings, conversation comments, submitted PR reviews; last 20 comments/reviews per item. Identified bots excluded; User accounts may still automate."},
-        "metrics": aggregate(records), "repositories": records,
+        "coverage": coverage,
+        "metrics": aggregate(records, confidence), "repositories": records,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     pending = args.output.with_suffix(".tmp")

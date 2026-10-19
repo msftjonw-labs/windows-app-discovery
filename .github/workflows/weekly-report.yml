@@ -1,0 +1,117 @@
+name: Weekly report — collect, publish Pages, email PDF
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: Random sample size (1-100)
+        default: "100"
+        required: true
+      discovery:
+        description: Discovery method
+        type: choice
+        options: [auto, gharchive, graphql-search]
+        default: auto
+      email:
+        description: Email the PDF report
+        type: boolean
+        default: true
+  schedule:
+    # Every Monday 09:00 Pacific time (PST in winter, PDT in summer).
+    - cron: "0 9 * * 1"
+      timezone: "America/Los_Angeles"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-pilot
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: windows-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Dashboard tests
+        run: node --test tests/frontend.test.cjs
+      - name: Restore analysis cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/analysis
+          key: pilot-${{ runner.os }}-${{ hashFiles('discovery/**') }}-${{ github.run_id }}
+          restore-keys: |
+            pilot-${{ runner.os }}-${{ hashFiles('discovery/**') }}-
+      - name: Install pinned Microsoft Application Inspector
+        run: |
+          python -c "from discovery.pilot import install_inspector, ROOT; print(install_inspector(ROOT / '.tools' / 'inspector'))"
+      - name: Inspector integration tests
+        run: |
+          $env:INSPECTOR_PATH = (Get-ChildItem .tools\inspector -Filter ApplicationInspector.CLI.exe -Recurse | Select-Object -First 1).FullName
+          python -m unittest tests.test_inspector -v
+      - name: Discover (GH Archive random sample) and analyze
+        env:
+          GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
+          PILOT_LIMIT: ${{ inputs.limit || '100' }}
+          PILOT_DISCOVERY: ${{ inputs.discovery || 'auto' }}
+        run: python -m discovery.pilot --limit $env:PILOT_LIMIT --discovery $env:PILOT_DISCOVERY --confidence 0.95
+      - name: Render PDF report
+        env:
+          PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python -m discovery.report_pdf --output site/report.pdf
+      - name: Keep report and PDF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report
+          path: |
+            site/data/latest.json
+            site/report.pdf
+          if-no-files-found: warn
+          retention-days: 90
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  email:
+    needs: deploy
+    if: github.event_name == 'schedule' || inputs.email
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: weekly-report
+          path: site
+      - name: Send PDF to Gmail
+        env:
+          GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
+          PAGES_URL: ${{ needs.deploy.outputs.page_url }}
+        run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf

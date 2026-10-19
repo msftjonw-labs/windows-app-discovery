@@ -20,29 +20,34 @@
     </nav>
   </header>
   <main>
-    <aside class="notice">
-      <strong>Bounded, non-representative pilot — not a census of GitHub.</strong>
-      This cohort is selected from recent issue/PR search results, not randomly sampled.
-      Percentages describe the successfully analyzed cohort only. Platform, framework,
-      application-type, and component categories overlap.
+    <aside class="notice" id="notice">
+      <strong>Bounded, non-representative cohort — not a census of GitHub.</strong>
+      This report used the GraphQL-search fallback: the cohort comes from recent issue/PR search results, not a random sample.
+      Percentages describe the successfully analyzed cohort only. Platform, language, and framework
+      shares are mutually exclusive; Windows application-type and component categories overlap.
     </aside>
     <p id="status" role="status" aria-live="polite">Loading analysis…</p>
+    <p class="downloads"><a href="report.pdf" download>Download this week's PDF report</a></p>
     <section id="overview" aria-labelledby="overview-heading">
       <h2 id="overview-heading">30-day activity snapshot</h2>
       <p id="window"></p>
       <div id="cards" class="cards"></div>
+      <p id="windows-cards-caption" class="subset-caption"></p>
+      <div id="windows-cards" class="cards"></div>
       <details>
         <summary>Discovery coverage and limitations</summary>
         <div id="coverage"></div>
       </details>
       <div class="charts">
-        <article><h3>Target platforms &amp; environments</h3><p>OS targets plus evidenced runtimes and deployment environments.
-          Categories overlap. Runtime evidence does not establish OS support.
-          Unknown means no target or environment indicator was detected.</p><div id="platforms"></div></article>
-        <article><h3>OS targets only</h3><p>Unspecified means no supported operating system was established by the rules,
-          even when a runtime or deployment environment is recognized.</p><div id="os_targets"></div></article>
-        <article><h3>Primary programming language</h3><p>One primary GitHub language per complete repository.</p><div id="languages"></div></article>
-        <article><h3>Framework evidence</h3><p>Detected declarations and source patterns, not verified runtime use.</p><div id="frameworks"></div></article>
+        <article><h3>Target platform</h3><p class="denominator-note"><strong id="platforms-note"></strong></p>
+          <p>Primary platform per repository: an explicit OS target wins; repositories with several OS targets
+          are “Multiple OS”; otherwise the most specific environment (Web, Server, Containers, …) is used, and
+          generic language runtimes and scripts come last. Unknown means no indicator was detected.</p><div id="platforms"></div></article>
+        <article><h3>Primary programming language</h3><p class="denominator-note"><strong id="languages-note"></strong></p>
+          <p>GitHub's primary language for each repository.</p><div id="languages"></div></article>
+        <article><h3>Framework evidence</h3><p class="denominator-note"><strong id="frameworks-note"></strong></p>
+          <p>Most specific detected framework per repository (e.g. Next.js before React). Detected declarations
+          and source patterns, not verified runtime use.</p><div id="frameworks"></div></article>
       </div>
     </section>
     <section id="windows" aria-labelledby="windows-heading">
@@ -85,13 +90,17 @@
     <section id="methodology" aria-labelledby="methodology-heading">
       <h2 id="methodology-heading">How to read these numbers</h2>
       <div class="charts">
-        <article><h3>Discovery</h3><p>GraphQL searches examine a bounded, balanced budget of recently updated issues and PRs.
-          Eligible evidence is an issue/PR opening, conversation comment, or submitted PR review in
-          the fixed 30-day UTC window. Closing, pushes, inline review comments, discussions,
-          and releases are not collected in this pilot. The last 20 comments and reviews per item
-          are inspected; omitted connections are counted. Results are ranked by latest observed
-          qualifying activity, not by the latest activity across all of GitHub.</p></article>
-        <article><h3>Human activity approximation</h3><p>GitHub Bot accounts and selected bot-name patterns are excluded.
+        <article><h3>Discovery and sampling</h3><p>Default: every hourly file of the 30-day window is streamed from
+          <a href="https://www.gharchive.org/">GH Archive</a> (raw files, no BigQuery). The population is every public
+          repository with at least one qualifying event: issue/PR opened or reopened, issue/PR conversation comment,
+          submitted PR review, or inline PR review comment. Each repository gets the key sha256(seed:repository ID);
+          the smallest keys form a uniform random sample without replacement. GitHub GraphQL then verifies each sampled
+          repository (renames are followed by numeric ID) and supplies metadata and source. Deleted or private
+          repositories are replaced by the next draw. Percentages carry Wilson confidence intervals; with n≈100 the
+          worst-case 95% margin is about ±10 percentage points, and Windows-only metrics have much smaller denominators
+          and wider intervals. If more than 5% of archive hours are unavailable, the run falls back to bounded GraphQL
+          issue/PR search, which is labeled non-representative and reports no intervals.</p></article>
+        <article><h3>Human activity approximation</h3><p>GitHub Bot accounts and logins matching bot patterns are excluded.
           Unresolved actors are not accepted as human evidence. Ordinary User accounts can still
           operate automation. Issue activity does not necessarily mean code development occurred.</p></article>
         <article><h3>Static analysis</h3><p>Snapshots are pinned to the default-branch SHA at scan time.
@@ -100,7 +109,9 @@
           disabled). No repository code or build scripts are executed. Classification is repository-level,
           not project-level; monorepos can combine unrelated signals. Comments and strings may
           produce false positives. Absence of a match is not proof of non-use.</p></article>
-        <article><h3>Denominators and exclusions</h3><p>Platforms, languages, and frameworks use complete scans.
+        <article><h3>Denominators and exclusions</h3><p>Platforms, languages, and frameworks use complete scans only and assign each
+          repository to exactly one category, so each chart sums to 100%. Every detected signal remains listed per repository.
+          Windows candidates contain both “Windows” and “Multiple OS (incl. Windows)”.
           Windows application types and components use complete Windows scans with an explicit
           application indicator. Partial, failed, and no-eligible-source inventories are excluded from headline distributions.
           A no-eligible-source inventory is not a complete code scan and is shown separately.

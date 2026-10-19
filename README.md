@@ -1,10 +1,18 @@
-# Windows app discovery — pilot
+# Windows app discovery — weekly random-sample report
 
-A bounded, reproducible research pipeline for recently human-active public GitHub
+A reproducible research pipeline for recently human-active public GitHub
 repositories, with platform/framework classification, Windows technology detection
-using **Microsoft Application Inspector**, and a static GitHub Pages dashboard.
+using **Microsoft Application Inspector**, a static GitHub Pages dashboard, and a
+weekly PDF report emailed through Gmail.
 
-**This is not a census or representative sample of all public repositories.**
+By default each report is a **uniform random sample of 100 repositories** drawn from
+every public repository with qualifying human issue/PR activity in the last 30 days,
+as recorded by [GH Archive](https://www.gharchive.org/) (raw hourly files; **no
+BigQuery**). GitHub GraphQL verifies and enriches each sampled repository.
+Percentages carry **95% Wilson confidence intervals**. With n = 100 the worst-case
+margin is about **±10 percentage points**; it cannot be tightened without a larger
+sample (±5 points needs ≈385 complete scans). Windows-only metrics have much smaller
+denominators and therefore much wider intervals.
 No example or synthetic percentages are presented as collected findings.
 
 ## Run locally (Windows x64)
@@ -30,11 +38,26 @@ and verifies the pinned Windows release's SHA-256. Later runs omit
 The automatic installer is Windows x64 only; the collector can accept a compatible
 manually installed executable on other systems.
 
-For a fixed window:
+For a fixed window and seed (GH Archive windows must start and end on whole UTC hours):
 
 ```powershell
-python -m discovery.pilot --limit 100 --end 2026-10-18T12:00:00Z
+python -m discovery.pilot --limit 100 --end 2026-10-18T12:00:00Z --seed weekly-2026-10-18
 ```
+
+Other options: `--discovery auto|gharchive|graphql-search` (default `auto`),
+`--confidence 0.95` (for example `0.99` for wider 99% intervals), `--archive-workers 6`,
+and `--archive-reserve 300` (randomly ordered replacements for deleted/private repositories).
+Per-hour archive reductions are cached in `.cache\gharchive` for reruns with the same seed.
+
+To build the PDF and (optionally) email it:
+
+```powershell
+python -m discovery.report_pdf --output site\report.pdf
+$env:GMAIL_ADDRESS = "you@gmail.com"; $env:GMAIL_APP_PASSWORD = "<app password>"
+python -m discovery.send_email --report site\data\latest.json --pdf site\report.pdf
+```
+
+PDF rendering uses headless Chrome, Chromium, or Edge (set `PDF_BROWSER` to override).
 
 Run the real-tool contract tests after installation:
 
@@ -61,6 +84,35 @@ branch. Public visibility is rechecked. `--limit` applies only to fresh discover
 
 ## Discovery and activity
 
+### Default: GH Archive random sample (no BigQuery)
+
+- The window is the 720 whole UTC hours ending three hours before the run
+  (GH Archive publishes each hour shortly after it closes).
+- Every hourly file `https://data.gharchive.org/YYYY-MM-DD-H.json.gz` is streamed and
+  reduced in parallel worker processes (about 15 minutes for 30 days).
+- Qualifying events: `IssuesEvent` and `PullRequestEvent` with action `opened`/`reopened`,
+  `IssueCommentEvent` `created` (issue and PR conversation comments),
+  `PullRequestReviewEvent` `created`, and `PullRequestReviewCommentEvent` `created`.
+  Events must be public. Actor logins ending in `[bot]` or matching bot-name patterns
+  are excluded; GH Archive has no account type, so ordinary User accounts can still automate.
+- The **population** is every repository ID with at least one qualifying event. Its size
+  is reported. Each repository receives the key `sha256(seed:repository_id)`; the
+  smallest keys form a uniform random sample without replacement (bottom-k sampling).
+  Per-hour bottom-k sets merge exactly, so the sampled repositories' latest event,
+  event count, and activity types are exact for the window.
+- The seed defaults to the window end timestamp, so each run is reproducible.
+- Sampled repositories are verified through GraphQL in random order. Renamed or transferred
+  repositories are followed through their numeric ID (`GET /repositories/{id}`).
+  Deleted, private, or blocked repositories are ineligible and replaced by the next random
+  draw (recorded under `coverage.excluded_after_sampling`). Partial and failed scans are
+  **kept** in the sample as nonresponse rather than replaced by easier repositories.
+- If more than 5% of archive hours are missing or unreadable, `--discovery auto` falls
+  back to bounded GraphQL search (below). That report is labeled non-representative,
+  records `coverage.fallback_reason`, and shows no confidence intervals.
+- Unlike the GraphQL method, archive discovery includes reopenings and inline PR
+  review comments, and is not limited to the last 20 comments/reviews per item.
+
+### Fallback: bounded GraphQL search
 - Each report fixes an exclusive UTC end and an inclusive start exactly 30 days earlier.
 - Two GraphQL searches select recently updated public issues and PRs, separately.
   Each examines at most `min(2 × limit, 500)` items; `limit` is 1–100.
@@ -101,11 +153,22 @@ The broader **Target platforms & environments** taxonomy includes OS targets,
 Web, server/backend, containers/Kubernetes, cloud infrastructure, smart contracts,
 embedded firmware, WebAssembly, and evidenced Python/Node.js/.NET/JVM/PHP/native/shell
 environments. Runtime and deployment indicators are file-scoped where appropriate.
-These categories **do not establish OS compatibility**; an additional **OS targets
-only** chart preserves `Unspecified` when no OS evidence exists. Unknown in the
-broader chart means neither OS nor environment evidence was detected, not proof
-that the repository is unsupported. This taxonomy change must be considered when
-comparing Unknown percentages to older OS-centric reports.
+These categories **do not establish OS compatibility**. Unknown means neither OS
+nor environment evidence was detected, not proof that the repository is unsupported.
+
+**Dashboard distributions are mutually exclusive and sum to 100%.** They are
+calculated **only from complete scans** (partial, failed, and no-eligible-source
+repositories are excluded). Each repository is assigned one category:
+
+| Chart | Primary assignment |
+|---|---|
+| Target platform | One OS target → that OS; several → `Multiple OS (incl. Windows)` / `Multiple OS (no Windows)`; otherwise the first environment in Embedded → Smart contracts → WebAssembly → Web → Server/backend → Cloud/infra → Containers → .NET → JVM → Native → Python → PHP → Node.js → Shell; otherwise Unknown |
+| Primary programming language | GitHub's primary language |
+| Framework evidence | Most specific framework (Windows desktop → MAUI/Avalonia/Flutter/Electron/React Native/Qt → meta-frameworks before UI libraries → backends); otherwise `No framework detected` |
+
+Percentages use largest-remainder rounding to 0.01% so each chart totals exactly
+100%. `Windows` + `Multiple OS (incl. Windows)` equals the Windows candidates
+tile. All detected signals remain in the repository table and CSV.
 
 Windows candidates are passed to **Microsoft Application Inspector**, using generated
 custom rules from the same versioned taxonomy; bundled Inspector rules are disabled
@@ -156,6 +219,13 @@ eligible source use `not_applicable`; they are **not** counted as complete code 
 failed operations, or included in the source-distribution denominator.
 If all eligible source was omitted due to a budget or encoding problem, the scan
 remains partial instead of becoming not applicable.
+
+For random samples every distribution row also has `ci_low`/`ci_high`: the Wilson score
+interval at `--confidence` (default 95%) for `count / denominator`.
+`metrics.margin_of_error` is the worst-case (p = 50%) normal-approximation margin for the
+complete-scan denominator. Intervals describe sampling error only, not classification
+error or nonresponse bias from partial/failed scans. The population is in the millions,
+so no finite-population correction is applied. GraphQL-fallback reports set these to `null`.
 The explorer shows all selected repositories, including errors, source-retrieval
 method, Inspector incompleteness, and exclusion counts.
 JSON downloads contain the full report; CSV contains repository-level classifications
@@ -217,34 +287,41 @@ and source-retrieval information.
   Per-repository failures are recorded. A run with no complete scans fails and must
   not deploy. JSON is replaced atomically, never appended to partial output.
 
-## GitHub Actions and Pages (not enabled automatically)
+## GitHub Actions, Pages, PDF, and email (not enabled automatically)
 
 [.github/workflows/test.yml](.github/workflows/test.yml) runs unit tests and JavaScript
-syntax checks on pushes/PRs. [.github/workflows/pilot.yml](.github/workflows/pilot.yml)
-runs daily at 06:23 UTC or manually, installs Inspector, runs integration tests,
-collects data, stores a diagnostic artifact, and deploys the static site on success.
+syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workflows/weekly-report.yml)
+runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
+uses the Actions schedule `timezone` key) or manually. It runs tests, installs
+Inspector, draws the GH Archive sample, analyzes it, renders `site/report.pdf`, keeps
+the JSON and PDF as a 90-day artifact, deploys Pages (the dashboard links the PDF), and
+then emails the PDF. Scheduled workflows run only from the default branch.
 
 When you choose to deploy:
 
-1. Push this implementation.
+1. Push this implementation to the default branch.
 2. In repository **Settings → Pages**, select **GitHub Actions** as the source.
-3. Run **Collect pilot and publish Pages** manually, initially with a small limit.
-4. Review coverage, failures, and classification evidence before increasing to 100.
+3. Create a Gmail **app password** (Google Account → Security → 2-Step Verification
+   must be on → App passwords).
+4. Add repository secrets: `GMAIL_ADDRESS` (the sending Gmail account),
+   `GMAIL_APP_PASSWORD`, optionally `REPORT_RECIPIENT` (defaults to `GMAIL_ADDRESS`),
+   and recommended `DISCOVERY_TOKEN` (a fine-grained token with public read access).
+5. Run **Weekly report** manually once (optionally with a small limit and email off).
 
-The default workflow token is used for public GraphQL reads. Its rate limit is lower
-than a normal user token. Optionally configure a least-privilege `DISCOVERY_TOKEN`
-repository secret with public read access if the workflow hits limits. Credentials
-are only passed to the collector, never embedded into the site. Do not grant scan
-jobs write access to source repositories.
+The default workflow token allows only 1,000 GraphQL points/hour; `DISCOVERY_TOKEN`
+raises that to the user limit. Credentials are only passed to the collector and the
+email step, never embedded into the site, PDF, or logs. Do not grant scan jobs write
+access to source repositories. If the Gmail secrets are missing, the email job fails
+visibly after Pages has deployed.
 
-The daily report and 14-day diagnostic artifacts are persistent outputs; analysis
-cache is opportunistic and may be evicted. This pilot does not retain a historical
-metrics series. Raw source archives are not published or committed.
+Weekly artifacts are persistent outputs; analysis cache is opportunistic and may be
+evicted. Historical metric series are not retained beyond artifacts. Raw source
+archives are not published or committed.
 
 ## Next research milestones
 
 1. Manually label a diverse cohort and measure precision/recall, including an audit
    of non-Windows predictions.
 2. Add project-level application detection and broader framework/API fixtures.
-3. Add archive-backed discovery, incremental events, coverage monitoring, and history.
-4. Benchmark throughput and cost before moving beyond the bounded pilot.
+3. Add incremental archive processing, coverage monitoring, and a historical metrics series.
+4. Increase the sample (for example n ≈ 385 for ±5 points) once throughput is benchmarked.
