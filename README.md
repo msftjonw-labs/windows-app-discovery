@@ -15,6 +15,13 @@ sample (±5 points needs ≈385 complete scans). Windows-only metrics have much 
 denominators and therefore much wider intervals.
 No example or synthetic percentages are presented as collected findings.
 
+## Read the report on GitHub
+
+The [latest weekly report](reports/README.md) shows metrics, tables, and inline SVG
+charts directly in the repository—no GitHub Pages visit required. It appears after
+the first successful weekly run on the default branch with this feature enabled.
+The interactive Pages dashboard remains available as an optional companion.
+
 ## Run locally (Windows x64)
 
 Requirements: Python 3.11+, GitHub CLI (`gh`), and a GitHub login with public
@@ -58,6 +65,16 @@ python -m discovery.send_email --report site\data\latest.json --pdf site\report.
 ```
 
 PDF rendering uses headless Chrome, Chromium, or Edge (set `PDF_BROWSER` to override).
+
+To generate the repository-readable report and charts from the same collected data
+(standard library only):
+
+```powershell
+python -m discovery.report_markdown
+```
+
+This writes `reports/README.md` and six SVG charts. It refuses reports with no
+complete scans. It does not collect new data or commit files itself.
 
 Run the real-tool contract tests after installation:
 
@@ -294,8 +311,24 @@ syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workf
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
 Inspector, draws the GH Archive sample, analyzes it, renders `site/report.pdf`, keeps
-the JSON and PDF as a 90-day artifact, deploys Pages (the dashboard links the PDF), and
-then emails the PDF. Scheduled workflows run only from the default branch.
+the JSON and PDF as a 90-day artifact, commits the latest Markdown report and six SVG
+charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
+emails the PDF. Scheduled workflows run only from the default branch. Repository
+publishing also runs only on the default branch; manual runs on other branches
+keep generated reports as artifacts without committing them.
+
+The publishing job alone has `contents: write`; collection remains read-only.
+Repository rules must permit `github-actions[bot]` to push report updates to the
+default branch. If direct pushes are prohibited, publishing fails visibly; the
+generated report remains available as the `repository-report` Actions artifact.
+PDF and JSON remain artifacts rather than adding binary files or raw reports to git.
+
+Pages is optional: uncheck **pages** for a manual run, or set the repository Actions
+variable `ENABLE_PAGES` to `false` for scheduled runs. Repository publishing and
+email still work with Pages disabled. To use only repository reports, skip the
+Pages setup below and run manually with **pages** and **email** unchecked; for
+scheduled runs also configure Gmail if email delivery is wanted (scheduled email
+remains enabled).
 
 When you choose to deploy:
 
@@ -314,8 +347,9 @@ email step, never embedded into the site, PDF, or logs. Do not grant scan jobs w
 access to source repositories. If the Gmail secrets are missing, the email job fails
 visibly after Pages has deployed.
 
-Weekly artifacts are persistent outputs; analysis cache is opportunistic and may be
-evicted. Historical metric series are not retained beyond artifacts. Raw source
+The latest repository report is versioned in git; weekly artifacts expire after
+90 days. Analysis cache is opportunistic and may be evicted. No separate historical
+metric series is maintained. Raw source
 archives are not published or committed.
 
 ## Next research milestones

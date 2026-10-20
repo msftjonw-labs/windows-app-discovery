@@ -1,4 +1,4 @@
-name: Weekly report — collect, publish Pages, email PDF
+name: Weekly report — collect, publish reports, email PDF
 
 on:
   workflow_dispatch:
@@ -14,6 +14,10 @@ on:
         default: auto
       email:
         description: Email the PDF report
+        type: boolean
+        default: true
+      pages:
+        description: Also deploy the interactive GitHub Pages dashboard
         type: boolean
         default: true
   schedule:
@@ -61,9 +65,18 @@ jobs:
           PILOT_LIMIT: ${{ inputs.limit || '100' }}
           PILOT_DISCOVERY: ${{ inputs.discovery || 'auto' }}
         run: python -m discovery.pilot --limit $env:PILOT_LIMIT --discovery $env:PILOT_DISCOVERY --confidence 0.95
+      - name: Render repository report
+        run: python -m discovery.report_markdown
+      - name: Keep repository report
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-report
+          path: reports
+          if-no-files-found: error
+          retention-days: 90
       - name: Render PDF report
         env:
-          PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          PAGES_URL: ${{ ((github.event_name == 'schedule' && vars.ENABLE_PAGES != 'false') || (github.event_name == 'workflow_dispatch' && inputs.pages)) && format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) || '' }}
         run: python -m discovery.report_pdf --output site/report.pdf
       - name: Keep report and PDF
         if: always()
@@ -76,11 +89,39 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
       - uses: actions/upload-pages-artifact@v3
+        if: (github.event_name == 'schedule' && vars.ENABLE_PAGES != 'false') || (github.event_name == 'workflow_dispatch' && inputs.pages)
         with:
           path: site
 
+  publish:
+    needs: collect
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: repository-report
+          path: reports
+      - name: Commit latest repository report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg
+          if git diff --cached --quiet; then
+            echo "Report unchanged."
+          else
+            git commit -m "Publish latest weekly discovery report"
+            git push
+          fi
+
   deploy:
     needs: collect
+    if: (github.event_name == 'schedule' && vars.ENABLE_PAGES != 'false') || (github.event_name == 'workflow_dispatch' && inputs.pages)
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -96,8 +137,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   email:
-    needs: deploy
-    if: github.event_name == 'schedule' || inputs.email
+    needs: [collect, deploy]
+    if: always() && needs.collect.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') && (github.event_name == 'schedule' || inputs.email)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
