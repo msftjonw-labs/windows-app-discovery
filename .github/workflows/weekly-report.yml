@@ -77,7 +77,14 @@ jobs:
       - name: Render PDF report
         env:
           PAGES_URL: ${{ ((github.event_name == 'schedule' && vars.ENABLE_PAGES != 'false') || (github.event_name == 'workflow_dispatch' && inputs.pages)) && format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) || '' }}
-        run: python -m discovery.report_pdf --output site/report.pdf
+        run: python -m discovery.report_pdf --output site/report.pdf --archive-dir new-report-history
+      - name: Keep archived PDF report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-history
+          path: new-report-history/report-*.pdf
+          if-no-files-found: error
+          retention-days: 90
       - name: Keep report and PDF
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,15 +114,19 @@ jobs:
         with:
           name: repository-report
           path: reports
-      - name: Commit latest repository report
+      - uses: actions/download-artifact@v4
+        with:
+          name: report-history
+          path: report-history
+      - name: Commit latest repository report and archived PDF
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg report-history/report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else
-            git commit -m "Publish latest weekly discovery report"
+            git commit -m "Publish latest weekly discovery report and archive PDF"
             git push
           fi
 

@@ -64,6 +64,11 @@ $env:GMAIL_ADDRESS = "you@gmail.com"; $env:GMAIL_APP_PASSWORD = "<app password>"
 python -m discovery.send_email --report site\data\latest.json --pdf site\report.pdf
 ```
 
+Add `--archive-dir report-history` to also keep a copy named after the report's
+generation time (for example `report-history\report-20261019T170000Z.pdf`). The weekly
+workflow does this and commits each PDF to [`report-history/`](report-history/README.md),
+so historical reports are kept and tracked alongside the latest one.
+
 PDF rendering uses headless Chrome, Chromium, or Edge (set `PDF_BROWSER` to override).
 
 To generate the repository-readable report and charts from the same collected data
