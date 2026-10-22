@@ -65,7 +65,7 @@ python -m discovery.send_email --report site\data\latest.json --pdf site\report.
 ```
 
 Add `--archive-dir report-history` to also keep a copy named after the report's
-generation time (for example `report-history\report-20261019T170000Z.pdf`). The weekly
+generation date in UTC (for example `report-history\report-2026-10-19.pdf`). The weekly
 workflow does this and commits each PDF to [`report-history/`](report-history/README.md),
 so historical reports are kept and tracked alongside the latest one.
 

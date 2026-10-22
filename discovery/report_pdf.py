@@ -186,11 +186,11 @@ def archive_name(generated_at):
     moment = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     if moment.tzinfo is None:
         raise ValueError("generated_at must include a UTC offset")
-    return f"report-{moment.astimezone(timezone.utc):%Y%m%dT%H%M%SZ}.pdf"
+    return f"report-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
 
 
 def archive_pdf(pdf, generated_at, directory):
-    """Copy the PDF into directory (created if needed) under its timestamped name and return the path."""
+    """Copy the PDF into directory (created if needed) under its dated name (replacing a same-day report) and return the path."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / archive_name(generated_at)
@@ -205,7 +205,7 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "site" / "report.pdf")
     parser.add_argument("--pages-url", default=os.environ.get("PAGES_URL"))
     parser.add_argument("--archive-dir", type=Path,
-                        help="Also copy the PDF here as report-<generated UTC timestamp>.pdf (e.g. report-history)")
+                        help="Also copy the PDF here as report-<generated UTC date yyyy-mm-dd>.pdf (e.g. report-history)")
     args = parser.parse_args()
     report = json.loads(args.input.read_text(encoding="utf-8"))
     output = render_pdf(build_html(report, args.pages_url), args.output)

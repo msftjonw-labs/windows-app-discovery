@@ -266,9 +266,9 @@ class PdfReportTests(unittest.TestCase):
         self.assertIn("Fallback reason: down", html)
         self.assertNotIn("% CI", html)
 
-    def test_archive_name_uses_generated_utc_timestamp(self):
-        self.assertEqual(report_pdf.archive_name("2026-10-19T17:00:00Z"), "report-20261019T170000Z.pdf")
-        self.assertEqual(report_pdf.archive_name("2026-10-19T10:00:00-07:00"), "report-20261019T170000Z.pdf")
+    def test_archive_name_uses_generated_utc_date(self):
+        self.assertEqual(report_pdf.archive_name("2026-10-19T17:00:00Z"), "report-2026-10-19.pdf")
+        self.assertEqual(report_pdf.archive_name("2026-10-19T20:00:00-07:00"), "report-2026-10-20.pdf")
         with self.assertRaises(ValueError):
             report_pdf.archive_name("2026-10-19T17:00:00")
 
@@ -280,7 +280,7 @@ class PdfReportTests(unittest.TestCase):
             pdf.write_bytes(b"%PDF-second")
             second = report_pdf.archive_pdf(pdf, "2026-10-19T17:00:00Z", history)
             self.assertEqual(sorted(p.name for p in history.iterdir()),
-                             ["report-20261012T170000Z.pdf", "report-20261019T170000Z.pdf"])
+                             ["report-2026-10-12.pdf", "report-2026-10-19.pdf"])
             self.assertEqual(first.read_bytes(), b"%PDF-first")
             self.assertEqual(second.read_bytes(), b"%PDF-second")
 
