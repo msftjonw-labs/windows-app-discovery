@@ -5,7 +5,9 @@ from html import escape
 import json
 from pathlib import Path
 import re
+from urllib.parse import quote
 
+from discovery.app_insights import is_windows_application
 from discovery.report_pdf import EXCLUSIVE, ROOT, SECTIONS, number
 
 
@@ -42,6 +44,15 @@ def chart_svg(rows, title):
                 f'<text x="890" y="{y}">{escape(number(percent, "%"))}</text>',
             ])
     return "".join(parts) + "</g></svg>\n"
+
+
+def repository_link(repository):
+    name = str(repository.get("name") or "")
+    parts = name.split("/")
+    if len(parts) != 2 or not all(parts):
+        return text(name)
+    url = "https://github.com/" + "/".join(quote(part, safe="") for part in parts)
+    return f"[{text(name)}]({url})"
 
 
 def build_markdown(report):
@@ -96,13 +107,21 @@ def build_markdown(report):
                         f"{text(number(row.get('ci_high'), '%'))} |") if confidence else ""
             lines.append(f"| {text(row['label'])} | {row['count']} / {row['denominator']} | "
                          f"{text(number(row['percent'], '%'))} |{interval}")
-    lines.extend(["", "## Sampled repositories", "",
-                  "| Repository | Scan | Language | Platform | Framework | Windows app types | Components |",
-                  "| --- | --- | --- | --- | --- | --- | --- |"])
-    for repository in report["repositories"]:
-        lines.append("| " + " | ".join(text(repository.get(key)) for key in (
-            "name", "status", "primary_language", "primary_platform", "primary_framework",
-            "application_types", "components")) + " |")
+    lines.extend(["", "## Identified Windows applications", "",
+                  "| Name | Language | Platform | Windows app type | Windows components | Analysis |",
+                  "| --- | --- | --- | --- | --- | --- |"])
+    applications = [repository for repository in report["repositories"] if is_windows_application(repository)]
+    for repository in applications:
+        lines.append("| " + " | ".join((
+            repository_link(repository),
+            text(repository.get("primary_language")),
+            text(repository.get("primary_platform")),
+            text(repository.get("application_types")),
+            text(repository.get("components")),
+            text(repository.get("analysis", "Analysis unavailable.")),
+        )) + " |")
+    if not applications:
+        lines.append("| N/A | — | — | — | — | No fully scanned Windows applications were identified. |")
     lines.extend(["", "Static source-level evidence is not proof of runtime use or OS compatibility. "
                   "Component and application-type categories can overlap. Partial and failed scans are "
                   "nonresponse; their exclusion can bias estimates. Sampling intervals do not measure "

@@ -22,6 +22,7 @@ from urllib.parse import quote
 import zipfile
 
 from discovery import gharchive
+from discovery.app_insights import enrich_windows_applications
 from discovery import semgrep as semgrep_engine
 from discovery.projects import classify_projects
 from discovery.rules import (
@@ -906,6 +907,7 @@ def main():
         raise PilotError("No qualifying repositories discovered; refusing to replace dashboard data")
     records, excluded = analyze_candidates(candidates, target, inspector.resolve(), args.cache,
                                           skip_unavailable=sampled, semgrep=args.semgrep)
+    enrich_windows_applications(records, graphql)
     if sampled:
         coverage.update(excluded_after_sampling=excluded, sample_size=len(records),
                         candidates_drawn=len(records) + len(excluded))

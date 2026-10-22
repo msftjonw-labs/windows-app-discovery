@@ -249,10 +249,21 @@ def sample_report(representative=True):
 
 class PdfReportTests(unittest.TestCase):
     def test_html_escapes_untrusted_labels_and_shows_intervals(self):
-        html = report_pdf.build_html(sample_report(), "https://example.github.io/x/")
+        report = sample_report()
+        report["repositories"][0].update(
+            name="owner/windows-app",
+            status="success", platforms=["Windows"], purpose="Application", windows_scan="success",
+            primary_language="C#", primary_platform="Windows", application_types=["WPF"],
+            components=["Win32"], analysis="The README explains the app. A feature request describes it. "
+                                            "Recent activity shows community response.")
+        html = report_pdf.build_html(report, "https://example.github.io/x/")
         self.assertNotIn("<script>x</script>", html)
         self.assertIn("&lt;script&gt;", html)
-        self.assertIn("o/&lt;b&gt;r&lt;/b&gt;", html)
+        self.assertIn("owner/windows-app", html)
+        self.assertIn('href="https://github.com/owner/windows-app"', html)
+        self.assertIn("<th>Name</th><th>Language</th><th>Platform</th><th>Windows app type</th>"
+                      "<th>Windows components</th><th>Analysis</th>", html)
+        self.assertNotIn("<th>Scan</th>", html)
         self.assertIn("95% CI", html)
         self.assertIn("5.8–18.3%", html)
         self.assertIn("1,234,567", html)

@@ -12,6 +12,9 @@ import shutil
 import subprocess
 import tempfile
 import time
+from urllib.parse import quote
+
+from discovery.app_insights import is_windows_application
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSERS = (
@@ -144,13 +147,27 @@ def build_html(report, pages_url=None):
             parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
         else:
             parts.append(distribution_table(metrics.get(key), confidence if representative else None))
-    rows = "".join(
-        f"<tr><td>{text(r['name'])}</td><td>{text(r['status'])}</td><td>{text(r.get('primary_language'))}</td>"
-        f"<td>{text(r.get('primary_platform'))}</td><td>{text(r.get('primary_framework'))}</td>"
-        f"<td>{text(r.get('application_types'))}</td><td>{text(r.get('components'))}</td></tr>"
-        for r in report["repositories"])
-    parts.append("<h2>Sampled repositories</h2><table class=\"repos\"><tr><th>Repository</th><th>Scan</th><th>Language</th>"
-                 f"<th>Platform</th><th>Framework</th><th>Windows app type</th><th>Windows components</th></tr>{rows}</table>")
+    applications = [r for r in report["repositories"] if is_windows_application(r)]
+    rows = []
+    for repository in applications:
+        name = str(repository.get("name") or "")
+        parts_of_name = name.split("/")
+        if len(parts_of_name) == 2 and all(parts_of_name):
+            url = "https://github.com/" + "/".join(quote(part, safe="") for part in parts_of_name)
+            name = f'<a href="{escape(url, quote=True)}">{text(name)}</a>'
+        else:
+            name = text(name)
+        rows.append(
+            f"<tr><td>{name}</td><td>{text(repository.get('primary_language'))}</td>"
+            f"<td>{text(repository.get('primary_platform'))}</td>"
+            f"<td>{text(repository.get('application_types'))}</td>"
+            f"<td>{text(repository.get('components'))}</td>"
+            f"<td>{text(repository.get('analysis', 'Analysis unavailable.'))}</td></tr>")
+    if not rows:
+        rows.append('<tr><td colspan="6" class="muted">No fully scanned Windows applications were identified.</td></tr>')
+    parts.append("<h2>Identified Windows applications</h2><table class=\"repos\"><tr><th>Name</th><th>Language</th>"
+                 "<th>Platform</th><th>Windows app type</th><th>Windows components</th><th>Analysis</th></tr>"
+                 f"{''.join(rows)}</table>")
     parts.append("<p class=\"muted\">Static, source-level evidence only; detection of a pattern is not proof of runtime use, "
                  "and absence of a match is not proof of non-use. Partial and failed scans are nonresponse and are excluded "
                  "from distributions, which can bias estimates if they differ systematically.</p></body></html>")

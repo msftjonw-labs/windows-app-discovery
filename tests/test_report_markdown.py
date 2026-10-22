@@ -32,12 +32,35 @@ class MarkdownReportTests(unittest.TestCase):
 
     def test_untrusted_text_cannot_inject_html_markdown_or_table_rows(self):
         report = sample_report()
-        report["repositories"][0]["name"] = '<img src=x> | ![x](https://example.test)\n# heading'
+        report["repositories"][0].update(
+            name='<img src=x> | ![x](https://example.test)\n# heading',
+            status="success", platforms=["Windows"], purpose="Application", windows_scan="success")
         result = report_markdown.build_markdown(report)
         self.assertNotIn("<script>", result)
         self.assertNotIn("<img", result)
         self.assertIn(r"&lt;img src=x&gt; \| \!\[x\]\(https://example.test\) # heading", result)
         self.assertNotIn("\n# heading", result)
+
+    def test_final_table_contains_only_identified_windows_applications(self):
+        report = sample_report()
+        eligible = report["repositories"][0]
+        eligible.update(
+            name="owner/windows-app", status="success", platforms=["Windows"],
+            purpose="Application", windows_scan="success", primary_language="C#",
+            primary_platform="Windows", application_types=["WPF"], components=["Win32"],
+            analysis="The README explains its purpose. A feature request describes a need. "
+                     "Recent contributions received comments.")
+        report["repositories"].extend([
+            {**eligible, "name": "owner/library", "purpose": "Library"},
+            {**eligible, "name": "owner/partial", "status": "partial"},
+        ])
+        result = report_markdown.build_markdown(report)
+        table = result.split("## Identified Windows applications", 1)[1].split("\n\nStatic", 1)[0]
+        self.assertIn("| Name | Language | Platform | Windows app type | Windows components | Analysis |", table)
+        self.assertIn("[owner/windows-app](https://github.com/owner/windows-app)", table)
+        self.assertIn("| C# | Windows | WPF | Win32 |", table)
+        self.assertNotIn("owner/library", table)
+        self.assertNotIn("owner/partial", table)
 
     def test_zero_denominator_is_na_not_zero_percent(self):
         report = sample_report()
