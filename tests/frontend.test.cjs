@@ -94,7 +94,8 @@ test("Windows tiles render as a separate complete-scan subset with denominator n
   const data = { schema_version: 1, generated_at: "g", window: { start: "s", end: "e" }, ruleset_version: "r", inspector_version: "i",
     coverage: { representative_sample: false, items_examined: 1, eligible_repositories: 1, truncated_connections: 0, searches: [] },
     metrics: { selected: 100, successful: 93, partial: 4, failed: 1, not_applicable: 2, windows_repositories: 15, windows_applications: 6,
-      platforms: [], languages: [], frameworks: [], application_types: [], components: [], candidate_components: [] },
+      platforms: [], languages: [], frameworks: [], application_types: [], components: [], candidate_components: [],
+      project_types: [{label: "PowerShell", count: 11, denominator: 93, percent: 11.83}] },
     repositories: [] };
   run(`fetch = async () => ({ ok: true, json: async () => (${JSON.stringify(data)}) }); document.getElementById("filter").addEventListener = () => {}; document.getElementById("scan-status").addEventListener = () => {}; document.getElementById("csv").addEventListener = () => {};`);
   await run("load()");
@@ -104,6 +105,8 @@ test("Windows tiles render as a separate complete-scan subset with denominator n
   assert.equal(run('$("windows-cards").children[0].className'), "card subset");
   assert.equal(run('$("windows-cards").children[1].children[2].textContent'), "of 93 complete scans");
   assert.match(run('$("platforms-note").textContent'), /only from the 93 complete scans, excluding 4 partial scans, 1 failed scans.*100%/);
+  assert.equal(run('$("project_types").children[0].children[0].children[0].textContent'), "PowerShell");
+  assert.equal(run('$("project_types").children[0].children[0].children[1].textContent'), "11.83% · 11/93");
 });
 
 test("repository filters preserve N/A notes and partial Inspector counters", () => {

@@ -78,7 +78,7 @@ To generate the repository-readable report and charts from the same collected da
 python -m discovery.report_markdown
 ```
 
-This writes `reports/README.md` and six SVG charts. It refuses reports with no
+This writes `reports/README.md` and seven SVG charts. It refuses reports with no
 complete scans. It does not collect new data or commit files itself.
 
 Run the real-tool contract tests after installation:
@@ -252,6 +252,7 @@ rules are indicators, not authoritative compatibility assertions.
 | Platform/framework prevalence | All complete source scans |
 | OS-target distribution | All complete source scans; runtime-only evidence remains OS Unspecified |
 | Primary-language distribution | All complete source scans |
+| Project application and automation types | Complete repository scans with collected `projects` inventories; each repository counts once per category across all its projects |
 | Windows application types | Complete Windows scans with explicit application evidence |
 | Windows component adoption | Same eligible Windows application repositories |
 | Exploratory Windows-candidate component adoption | All complete Windows-targeting scans, including libraries/unknown purposes |
@@ -262,6 +263,20 @@ of repository size or number of matches. This equals the average per-repository
 indicator. Win32 and COM overlap; percentages need not sum to 100%.
 No eligible repositories produces `null` / **N/A**, not 0%.
 These figures are not source-line shares or runtime-call percentages.
+
+The **Project application and automation types** table and chart use the newly
+collected project findings rather than the narrower Windows application denominator.
+They show measured shares for Windows desktop app, Windows Forms app, WPF app,
+WinUI app, UWP app, Windows service, PowerShell, and other detected categories.
+Windows desktop app is an umbrella for the four Windows UI frameworks, not proof
+that a project is executable. PowerShell includes scripts, modules, and hosting
+indicators and does not imply Windows. Categories overlap and need not total 100%;
+multiple matching projects in one repository still contribute only one count per
+category. Partial/failed scans and older records without `projects` are excluded;
+inventories with no recognized type remain in the denominator as unknown.
+The report displays counts, denominator, measured percentage, and sampling intervals
+when representative, using the same table/chart style as existing distributions.
+Example percentages are never substituted for collected results.
 The separately labeled exploratory Windows-candidate chart is not an application
 distribution and must not be substituted for the application-level headline metric.
 
@@ -346,7 +361,7 @@ syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workf
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
 Inspector, draws the GH Archive sample, analyzes it, renders `site/report.pdf`, keeps
-the JSON and PDF as a 90-day artifact, commits the latest Markdown report and six SVG
+the JSON and PDF as a 90-day artifact, commits the latest Markdown report and seven SVG
 charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
 emails the PDF. Scheduled workflows run only from the default branch. Repository
 publishing also runs only on the default branch; manual runs on other branches

@@ -739,6 +739,26 @@ def aggregate(records, confidence=None):
     complete = [r for r in records if r["status"] == "success"]
     windows = [r for r in complete if "Windows" in r["platforms"]]
     applications = [r for r in windows if r["purpose"] == "Application" and r["windows_scan"] == "success"]
+    project_labels = {
+        "Windows Forms": "Windows Forms app",
+        "WPF": "WPF app",
+        "WinUI / Windows App SDK": "WinUI app",
+        "UWP": "UWP app",
+        "Windows service": "Windows service",
+        "Service management": "Service management",
+    }
+    inventories = []
+    for record in complete:
+        if not isinstance(record.get("projects"), list):
+            continue
+        labels = {label for project in record["projects"] for label in project.get("labels", [])}
+        detected = {project_labels[label] for label in labels if label in project_labels}
+        if labels & {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP"}:
+            detected.add("Windows desktop app")
+        if any(label.startswith("PowerShell") for label in labels):
+            detected.add("PowerShell")
+        detected.update(label for label in labels if label.startswith("Cross-platform:"))
+        inventories.append({"project_types": sorted(detected) or ["Unknown / no findings"]})
     return {
         "selected": len(records), "successful": len(complete),
         "partial": sum(r["status"] == "partial" for r in records),
@@ -753,6 +773,11 @@ def aggregate(records, confidence=None):
         "frameworks": distribution(complete, "primary_framework", z=z, exclusive=True),
         "languages": distribution(complete, "primary_language", z=z, exclusive=True),
         "application_types": distribution(applications, "application_types", z=z),
+        "project_types": distribution(
+            inventories, "project_types",
+            [*project_labels.values(), "Windows desktop app", "PowerShell", "Unknown / no findings"],
+            z=z,
+        ),
         "components": distribution(applications, "components", COMPONENTS, z=z),
         "candidate_components": distribution(windows, "components", COMPONENTS, z=z),
     }

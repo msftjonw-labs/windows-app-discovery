@@ -544,6 +544,107 @@ class ClassificationTests(unittest.TestCase):
         metrics = aggregate([])
         self.assertTrue(all(r["percent"] is None for r in metrics["components"]))
 
+    @staticmethod
+    def project_record(projects, **overrides):
+        return {
+            "status": "success", "platforms": ["Unknown"], "frameworks": ["Unknown"],
+            "primary_language": "Unknown", "purpose": "Unknown / library or tool",
+            "windows_scan": "not_applicable", "components": [], "application_types": [],
+            "projects": projects, **overrides,
+        }
+
+    def test_project_types_count_repositories_not_projects_and_preserve_overlap(self):
+        records = [
+            self.project_record([
+                {"labels": ["Windows Forms", "WPF", "Windows Forms"]},
+                {"labels": ["Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP"]},
+            ]),
+            self.project_record([{"labels": ["WPF"]}]),
+        ]
+        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        self.assertEqual(rows["Windows desktop app"]["count"], 2)
+        self.assertEqual(rows["Windows Forms app"]["count"], 1)
+        self.assertEqual(rows["WPF app"]["count"], 2)
+        self.assertEqual(rows["WinUI app"]["count"], 1)
+        self.assertEqual(rows["UWP app"]["count"], 1)
+        self.assertEqual(rows["Windows Forms app"]["percent"], 50)
+        self.assertTrue(all(row["denominator"] == 2 for row in rows.values()))
+        self.assertGreater(sum(row["percent"] for row in rows.values()), 100)
+
+    def test_project_types_use_only_successful_list_inventories(self):
+        legacy = self.project_record(None, platforms=["Windows"], frameworks=["WPF"])
+        del legacy["projects"]
+        records = [
+            self.project_record([]),
+            self.project_record([{"labels": ["PowerShell script"]}]),
+            legacy,
+            self.project_record(None),
+            self.project_record({"labels": ["WPF"]}),
+            self.project_record([{"labels": ["WPF"]}], status="partial"),
+            self.project_record([{"labels": ["WPF"]}], status="failed"),
+            self.project_record([{"labels": ["WPF"]}], status="not_applicable"),
+        ]
+        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        self.assertTrue(all(row["denominator"] == 2 for row in rows.values()))
+        self.assertEqual(rows["PowerShell"]["percent"], 50)
+        self.assertEqual(rows["Unknown / no findings"]["percent"], 50)
+        self.assertEqual(rows["WPF app"]["count"], 0)
+
+    def test_project_types_distinguish_service_hosts_and_powershell_findings(self):
+        records = [
+            self.project_record([{"labels": ["Service management", "PowerShell install script",
+                                           "PowerShell service registration"]}]),
+            self.project_record([{"labels": ["PowerShell-backed service", "PowerShell module"]}]),
+            self.project_record([{"labels": ["Windows service", "PowerShell script"]}]),
+        ]
+        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        self.assertEqual(rows["PowerShell"]["count"], 3)
+        self.assertEqual(rows["Windows service"]["count"], 1)
+        self.assertEqual(rows["Service management"]["count"], 1)
+        self.assertEqual(rows["Windows desktop app"]["count"], 0)
+
+    def test_project_types_include_observed_cross_platform_frameworks(self):
+        records = [
+            self.project_record([{"labels": ["Cross-platform: Avalonia", "Cross-platform: Electron"]},
+                                 {"labels": ["Cross-platform: Avalonia"]}]),
+            self.project_record([{"labels": ["Cross-platform: Avalonia"]}]),
+        ]
+        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        self.assertEqual(rows["Cross-platform: Avalonia"]["count"], 2)
+        self.assertEqual(rows["Cross-platform: Electron"]["percent"], 50)
+        self.assertEqual(rows["Windows desktop app"]["count"], 0)
+        self.assertEqual(rows["Unknown / no findings"]["count"], 0)
+
+    def test_project_types_do_not_infer_desktop_from_executable_or_windows_target(self):
+        records = [
+            self.project_record([{"labels": ["Executable", "Windows target"]}],
+                                platforms=["Windows"], frameworks=["WPF"]),
+            self.project_record([{"labels": []}]),
+            self.project_record([]),
+        ]
+        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        self.assertEqual(rows["Unknown / no findings"]["count"], 3)
+        self.assertEqual(rows["Windows desktop app"]["count"], 0)
+        self.assertEqual(rows["WPF app"]["count"], 0)
+
+    def test_project_types_have_stable_zero_rows_and_optional_intervals(self):
+        labels = {"Windows desktop app", "Windows Forms app", "WPF app", "WinUI app",
+                  "UWP app", "Windows service", "Service management", "PowerShell",
+                  "Unknown / no findings"}
+        for records in ([], [self.project_record(None)]):
+            with self.subTest(records=records):
+                rows = aggregate(records, confidence=0.95)["project_types"]
+                self.assertEqual({row["label"] for row in rows}, labels)
+                self.assertTrue(all(row["count"] == 0 and row["denominator"] == 0
+                                    and row["percent"] is None and row["ci_low"] is None
+                                    and row["ci_high"] is None for row in rows))
+        records = [self.project_record([{"labels": ["WPF"]}]), self.project_record([])]
+        rows = {r["label"]: r for r in aggregate(records, confidence=0.95)["project_types"]}
+        self.assertEqual((rows["WPF app"]["ci_low"], rows["WPF app"]["ci_high"]), (9.45, 90.55))
+        self.assertTrue(all(0 <= row["ci_low"] <= row["ci_high"] <= 100 for row in rows.values()))
+        self.assertTrue(all(row["ci_low"] is None and row["ci_high"] is None
+                            for row in aggregate(records)["project_types"]))
+
     def test_application_types_preserve_overlap(self):
         self.assertEqual(application_types(["WPF", "Windows Forms"], ["COM"]), ["WPF", "Windows Forms"])
 

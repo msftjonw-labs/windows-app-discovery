@@ -228,7 +228,7 @@ async function load() {
     for (const [text, className] of describeCoverage(report.coverage, metrics)) {
       $("coverage").append(element("p", text, className));
     }
-    for (const field of ["platforms", "languages", "frameworks", "application_types", "components", "candidate_components"]) {
+    for (const field of ["platforms", "languages", "frameworks", "project_types", "application_types", "components", "candidate_components"]) {
       bars(field, metrics[field]);
     }
     $("versions").textContent = `Ruleset ${report.ruleset_version}; Microsoft Application Inspector ${report.inspector_version}. Cached scans retain their original scan timestamps.`;

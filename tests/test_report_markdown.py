@@ -7,7 +7,7 @@ from unittest import mock
 import xml.etree.ElementTree as ET
 
 from discovery import report_markdown
-from discovery.report_pdf import SECTIONS
+from discovery.report_pdf import SECTIONS, build_html
 from tests.test_weekly import sample_report
 
 
@@ -65,7 +65,7 @@ class MarkdownReportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "reports"
             report_markdown.write_report(report, output)
-            self.assertEqual(len(list(output.iterdir())), 7)
+            self.assertEqual(len(list(output.iterdir())), len(SECTIONS) + 1)
             for key, _, _ in SECTIONS:
                 ET.parse(output / f"{key}.svg")
             report["generated_at"] = "2026-10-26T17:00:00Z"
@@ -83,6 +83,41 @@ class MarkdownReportTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 report_markdown.write_report(report, output)
             self.assertFalse(output.exists())
+
+    def test_project_distribution_uses_existing_tables_and_measured_shares(self):
+        report = sample_report()
+        report["metrics"]["project_types"] = [
+            {"label": "Windows desktop app", "count": 2, "denominator": 5, "percent": 40.0,
+             "ci_low": 11.76, "ci_high": 76.93},
+            {"label": "PowerShell", "count": 1, "denominator": 5, "percent": 20.0,
+             "ci_low": 3.62, "ci_high": 62.45}]
+        markdown = report_markdown.build_markdown(report)
+        section = markdown.split("## Project application and automation types")[1].split("## Windows application types")[0]
+        self.assertIn("categories", section.lower())
+        self.assertIn("Categories overlap", section)
+        self.assertIn("| Windows desktop app | 2 / 5 | 40.0% | 11.76–76.93% |", section)
+        self.assertIn("| PowerShell | 1 / 5 | 20.0%", section)
+        html = build_html(report)
+        self.assertIn('Windows desktop app</td><td class="num">2/5</td><td class="num">40.0%</td>', html)
+        svg = report_markdown.chart_svg(report["metrics"]["project_types"], "Project types")
+        self.assertIn("PowerShell", svg)
+        self.assertIn("20.0%", svg)
+        report["coverage"]["representative_sample"] = False
+        markdown = report_markdown.build_markdown(report)
+        self.assertNotIn(" CI |", markdown)
+        self.assertNotIn("<th>95% CI</th>", build_html(report))
+
+    def test_project_distribution_distinguishes_missing_metric_from_empty_population(self):
+        report = sample_report()
+        report["metrics"].pop("project_types", None)
+        for render in (report_markdown.build_markdown, build_html):
+            self.assertIn("Not collected by this report", render(report))
+        report["metrics"]["project_types"] = [
+            {"label": "PowerShell", "count": 0, "denominator": 0, "percent": None}]
+        for render in (report_markdown.build_markdown, build_html):
+            result = render(report)
+            self.assertNotIn("Not collected by this report", result)
+            self.assertIn("N/A — no eligible repositories.", result)
 
     def test_cli_accepts_input_and_output(self):
         with tempfile.TemporaryDirectory() as temporary:
