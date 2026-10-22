@@ -39,6 +39,24 @@ Open `http://127.0.0.1:8000`. Serve over HTTP rather than opening the HTML direc
 The collector writes the real report to `site\data\latest.json` (ignored by git).
 The dashboard displays an explicit error until a report exists.
 
+To populate the explorer's **Analysis** column, run this after collection and before
+serving or publishing the dashboard:
+
+```powershell
+$env:OPENAI_API_KEY = "<your API key>"
+$env:OPENAI_MODEL = "gpt-4o"
+python -m discovery.analysis
+```
+
+This uses the paid OpenAI API (standard library only), not a ChatGPT subscription.
+The weekly workflow runs this step automatically: configure an `OPENAI_API_KEY`
+Actions secret and optionally an `OPENAI_MODEL` repository variable (default
+`gpt-4o`, must support structured JSON outputs). Never commit the API key.
+Missing configuration fails the step explicitly. Individual repository/API failures
+are logged and shown as unavailable analysis without changing scan results or metrics.
+Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
+Use `--report PATH` to enrich another report in place.
+
 The first run downloads Application Inspector **1.10.2** into `.tools\inspector`
 and verifies the pinned Windows release's SHA-256. Later runs omit
 `--install-inspector`. Alternatively, use `--inspector C:\path\ApplicationInspector.CLI.exe`.
@@ -293,10 +311,35 @@ interval at `--confidence` (default 95%) for `count / denominator`.
 complete-scan denominator. Intervals describe sampling error only, not classification
 error or nonresponse bias from partial/failed scans. The population is in the millions,
 so no finite-population correction is applied. GraphQL-fallback reports set these to `null`.
-The explorer shows all selected repositories, including errors, source-retrieval
-method, Inspector incompleteness, and exclusion counts.
+The explorer shows only Windows candidates (complete scans with a Windows platform
+signal), matching the Windows candidates tile, including source-retrieval method,
+Inspector incompleteness, and exclusion counts. Search and scan-status filters apply
+within that subset.
+The **Analysis** column explains the problems solved and summarizes community feedback
+using OpenAI-generated text with source links. Counts are issues opened during the
+report's existing UTC window, excluding pull requests (bot-created issues are included
+in this count). Feedback uses only human issue openings/comments in that same window,
+from a bounded sample of up to 10 most recently updated issues and the last 10 comments
+per issue; bots and out-of-window comments are excluded. Issues updated after the window
+can still contain eligible comments, so the search has no upper update-time bound.
+Recent activity can push relevant older issues/comments outside this sample, especially
+when enriching old reports. Issue count alone is never treated as sentiment or popularity;
+absent feedback is reported as insufficient evidence.
+
+Only currently public repositories are analyzed. Public description, README at the
+scanned SHA, and issue/comment excerpts are sent to OpenAI: README up to 8,000 characters,
+issue excerpts up to 800, comments up to 400. Descriptions and issue bodies reflect
+their retrieved versions, not historical window snapshots. The report publishes summary,
+counts, source URLs, model/time, and sampling limitations, not raw excerpts.
+AI claims should be checked against sources; the response schema restricts citations
+to collected source IDs, and community citations to in-window human issue/comment
+sources. Citations are also validated before publication, but this does not prove
+every generated claim. API usage incurs model costs.
+Existing scan diagnostics and evidence remain available in a collapsed **Scan / evidence**
+section in each Analysis cell. Other dashboard charts and sampling metrics are unchanged.
 JSON downloads contain the full report; CSV contains repository-level classifications,
-project findings with evidence and confidence, and source-retrieval information.
+project findings with evidence and confidence, AI analysis, and source-retrieval information for
+all selected repositories.
 
 ## Bounds, safety, and persistence
 
@@ -360,7 +403,8 @@ project findings with evidence and confidence, and source-retrieval information.
 syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workflows/weekly-report.yml)
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
-Inspector, draws the GH Archive sample, analyzes it, renders `site/report.pdf`, keeps
+Inspector, draws the GH Archive sample, scans it, enriches Windows candidates with
+OpenAI purpose/community analysis, renders `site/report.pdf`, keeps
 the JSON and PDF as a 90-day artifact, commits the latest Markdown report and seven SVG
 charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
 emails the PDF. Scheduled workflows run only from the default branch. Repository
@@ -389,11 +433,13 @@ When you choose to deploy:
 4. Add repository secrets: `GMAIL_ADDRESS` (the sending Gmail account),
    `GMAIL_APP_PASSWORD`, optionally `REPORT_RECIPIENT` (defaults to `GMAIL_ADDRESS`),
    and recommended `DISCOVERY_TOKEN` (a fine-grained token with public read access).
-5. Run **Weekly report** manually once (optionally with a small limit and email off).
+5. Add the `OPENAI_API_KEY` repository secret for the Analysis column, and optionally
+   set the `OPENAI_MODEL` repository variable (default `gpt-4o`).
+6. Run **Weekly report** manually once (optionally with a small limit and email off).
 
 The default workflow token allows only 1,000 GraphQL points/hour; `DISCOVERY_TOKEN`
-raises that to the user limit. Credentials are only passed to the collector and the
-email step, never embedded into the site, PDF, or logs. Do not grant scan jobs write
+raises that to the user limit. Credentials are only passed to the relevant collection,
+analysis, and email steps, never embedded into the site, PDF, or logs. Do not grant scan jobs write
 access to source repositories. If the Gmail secrets are missing, the email job fails
 visibly after Pages has deployed.
 

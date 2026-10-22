@@ -103,17 +103,51 @@ function projectFindings(repo) {
   return details;
 }
 
+function analysisCell(repo) {
+  const cell = element("td");
+  const analysis = repo.analysis;
+  if (!analysis || analysis.status !== "success") {
+    cell.append(element("p", analysis && analysis.status === "failed"
+      ? `Analysis unavailable: ${analysis.error}`
+      : "Analysis not collected. Run the AI analysis step to summarize repository purpose and community feedback.",
+    analysis && analysis.status === "failed" ? "error" : "muted"));
+    return cell;
+  }
+  const citations = (ids) => {
+    const list = element("div", undefined, "muted");
+    for (const id of ids) {
+      const source = analysis.sources.find((item) => item.id === id);
+      if (source) list.append(githubLink(`[${id}: ${source.kind}] `, source.url));
+    }
+    return list;
+  };
+  cell.append(element("strong", "Problems solved"), element("p", analysis.problem),
+    citations(analysis.problem_sources),
+    element("strong", "Community response"),
+    element("p", `${analysis.issues_opened} issues opened in the report window (excluding PRs). Feedback sample: ${analysis.issues_sampled} issues, ${analysis.comments_sampled} human comments.`, "muted"),
+    element("p", analysis.community), citations(analysis.community_sources));
+  const limits = element("details");
+  limits.append(element("summary", "Analysis scope and limitations"),
+    element("p", `${analysis.window.start} inclusive to ${analysis.window.end} exclusive (UTC).`, "muted"),
+    element("p", analysis.limitations, "muted"),
+    element("p", `AI-generated with ${analysis.model} at ${analysis.generated_at}; verify claims against the linked sources.`, "muted"));
+  cell.append(limits);
+  return cell;
+}
+
 function renderRows() {
   const filter = $("filter").value.toLowerCase();
   const status = $("scan-status").value;
-  const records = report.repositories.filter((repo) => {
+  const candidates = report.repositories.filter((repo) =>
+    repo.status === "success" && (repo.platforms || []).includes("Windows"));
+  const records = candidates.filter((repo) => {
     const text = [repo.name, ...(repo.platforms || []), ...(repo.frameworks || []),
       ...(repo.components || []), ...(repo.application_types || []),
       ...(repo.projects || []).flatMap((project) => [project.path, ...project.labels]),
       repo.primary_language || "", repo.purpose || ""].join(" ").toLowerCase();
     return text.includes(filter) && (!status || repo.status === status);
   });
-  $("repository-count").textContent = `${records.length} of ${report.repositories.length} selected repositories`;
+  $("repository-count").textContent = `${records.length} of ${candidates.length} Windows candidates`;
   $("rows").replaceChildren();
   for (const repo of records) {
     const row = element("tr");
@@ -130,7 +164,9 @@ function renderRows() {
     const components = element("td", repo.windows_scan === "success"
       ? (repo.components.length ? repo.components.join(", ") : "No selected component patterns detected")
       : "Not analyzed");
-    const scan = element("td");
+    const analysis = analysisCell(repo);
+    const scan = element("details");
+    scan.append(element("summary", "Scan / evidence"));
     scan.append(element("span", repo.status, `badge ${repo.status}`));
     if (repo.error) scan.append(element("p", repo.error));
     if (repo.note) scan.append(element("p", repo.note));
@@ -158,7 +194,8 @@ function renderRows() {
     if (repo.excluded && Object.keys(repo.excluded).length) {
       scan.append(element("p", `Skipped: ${Object.entries(repo.excluded).map(([key, count]) => `${key}: ${count}`).join("; ")}`, "muted"));
     }
-    row.append(name, targets, framework, components, scan);
+    analysis.append(scan);
+    row.append(name, targets, framework, components, analysis);
     $("rows").append(row);
   }
 }
@@ -173,10 +210,11 @@ function csvCell(value) {
 function downloadCsv() {
   const fields = ["name", "sample_rank", "status", "last_activity", "activity_types", "primary_language",
     "primary_platform", "primary_framework", "platforms",
-    "frameworks", "purpose", "application_types", "components", "os_targets", "projects", "sha", "source_method", "files_scanned", "note", "error"];
+    "frameworks", "purpose", "application_types", "components", "os_targets", "projects", "analysis", "sha", "source_method", "files_scanned", "note", "error"];
   const lines = [fields.map(csvCell).join(",")];
   for (const repo of report.repositories) {
     lines.push(fields.map((field) => csvCell(field === "projects" ? JSON.stringify(repo.projects || [])
+      : field === "analysis" ? JSON.stringify(repo.analysis || null)
       : Array.isArray(repo[field]) ? repo[field].join("; ") : repo[field])).join(","));
   }
   const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
