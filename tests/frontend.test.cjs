@@ -116,3 +116,34 @@ test("repository filters preserve N/A notes and partial Inspector counters", () 
   run('$("scan-status").value = "partial"; renderRows()');
   assert.match(run('$("rows").children[0].children[4].children[1].textContent'), /filesSkipped.*2/);
 });
+
+test("project findings retain multiple labels, confidence and pinned evidence links", () => {
+  const run = app();
+  run(`report = {repositories: [{
+    name: "o/mixed", url: "https://github.com/o/mixed", sha: "abc123", status: "success",
+    activity_evidence: "https://github.com/o/mixed/issues/1",
+    projects: [{path: "desktop/App.csproj", kind: "dotnet",
+      labels: ["Windows Forms", "Windows service"], confidence: "high",
+      evidence: [{label: "Windows Forms", path: "desktop/a b.cs", line: 7,
+        engine: "project metadata", confidence: "high"}]}]
+  }]}`);
+  run('$("filter").value = "windows service"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 1);
+  const details = '$("rows").children[0].children[4].children[1]';
+  assert.equal(run(`${details}.children[0].textContent`), "Project findings (1)");
+  assert.match(run(`${details}.children[1].textContent`), /not statistical/);
+  assert.equal(run(`${details}.children[3].textContent`), "Windows Forms, Windows service · high confidence");
+  assert.equal(run(`${details}.children[4].children[0].children[0].href`),
+    "https://github.com/o/mixed/blob/abc123/desktop/a%20b.cs#L7");
+  assert.match(run(`${details}.children[4].children[0].children[1].textContent`), /high confidence/);
+  run('$("filter").value = "desktop/app.csproj"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 1);
+});
+
+test("project findings render untrusted project names as text", () => {
+  const run = app();
+  assert.equal(run(`projectFindings({projects: [{
+    path: "<img src=x>", kind: "script", labels: ["PowerShell automation"],
+    confidence: "medium", evidence: []
+  }]}).children[2].textContent`), "<img src=x> · script");
+});

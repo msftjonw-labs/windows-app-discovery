@@ -75,12 +75,39 @@ function bars(id, values) {
   }
 }
 
+function evidenceList(repo, findings) {
+  const list = element("ul");
+  for (const evidence of findings) {
+    const item = element("li");
+    const path = evidence.path.split("/").map(encodeURIComponent).join("/");
+    item.append(githubLink(`${evidence.label} · ${evidence.path}:${evidence.line}`,
+      `${repo.url}/blob/${repo.sha}/${path}#L${evidence.line}`));
+    item.append(element("div", `${evidence.engine}${evidence.confidence ? ` · ${evidence.confidence} confidence` : ""}`, "muted"));
+    list.append(item);
+  }
+  return list;
+}
+
+function projectFindings(repo) {
+  const details = element("details");
+  details.append(element("summary", `Project findings (${repo.projects.length})`));
+  details.append(element("p", "Classification confidence describes static evidence, not statistical confidence or proof of runtime behavior.", "muted"));
+  for (const project of repo.projects) {
+    details.append(element("h4", `${project.path} · ${project.kind}`));
+    details.append(element("p", `${project.labels.join(", ") || "No application type detected"} · ${project.confidence} confidence`));
+    if (project.evidence.length) details.append(evidenceList(repo, project.evidence));
+  }
+  return details;
+}
+
 function renderRows() {
   const filter = $("filter").value.toLowerCase();
   const status = $("scan-status").value;
   const records = report.repositories.filter((repo) => {
     const text = [repo.name, ...(repo.platforms || []), ...(repo.frameworks || []),
-      ...(repo.components || []), repo.primary_language || "", repo.purpose || ""].join(" ").toLowerCase();
+      ...(repo.components || []), ...(repo.application_types || []),
+      ...(repo.projects || []).flatMap((project) => [project.path, ...project.labels]),
+      repo.primary_language || "", repo.purpose || ""].join(" ").toLowerCase();
     return text.includes(filter) && (!status || repo.status === status);
   });
   $("repository-count").textContent = `${records.length} of ${report.repositories.length} selected repositories`;
@@ -104,6 +131,7 @@ function renderRows() {
     scan.append(element("span", repo.status, `badge ${repo.status}`));
     if (repo.error) scan.append(element("p", repo.error));
     if (repo.note) scan.append(element("p", repo.note));
+    if (repo.projects && repo.projects.length) scan.append(projectFindings(repo));
     if (repo.inspector_incomplete && Object.keys(repo.inspector_incomplete).length) {
       scan.append(element("p", `Inspector incomplete: ${JSON.stringify(repo.inspector_incomplete)}`, "muted"));
     }
@@ -115,16 +143,7 @@ function renderRows() {
     if (repo.evidence && repo.evidence.length) {
       const details = element("details");
       details.append(element("summary", `Evidence (${repo.evidence.length} shown, max 200)`));
-      const list = element("ul");
-      for (const evidence of repo.evidence) {
-        const item = element("li");
-        const path = evidence.path.split("/").map(encodeURIComponent).join("/");
-        item.append(githubLink(`${evidence.label} · ${evidence.path}:${evidence.line}`,
-          `${repo.url}/blob/${repo.sha}/${path}#L${evidence.line}`));
-        item.append(element("div", evidence.engine, "muted"));
-        list.append(item);
-      }
-      details.append(list);
+      details.append(evidenceList(repo, repo.evidence));
       scan.append(details);
     }
     if (repo.excluded && Object.keys(repo.excluded).length) {
@@ -145,10 +164,11 @@ function csvCell(value) {
 function downloadCsv() {
   const fields = ["name", "sample_rank", "status", "last_activity", "activity_types", "primary_language",
     "primary_platform", "primary_framework", "platforms",
-    "frameworks", "purpose", "application_types", "components", "os_targets", "sha", "source_method", "files_scanned", "note", "error"];
+    "frameworks", "purpose", "application_types", "components", "os_targets", "projects", "sha", "source_method", "files_scanned", "note", "error"];
   const lines = [fields.map(csvCell).join(",")];
   for (const repo of report.repositories) {
-    lines.push(fields.map((field) => csvCell(Array.isArray(repo[field]) ? repo[field].join("; ") : repo[field])).join(","));
+    lines.push(fields.map((field) => csvCell(field === "projects" ? JSON.stringify(repo.projects || [])
+      : Array.isArray(repo[field]) ? repo[field].join("; ") : repo[field])).join(","));
   }
   const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
   const link = element("a");

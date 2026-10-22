@@ -209,11 +209,24 @@ application denominator. This intentionally conservative pilot misses some appli
 including some CMake, Rust, Flutter, MAUI, and legacy project layouts. Libraries
 and unknown repository purposes are visible but excluded from that denominator.
 
-Classification is **repository-level**, not a project dependency graph. Signals in
-different projects in a monorepo can combine. Regex matching can also match comments,
-strings, unused declarations, or conditional code. Dependencies do not establish
-runtime API use; precision/recall have not been benchmarked. The pilot rules are
-indicators, not authoritative compatibility assertions.
+Repository summaries retain all signals, while `projects` records project-scoped,
+**multi-label** findings. A repository can contain a Windows Forms desktop project,
+a Windows service, and PowerShell installation scripts without collapsing them into
+one application type. The dashboard's expandable **Project findings** shows labels,
+qualitative confidence, and supporting file/line links pinned to the scanned commit.
+Project paths and labels are searchable; the CSV includes the full `projects` array
+as a JSON cell, and the JSON report preserves the structured findings.
+
+PowerShell scripts and modules do **not** imply Windows compatibility. Installation
+and service-management scripts are distinct from evidence of a PowerShell-backed
+service: managing a service does not prove that PowerShell implements it.
+
+Classification confidence describes the strength of static evidence, **not** a
+measured probability or the statistical confidence intervals used in charts.
+Project association is not a resolved dependency graph. Regex matching can match
+comments, strings, unused declarations, or conditional code. Dependencies do not
+establish runtime API use; precision/recall have not been benchmarked. The pilot
+rules are indicators, not authoritative compatibility assertions.
 
 ## Metric definitions
 
@@ -250,8 +263,8 @@ error or nonresponse bias from partial/failed scans. The population is in the mi
 so no finite-population correction is applied. GraphQL-fallback reports set these to `null`.
 The explorer shows all selected repositories, including errors, source-retrieval
 method, Inspector incompleteness, and exclusion counts.
-JSON downloads contain the full report; CSV contains repository-level classifications
-and source-retrieval information.
+JSON downloads contain the full report; CSV contains repository-level classifications,
+project findings with evidence and confidence, and source-retrieval information.
 
 ## Bounds, safety, and persistence
 
