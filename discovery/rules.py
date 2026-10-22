@@ -2,7 +2,7 @@
 
 import re
 
-RULESET_VERSION = "pilot-3"
+RULESET_VERSION = "pilot-4"
 OS_TARGETS = {"Windows", "Linux", "Android", "iOS", "macOS", "BSD"}
 
 # These are indicators, not proofs of runtime behavior or supported platforms.
@@ -48,7 +48,7 @@ RULES = [
     ("pinvoke", "component", ".NET native interop", r"\b(?:DllImport|LibraryImport)\s*\("),
     ("directx", "component", "DirectX", r"\b(?:D3D11CreateDevice|D3D12CreateDevice|Direct3DCreate9)\s*\(|#\s*include\s*[<\"]d3d(?:9|11|12)\.h"),
     ("shell", "component", "Windows Shell", r"\b(?:SHGetKnownFolderPath|SHGetFolderPath[AW]?|ShellExecuteEx[AW]?)\s*\("),
-    ("service", "component", "Windows services", r"\b(?:StartServiceCtrlDispatcher[AW]?|RegisterServiceCtrlHandler[AW]?)\s*\(|\bUseWindowsService\s*\(|System\.ServiceProcess"),
+    ("service", "component", "Windows services", r"\b(?:StartServiceCtrlDispatcher[AW]?|RegisterServiceCtrlHandler[AW]?)\s*\(|\b(?:UseWindowsService|AddWindowsService)\s*\(|System\.ServiceProcess"),
     ("registry", "component", "Windows Registry", r"\bReg(?:OpenKeyEx|SetValueEx|QueryValueEx)[AW]?\s*\(|Microsoft\.Win32\.Registry\b"),
 ]
 

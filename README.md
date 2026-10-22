@@ -217,6 +217,21 @@ qualitative confidence, and supporting file/line links pinned to the scanned com
 Project paths and labels are searchable; the CSV includes the full `projects` array
 as a JSON cell, and the JSON report preserves the structured findings.
 
+Literal MSBuild XML metadata is inspected without evaluating conditions, imports,
+or build tasks. Conditional settings remain lower-confidence evidence. Sources
+without a unique nearest project, including shared build properties, remain
+explicit shared/ambiguous/unassigned entries rather than being copied to every
+project.
+
+For supplemental refinement, pass `--semgrep PATH` pointing to a compatible,
+locally installed Semgrep executable. Semgrep is optional and is never downloaded
+automatically; the default collector still needs no Python packages. Only bundled
+local rules are used, with metrics and version checks disabled; repository rule
+configuration is not executed. Supplemental engine status and failures are recorded
+separately and shown in the dashboard, without replacing Application Inspector or
+turning its successful scan into a failure. Engine identity and rule configuration
+participate in cache selection.
+
 PowerShell scripts and modules do **not** imply Windows compatibility. Installation
 and service-management scripts are distinct from evidence of a PowerShell-backed
 service: managing a service does not prove that PowerShell implements it.

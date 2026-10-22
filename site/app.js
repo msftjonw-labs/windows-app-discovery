@@ -94,7 +94,10 @@ function projectFindings(repo) {
   details.append(element("p", "Classification confidence describes static evidence, not statistical confidence or proof of runtime behavior.", "muted"));
   for (const project of repo.projects) {
     details.append(element("h4", `${project.path} · ${project.kind}`));
-    details.append(element("p", `${project.labels.join(", ") || "No application type detected"} · ${project.confidence} confidence`));
+    const labels = project.labels.map((label) => project.label_confidence && project.label_confidence[label]
+      ? `${label} (${project.label_confidence[label]})` : label);
+    details.append(element("p", `${labels.join(", ") || "No application type detected"} · ${project.confidence} confidence`));
+    for (const note of project.notes || []) details.append(element("p", note, "muted"));
     if (project.evidence.length) details.append(evidenceList(repo, project.evidence));
   }
   return details;
@@ -132,6 +135,9 @@ function renderRows() {
     if (repo.error) scan.append(element("p", repo.error));
     if (repo.note) scan.append(element("p", repo.note));
     if (repo.projects && repo.projects.length) scan.append(projectFindings(repo));
+    if (repo.semgrep) {
+      scan.append(element("p", `Supplemental Semgrep: ${repo.semgrep.status}${repo.semgrep.reason ? ` · ${repo.semgrep.reason}` : ""}`, "muted"));
+    }
     if (repo.inspector_incomplete && Object.keys(repo.inspector_incomplete).length) {
       scan.append(element("p", `Inspector incomplete: ${JSON.stringify(repo.inspector_incomplete)}`, "muted"));
     }

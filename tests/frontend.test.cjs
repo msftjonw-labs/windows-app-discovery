@@ -12,10 +12,13 @@ function app() {
       append(...children) { this.children.push(...children); },
       replaceChildren(...children) { this.children = children; },
       setAttribute(name, value) { this[name] = value; },
+      click() {},
     };
   }
   const context = vm.createContext({
     URL,
+    Blob,
+    setTimeout: () => {},
     document: {
       createElement: node,
       getElementById: (id) => {
@@ -146,4 +149,43 @@ test("project findings render untrusted project names as text", () => {
     path: "<img src=x>", kind: "script", labels: ["PowerShell automation"],
     confidence: "medium", evidence: []
   }]}).children[2].textContent`), "<img src=x> · script");
+});
+
+test("project findings distinguish per-label confidence and association limitations", () => {
+  const run = app();
+  run(`let findings = projectFindings({projects: [{
+    path: ".", kind: "shared", labels: ["PowerShell module", "Windows service"],
+    confidence: "high", label_confidence: {"PowerShell module": "high", "Windows service": "low"},
+    notes: ["No unique project ownership"], evidence: []
+  }]});`);
+  assert.equal(run("findings.children[3].textContent"),
+    "PowerShell module (high), Windows service (low) · high confidence");
+  assert.equal(run("findings.children[4].textContent"), "No unique project ownership");
+});
+
+test("supplemental tool failures are visible without hiding completed scans", () => {
+  const run = app();
+  run(`report = {repositories: [{
+    name: "o/r", status: "success", activity_evidence: "https://github.com/o/r/issues/1",
+    semgrep: {status: "partial", reason: "Semgrep timeout"}
+  }]}; renderRows();`);
+  assert.equal(run('$("rows").children[0].children[4].children[0].textContent'), "success");
+  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+    "Supplemental Semgrep: partial · Semgrep timeout");
+});
+
+test("CSV preserves structured project labels and evidence instead of object strings", async () => {
+  const run = app();
+  const projects = [{
+    path: "scripts/install.ps1", kind: "powershell", labels: ["PowerShell automation", "Installation script"],
+    confidence: "medium", evidence: [{path: "scripts/install.ps1", line: 1, label: "Installation script",
+      engine: "PowerShell heuristic", confidence: "medium"}],
+  }];
+  run(`report = {repositories: [{name: "o/r", projects: ${JSON.stringify(projects)}}]};
+    let capturedCsv; URL = {createObjectURL(blob) {capturedCsv = blob; return "blob:test";}, revokeObjectURL() {}};
+    downloadCsv();`);
+  const csv = await run("capturedCsv.text()");
+  assert.match(csv.split("\r\n")[0], /"projects"/);
+  assert.ok(csv.includes(run(`csvCell(${JSON.stringify(JSON.stringify(projects))})`)));
+  assert.ok(!csv.includes("[object Object]"));
 });

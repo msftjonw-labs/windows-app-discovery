@@ -22,6 +22,8 @@ from urllib.parse import quote
 import zipfile
 
 from discovery import gharchive
+from discovery import semgrep as semgrep_engine
+from discovery.projects import classify_projects
 from discovery.rules import (
     COMPILED, COMPILED_FILE_RULES, COMPONENTS, EXCLUDED_DIRS, EXTENSIONS,
     EXTENSIONLESS_NAMES, GENERATED_NAMES, JSON_MANIFEST, OS_TARGETS, RULES, RULESET_VERSION,
@@ -610,19 +612,26 @@ def resolve_repository(candidate):
     return repo
 
 
-def analyze_repository(candidate, inspector, cache):
+def analyze_repository(candidate, inspector, cache, semgrep=None):
     repo = resolve_repository(candidate)
     branch = repo["defaultBranchRef"]
     if not branch or not branch["target"].get("oid"):
         raise PilotError("Repository has no default-branch commit")
     sha = candidate.get("sha") or branch["target"]["oid"]
-    key = hashlib.sha256(f"{repo['id']}:{sha}:{RULESET_VERSION}:{INSPECTOR_VERSION}".encode()).hexdigest()
+    scratch = ROOT / ".cache" / "work"
+    if semgrep is not None:
+        scratch.mkdir(parents=True, exist_ok=True)
+    engine_config = semgrep_engine.identity(semgrep, scratch)
+    key = hashlib.sha256(f"{repo['id']}:{sha}:{RULESET_VERSION}:{INSPECTOR_VERSION}:{json.dumps(engine_config, sort_keys=True)}".encode()).hexdigest()
     cached = cache / f"{key}.json"
     analysis = json.loads(cached.read_text(encoding="utf-8")) if cached.exists() else None
     if analysis and "Windows" in analysis["platforms"] and analysis.get("inspector_strategy") != INSPECTOR_STRATEGY:
         analysis = None
+    if analysis and semgrep is not None and analysis.get("semgrep", {}).get("status") != "success":
+        analysis = None
     if analysis is None:
-        with tempfile.TemporaryDirectory(prefix="repo-pilot-") as temporary:
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="repo-pilot-", dir=scratch) as temporary:
             work = Path(temporary)
             source = work / "source"
             source.mkdir()
@@ -631,15 +640,25 @@ def analyze_repository(candidate, inspector, cache):
             analysis.update({"files_scanned": len(files), "excluded": skipped, "source_method": source_method,
                              "components": [], "application_types": [], "windows_scan": "not_applicable"})
             inspector_incomplete = {}
+            project_inspector_evidence = []
             if "Windows" in analysis["platforms"]:
                 result = inspect_sources(source, inspector, work)
                 analysis["components"] = result["components"]
                 analysis["frameworks"] = sorted((set(analysis["frameworks"]) - {"Unknown"}) | set(result["frameworks"])) or ["Unknown"]
                 analysis["evidence"] = (result["evidence"] + analysis["evidence"])[:200]
+                project_inspector_evidence = [item for item in result["evidence"] if item.get("label")]
                 analysis["application_types"] = application_types(analysis["frameworks"], result["components"])
                 inspector_incomplete = result["incomplete"]
                 analysis["windows_scan"] = "partial" if inspector_incomplete else "success"
             analysis["inspector_incomplete"] = inspector_incomplete
+            supplemental = semgrep_engine.scan(source, semgrep, work, files)
+            analysis["semgrep"] = {**supplemental, "configuration": engine_config}
+            analysis["projects"] = classify_projects(files, classify, project_inspector_evidence + supplemental["evidence"])
+            project_types = {label for project in analysis["projects"] for label in project["labels"]
+                             if label.startswith(("PowerShell", "Cross-platform:"))
+                             or label in {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP",
+                                          "Windows service", "Service management"}}
+            analysis["application_types"] = sorted(set(analysis["application_types"]) | project_types)
             analysis["inspector_strategy"] = INSPECTOR_STRATEGY
             analysis["status"] = "partial" if inspector_incomplete or any(skipped.get(k) for k in PARTIAL_REASONS) else "success"
             if not files and analysis["status"] == "success":
@@ -747,14 +766,15 @@ def default_archive_end(now=None):
     return now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=3)
 
 
-def analyze_candidates(candidates, target, inspector, cache, skip_unavailable):
+def analyze_candidates(candidates, target, inspector, cache, skip_unavailable, semgrep=None):
     records, excluded = [], []
     for candidate in candidates:
         if len(records) >= target:
             break
         LOG.info("[%s/%s] %s", len(records) + 1, target, candidate["name"])
         try:
-            record = analyze_repository(candidate, inspector, cache)
+            record = (analyze_repository(candidate, inspector, cache, semgrep=semgrep) if semgrep is not None
+                      else analyze_repository(candidate, inspector, cache))
         except RepositoryUnavailable as error:
             if skip_unavailable:
                 # Ineligible at analysis time; replacing it keeps the sample uniform over eligible repositories.
@@ -785,6 +805,7 @@ def main():
     parser.add_argument("--archive-cache", type=Path, default=ROOT / ".cache" / "gharchive")
     parser.add_argument("--output", type=Path, default=ROOT / "site" / "data" / "latest.json")
     parser.add_argument("--inspector", type=Path)
+    parser.add_argument("--semgrep", type=Path, help="Optional local Semgrep executable; never installed automatically")
     parser.add_argument("--install-inspector", action="store_true")
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache" / "analysis")
     parser.add_argument("--rerun-report", type=Path, help="Rescan a previous report's cohort and available pinned SHAs")
@@ -853,7 +874,8 @@ def main():
         target = args.limit
     if not candidates:
         raise PilotError("No qualifying repositories discovered; refusing to replace dashboard data")
-    records, excluded = analyze_candidates(candidates, target, inspector.resolve(), args.cache, skip_unavailable=sampled)
+    records, excluded = analyze_candidates(candidates, target, inspector.resolve(), args.cache,
+                                          skip_unavailable=sampled, semgrep=args.semgrep)
     if sampled:
         coverage.update(excluded_after_sampling=excluded, sample_size=len(records),
                         candidates_drawn=len(records) + len(excluded))
