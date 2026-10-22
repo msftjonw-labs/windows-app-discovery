@@ -190,6 +190,7 @@ def archive_name(generated_at):
 
 
 def archive_pdf(pdf, generated_at, directory):
+    """Copy the PDF into directory (created if needed) under its timestamped name and return the path."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / archive_name(generated_at)
