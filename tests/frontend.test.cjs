@@ -109,24 +109,41 @@ test("Windows tiles render as a separate complete-scan subset with denominator n
   assert.equal(run('$("project_types").children[0].children[0].children[1].textContent'), "11.83% · 11/93");
 });
 
-test("repository filters preserve N/A notes and partial Inspector counters", () => {
+test("repository explorer only lists complete Windows candidates and preserves filters and diagnostics", () => {
   const run = app();
   run(`report = ${JSON.stringify({ repositories: [
+    { name: "o/windows", status: "success", platforms: ["Windows"], note: "Scan note", activity_evidence: "https://github.com/o/windows/issues/1" },
+    { name: "o/mixed", status: "success", platforms: ["Linux", "Windows"], inspector_incomplete: { filesSkipped: 2 }, activity_evidence: "https://github.com/o/mixed/issues/1" },
+    { name: "o/linux", status: "success", platforms: ["Linux"], activity_evidence: "https://github.com/o/linux/issues/1" },
+    { name: "o/unknown", status: "success", activity_evidence: "https://github.com/o/unknown/issues/1" },
     { name: "o/empty", status: "not_applicable", note: "No eligible source", activity_evidence: "https://github.com/o/empty/issues/1" },
-    { name: "o/partial", status: "partial", inspector_incomplete: { filesSkipped: 2 }, activity_evidence: "https://github.com/o/partial/issues/1" },
+    { name: "o/partial", status: "partial", platforms: ["Windows"], activity_evidence: "https://github.com/o/partial/issues/1" },
+    { name: "o/failed", status: "failed", platforms: ["Windows"], activity_evidence: "https://github.com/o/failed/issues/1" },
   ] })}`);
-  run('$("scan-status").value = "not_applicable"; renderRows()');
+  run("renderRows()");
+  assert.equal(run('$("rows").children.length'), 2);
+  assert.equal(run('$("repository-count").textContent'), "2 of 2 Windows candidates");
+  assert.equal(run('$("rows").children[0].children[0].children[0].textContent'), "o/windows");
+  assert.equal(run('$("rows").children[1].children[0].children[0].textContent'), "o/mixed");
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).children[2].textContent'), "Scan note");
+  assert.match(run('$("rows").children[1].children[4].children.at(-1).children[2].textContent'), /filesSkipped.*2/);
+  run('$("filter").value = "mixed"; $("scan-status").value = "success"; renderRows()');
   assert.equal(run('$("rows").children.length'), 1);
-  assert.equal(run('$("repository-count").textContent'), "1 of 2 selected repositories");
-  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'), "No eligible source");
-  run('$("scan-status").value = "partial"; renderRows()');
-  assert.match(run('$("rows").children[0].children[4].children[1].textContent'), /filesSkipped.*2/);
+  assert.equal(run('$("repository-count").textContent'), "1 of 2 Windows candidates");
+  run('$("filter").value = ""; $("scan-status").value = "partial"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 0);
+  assert.equal(run('$("repository-count").textContent'), "0 of 2 Windows candidates");
+  run('$("scan-status").value = ""; $("filter").value = "linux"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 1);
+  run('report.repositories = []; $("filter").value = ""; renderRows()');
+  assert.equal(run('$("rows").children.length'), 0);
+  assert.equal(run('$("repository-count").textContent'), "0 of 0 Windows candidates");
 });
 
 test("project findings retain multiple labels, confidence and pinned evidence links", () => {
   const run = app();
   run(`report = {repositories: [{
-    name: "o/mixed", url: "https://github.com/o/mixed", sha: "abc123", status: "success",
+    name: "o/mixed", url: "https://github.com/o/mixed", sha: "abc123", status: "success", platforms: ["Windows"],
     activity_evidence: "https://github.com/o/mixed/issues/1",
     projects: [{path: "desktop/App.csproj", kind: "dotnet",
       labels: ["Windows Forms", "Windows service"], confidence: "high",
@@ -135,7 +152,7 @@ test("project findings retain multiple labels, confidence and pinned evidence li
   }]}`);
   run('$("filter").value = "windows service"; renderRows()');
   assert.equal(run('$("rows").children.length'), 1);
-  const details = '$("rows").children[0].children[4].children[1]';
+  const details = '$("rows").children[0].children[4].children.at(-1).children[2]';
   assert.equal(run(`${details}.children[0].textContent`), "Project findings (1)");
   assert.match(run(`${details}.children[1].textContent`), /not statistical/);
   assert.equal(run(`${details}.children[3].textContent`), "Windows Forms, Windows service · high confidence");
@@ -169,14 +186,14 @@ test("project findings distinguish per-label confidence and association limitati
 test("supplemental tool failures are visible without hiding completed scans", () => {
   const run = app();
   run(`report = {repositories: [{
-    name: "o/r", status: "success", activity_evidence: "https://github.com/o/r/issues/1",
+    name: "o/r", status: "success", platforms: ["Windows"], activity_evidence: "https://github.com/o/r/issues/1",
     semgrep: {status: "partial", reason: "Semgrep timeout"}
   }]}; renderRows();`);
-  assert.equal(run('$("rows").children[0].children[4].children[0].textContent'), "success");
-  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).children[1].textContent'), "success");
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).children[2].textContent'),
     "Supplemental Semgrep: partial · Semgrep timeout");
   run('report.repositories[0].semgrep = {status: "partial", errors: 2, rejected_findings: 1}; renderRows()');
-  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).children[2].textContent'),
     "Supplemental Semgrep: partial · 2 errors · 1 rejected findings");
 });
 
@@ -194,4 +211,56 @@ test("CSV preserves structured project labels and evidence instead of object str
   assert.match(csv.split("\r\n")[0], /"projects"/);
   assert.ok(csv.includes(run(`csvCell(${JSON.stringify(JSON.stringify(projects))})`)));
   assert.ok(!csv.includes("[object Object]"));
+});
+
+test("Analysis shows problems, measured issue counts, community feedback and source links", () => {
+  const run = app();
+  const analysis = {
+    status: "success", problem: "<img src=x> Automates desktop tasks.",
+    community: "Sampled comments report startup problems, not community-wide dissatisfaction.",
+    issues_opened: 15, issues_sampled: 2, comments_sampled: 3,
+    problem_sources: ["S1"], community_sources: ["S2"],
+    sources: [
+      {id: "S1", kind: "readme", url: "https://github.com/o/r/blob/abc/README.md"},
+      {id: "S2", kind: "comment", url: "https://github.com/o/r/issues/1#issuecomment-2"},
+    ],
+    window: {start: "2026-10-01T00:00:00Z", end: "2026-10-31T00:00:00Z"},
+    limitations: "Bounded sample, not community-wide sentiment.", model: "gpt-4o", generated_at: "now",
+  };
+  run(`let cell = analysisCell({analysis: ${JSON.stringify(analysis)}})`);
+  assert.equal(run("cell.children[0].textContent"), "Problems solved");
+  assert.equal(run("cell.children[1].textContent"), analysis.problem);
+  assert.equal(run("cell.children[2].children[0].href"), analysis.sources[0].url);
+  assert.equal(run("cell.children[3].textContent"), "Community response");
+  assert.equal(run("cell.children[4].textContent"),
+    "15 issues opened in the report window (excluding PRs). Feedback sample: 2 issues, 3 human comments.");
+  assert.equal(run("cell.children[5].textContent"), analysis.community);
+  assert.equal(run("cell.children[6].children[0].href"), analysis.sources[1].url);
+  assert.equal(run("cell.children[7].tag"), "details");
+  assert.match(run("cell.children[7].children[2].textContent"), /Bounded sample/);
+});
+
+test("Analysis explicitly distinguishes uncollected and failed summaries and collapses scan evidence", () => {
+  const run = app();
+  assert.match(run("analysisCell({}).children[0].textContent"), /Analysis not collected/);
+  assert.equal(run('analysisCell({analysis: {status: "failed", error: "OpenAI HTTP 401"}}).children[0].textContent'),
+    "Analysis unavailable: OpenAI HTTP 401");
+  run(`report = {repositories: [{
+    name: "o/r", status: "success", platforms: ["Windows"],
+    activity_evidence: "https://github.com/o/r/issues/1"
+  }]}; renderRows();`);
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).tag'), "details");
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).children[0].textContent'), "Scan / evidence");
+  assert.equal(run('$("rows").children[0].children[4].children.at(-1).open'), undefined);
+});
+
+test("CSV retains structured AI analysis", async () => {
+  const run = app();
+  const analysis = {status: "success", problem: "Task automation", issues_opened: 2, sources: []};
+  run(`report = {repositories: [{name: "o/r", analysis: ${JSON.stringify(analysis)}}]};
+    let capturedCsv; URL = {createObjectURL(blob) {capturedCsv = blob; return "blob:test";}, revokeObjectURL() {}};
+    downloadCsv();`);
+  const csv = await run("capturedCsv.text()");
+  assert.match(csv.split("\r\n")[0], /"analysis"/);
+  assert.ok(csv.includes(run(`csvCell(${JSON.stringify(JSON.stringify(analysis))})`)));
 });

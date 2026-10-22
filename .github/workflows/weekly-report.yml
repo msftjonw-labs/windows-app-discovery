@@ -65,6 +65,12 @@ jobs:
           PILOT_LIMIT: ${{ inputs.limit || '100' }}
           PILOT_DISCOVERY: ${{ inputs.discovery || 'auto' }}
         run: python -m discovery.pilot --limit $env:PILOT_LIMIT --discovery $env:PILOT_DISCOVERY --confidence 0.95
+      - name: Analyze Windows candidate purpose and community feedback
+        env:
+          GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
+        run: python -m discovery.analysis
       - name: Render repository report
         run: python -m discovery.report_markdown
       - name: Keep repository report
