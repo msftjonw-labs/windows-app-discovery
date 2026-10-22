@@ -116,6 +116,10 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(request.full_url, "https://api.openai.com/v1/chat/completions")
         self.assertEqual(payload["model"], "gpt-4o")
         self.assertTrue(payload["response_format"]["json_schema"]["strict"])
+        properties = payload["response_format"]["json_schema"]["schema"]["properties"]
+        self.assertEqual(properties["problem_sources"]["items"]["enum"], ["S1", "S2"])
+        self.assertEqual(properties["community_sources"]["items"]["enum"], ["S2"])
+        self.assertEqual(properties["community_sources"]["minItems"], 1)
         self.assertIn("untrusted", payload["messages"][0]["content"])
         self.assertIn("Issue volume is NOT sentiment", payload["messages"][0]["content"])
 
@@ -136,6 +140,18 @@ class SummaryTests(unittest.TestCase):
             "problem_sources": ["S1"], "community_sources": []})
         result = analysis.summarize({"sources": self.evidence["sources"][:1]}, "key", "gpt-4o")
         self.assertEqual(result["community_sources"], [])
+        properties = json.loads(urlopen.call_args.args[0].data)["response_format"]["json_schema"]["schema"]["properties"]
+        self.assertEqual(properties["community_sources"]["maxItems"], 0)
+
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_old_issue_context_is_not_a_community_citation_choice(self, urlopen):
+        urlopen.return_value = response()
+        evidence = {"sources": [*self.evidence["sources"],
+                                {"id": "S3", "kind": "issue_context", "text": "Old issue"}]}
+        analysis.summarize(evidence, "key", "gpt-4o")
+        properties = json.loads(urlopen.call_args.args[0].data)["response_format"]["json_schema"]["schema"]["properties"]
+        self.assertEqual(properties["problem_sources"]["items"]["enum"], ["S1", "S2", "S3"])
+        self.assertEqual(properties["community_sources"]["items"]["enum"], ["S2"])
 
     @mock.patch.object(analysis.urllib.request, "urlopen")
     def test_incomplete_or_invalid_output_is_not_published_as_success(self, urlopen):

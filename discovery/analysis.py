@@ -50,6 +50,8 @@ Do not generalize this bounded sample to the whole community. If feedback is abs
 or insufficient, say so. Do not treat old issue bodies as recent reactions.
 problem_sources and community_sources: IDs of the supplied sources supporting each
 summary, respectively. Never invent sources or use documentation as community feedback.
+Only issue and comment sources support community reactions; issue_context sources
+are older/background context, not evidence of recent community reactions.
 """
 
 
@@ -139,6 +141,11 @@ def collect_evidence(repo, start, end):
 
 
 def summarize(evidence, token, model):
+    allowed = {
+        "problem": [source["id"] for source in evidence["sources"]],
+        "community": [source["id"] for source in evidence["sources"]
+                      if source["kind"] in ("issue", "comment")],
+    }
     schema = {
         "type": "object",
         "properties": {
@@ -150,6 +157,13 @@ def summarize(evidence, token, model):
         "required": ["problem", "community", "problem_sources", "community_sources"],
         "additionalProperties": False,
     }
+    for field, ids in allowed.items():
+        citations = schema["properties"][f"{field}_sources"]
+        if ids:
+            citations["items"]["enum"] = ids
+            citations["minItems"] = 1
+        else:
+            citations["maxItems"] = 0
     payload = {
         "model": model, "temperature": 0, "max_tokens": 900,
         "messages": [{"role": "system", "content": SYSTEM},
@@ -185,8 +199,7 @@ def summarize(evidence, token, model):
         if not isinstance(result[field], str) or not result[field].strip() or len(result[field]) > 4000:
             raise PilotError(f"OpenAI analysis has invalid {field} text")
         ids = result[f"{field}_sources"]
-        eligible = {source["id"] for source in evidence["sources"]
-                    if field == "problem" or source["kind"] in ("issue", "comment")}
+        eligible = set(allowed[field])
         if (not isinstance(ids, list) or not all(isinstance(item, str) for item in ids)
                 or not set(ids) <= eligible):
             raise PilotError(f"OpenAI analysis has invalid {field} citations")

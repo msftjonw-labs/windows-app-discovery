@@ -331,8 +331,10 @@ scanned SHA, and issue/comment excerpts are sent to OpenAI: README up to 8,000 c
 issue excerpts up to 800, comments up to 400. Descriptions and issue bodies reflect
 their retrieved versions, not historical window snapshots. The report publishes summary,
 counts, source URLs, model/time, and sampling limitations, not raw excerpts.
-AI claims should be checked against sources; citations are validated against collected
-source IDs, but this does not prove every generated claim. API usage incurs model costs.
+AI claims should be checked against sources; the response schema restricts citations
+to collected source IDs, and community citations to in-window human issue/comment
+sources. Citations are also validated before publication, but this does not prove
+every generated claim. API usage incurs model costs.
 Existing scan diagnostics and evidence remain available in a collapsed **Scan / evidence**
 section in each Analysis cell. Other dashboard charts and sampling metrics are unchanged.
 JSON downloads contain the full report; CSV contains repository-level classifications,
