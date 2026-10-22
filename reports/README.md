@@ -1,102 +1,125 @@
 # Windows app discovery — latest report
 
-Activity window (UTC): 2026-09-22T10:00:00Z → 2026-10-22T10:00:00Z
-Generated: 2026-10-22T14:02:34Z  
-Ruleset: pilot-3; Application Inspector: 1.10.2
+Activity window (UTC): 2026-09-22T13:00:00Z → 2026-10-22T13:00:00Z
+Generated: 2026-10-22T17:16:44Z  
+Ruleset: pilot-4; Application Inspector: 1.10.2
 
-Uniform random sample from 373037 public repositories with qualifying human activity.
-Seed: 2026-10-22T10:00:00Z; archive hours: 720/720; qualifying events: 1228737; deleted/private replacements: 6.
-95% Wilson confidence intervals; worst-case margin for complete scans: ±10.22 percentage points.
+Uniform random sample from 372943 public repositories with qualifying human activity.
+Seed: 2026-10-22T13:00:00Z; archive hours: 720/720; qualifying events: 1227805; deleted/private replacements: 3.
+95% Wilson confidence intervals; worst-case margin for complete scans: ±10.27 percentage points.
 
 | Metric | Repositories |
 | --- | ---: |
 | Sampled | 100 |
-| Complete scans | 92 |
-| Partial | 6 |
-| Failed | 0 |
-| No eligible source | 2 |
-| Windows candidates (subset of complete scans) | 15 |
+| Complete scans | 91 |
+| Partial | 3 |
+| Failed | 2 |
+| No eligible source | 4 |
+| Windows candidates (subset of complete scans) | 20 |
 | Windows applications (subset of complete scans) | 11 |
 
 ## Target platform
 
 One primary platform per repository: an explicit OS target wins, several OS targets = Multiple OS, otherwise the most specific environment; generic runtimes/scripts come last.
 
-Each repository belongs to one category; shares total 100% across the 92 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
+Each repository belongs to one category; shares total 100% across the 91 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
 
 ![Target platform](platforms.svg)
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| Web | 48 / 92 | 52.17% | 42.09–62.09% |
-| Windows | 10 / 92 | 10.87% | 6.01–18.86% |
-| Python runtime \(OS unspecified\) | 8 / 92 | 8.7% | 4.47–16.23% |
-| Multiple OS \(incl. Windows\) | 5 / 92 | 5.44% | 2.34–12.1% |
-| Unknown | 5 / 92 | 5.43% | 2.34–12.1% |
-| Android | 3 / 92 | 3.26% | 1.12–9.15% |
-| Containers / Kubernetes | 3 / 92 | 3.26% | 1.12–9.15% |
-| Linux | 3 / 92 | 3.26% | 1.12–9.15% |
-| Node.js tooling/runtime \(OS unspecified\) | 2 / 92 | 2.17% | 0.6–7.58% |
-| Shell / automation \(OS unspecified\) | 2 / 92 | 2.17% | 0.6–7.58% |
-| Native code \(OS unspecified\) | 1 / 92 | 1.09% | 0.19–5.9% |
-| Smart contracts | 1 / 92 | 1.09% | 0.19–5.9% |
-| macOS | 1 / 92 | 1.09% | 0.19–5.9% |
+| Web | 31 / 91 | 34.06% | 25.15–44.27% |
+| Windows | 18 / 91 | 19.78% | 12.89–29.11% |
+| Python runtime \(OS unspecified\) | 12 / 91 | 13.19% | 7.71–21.65% |
+| Linux | 8 / 91 | 8.79% | 4.52–16.4% |
+| Native code \(OS unspecified\) | 5 / 91 | 5.49% | 2.37–12.22% |
+| Unknown | 3 / 91 | 3.29% | 1.13–9.25% |
+| Containers / Kubernetes | 2 / 91 | 2.2% | 0.6–7.66% |
+| Multiple OS \(incl. Windows\) | 2 / 91 | 2.2% | 0.6–7.66% |
+| Multiple OS \(no Windows\) | 2 / 91 | 2.2% | 0.6–7.66% |
+| Node.js tooling/runtime \(OS unspecified\) | 2 / 91 | 2.2% | 0.6–7.66% |
+| .NET runtime \(OS unspecified\) | 1 / 91 | 1.1% | 0.19–5.96% |
+| Android | 1 / 91 | 1.1% | 0.19–5.96% |
+| Cloud / infrastructure | 1 / 91 | 1.1% | 0.19–5.96% |
+| Server / backend | 1 / 91 | 1.1% | 0.19–5.96% |
+| WebAssembly | 1 / 91 | 1.1% | 0.19–5.96% |
+| macOS | 1 / 91 | 1.1% | 0.19–5.96% |
 
 ## Primary programming language
 
 GitHub's primary language per repository.
 
-Each repository belongs to one category; shares total 100% across the 92 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
+Each repository belongs to one category; shares total 100% across the 91 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
 
 ![Primary programming language](languages.svg)
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| TypeScript | 26 / 92 | 28.26% | 20.08–38.19% |
-| JavaScript | 15 / 92 | 16.3% | 10.14–25.17% |
-| Python | 15 / 92 | 16.3% | 10.14–25.17% |
-| Go | 10 / 92 | 10.87% | 6.01–18.86% |
-| HTML | 5 / 92 | 5.43% | 2.34–12.1% |
-| Rust | 3 / 92 | 3.26% | 1.12–9.15% |
-| C | 2 / 92 | 2.17% | 0.6–7.58% |
-| Java | 2 / 92 | 2.17% | 0.6–7.58% |
-| Jupyter Notebook | 2 / 92 | 2.17% | 0.6–7.58% |
-| Lua | 2 / 92 | 2.17% | 0.6–7.58% |
-| C# | 1 / 92 | 1.09% | 0.19–5.9% |
-| Go Template | 1 / 92 | 1.09% | 0.19–5.9% |
-| Julia | 1 / 92 | 1.09% | 0.19–5.9% |
-| Kotlin | 1 / 92 | 1.09% | 0.19–5.9% |
-| Lean | 1 / 92 | 1.09% | 0.19–5.9% |
-| Luau | 1 / 92 | 1.09% | 0.19–5.9% |
-| PHP | 1 / 92 | 1.09% | 0.19–5.9% |
-| PLpgSQL | 1 / 92 | 1.09% | 0.19–5.9% |
-| PowerShell | 1 / 92 | 1.09% | 0.19–5.9% |
-| Unknown | 1 / 92 | 1.09% | 0.19–5.9% |
+| Python | 21 / 91 | 23.08% | 15.62–32.72% |
+| TypeScript | 13 / 91 | 14.28% | 8.54–22.92% |
+| JavaScript | 9 / 91 | 9.89% | 5.29–17.74% |
+| HTML | 8 / 91 | 8.79% | 4.52–16.4% |
+| Rust | 6 / 91 | 6.59% | 3.06–13.65% |
+| C++ | 4 / 91 | 4.39% | 1.72–10.76% |
+| Go | 4 / 91 | 4.39% | 1.72–10.76% |
+| PHP | 4 / 91 | 4.39% | 1.72–10.76% |
+| C | 3 / 91 | 3.3% | 1.13–9.25% |
+| Java | 3 / 91 | 3.3% | 1.13–9.25% |
+| C# | 2 / 91 | 2.2% | 0.6–7.66% |
+| Kotlin | 2 / 91 | 2.2% | 0.6–7.66% |
+| Assembly | 1 / 91 | 1.1% | 0.19–5.96% |
+| Astro | 1 / 91 | 1.1% | 0.19–5.96% |
+| CSS | 1 / 91 | 1.1% | 0.19–5.96% |
+| HCL | 1 / 91 | 1.1% | 0.19–5.96% |
+| HLSL | 1 / 91 | 1.1% | 0.19–5.96% |
+| Julia | 1 / 91 | 1.1% | 0.19–5.96% |
+| Jupyter Notebook | 1 / 91 | 1.1% | 0.19–5.96% |
+| R | 1 / 91 | 1.1% | 0.19–5.96% |
+| Shell | 1 / 91 | 1.1% | 0.19–5.96% |
+| Swift | 1 / 91 | 1.1% | 0.19–5.96% |
+| TSQL | 1 / 91 | 1.1% | 0.19–5.96% |
+| TeX | 1 / 91 | 1.1% | 0.19–5.96% |
 
 ## Framework evidence
 
 Most specific detected framework per repository (e.g. Next.js before React).
 
-Each repository belongs to one category; shares total 100% across the 92 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
+Each repository belongs to one category; shares total 100% across the 91 complete scans only. Partial, failed, and no-eligible-source repositories are excluded.
 
 ![Framework evidence](frameworks.svg)
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| No framework detected | 43 / 92 | 46.74% | 36.88–56.86% |
-| Next.js | 21 / 92 | 22.82% | 15.44–32.39% |
-| React | 10 / 92 | 10.87% | 6.01–18.86% |
-| FastAPI | 3 / 92 | 3.26% | 1.12–9.15% |
-| Vue | 3 / 92 | 3.26% | 1.12–9.15% |
-| Spring Boot | 2 / 92 | 2.17% | 0.6–7.58% |
-| Svelte | 2 / 92 | 2.17% | 0.6–7.58% |
-| Windows Forms | 2 / 92 | 2.17% | 0.6–7.58% |
-| Angular | 1 / 92 | 1.09% | 0.19–5.9% |
-| Django | 1 / 92 | 1.09% | 0.19–5.9% |
-| Electron | 1 / 92 | 1.09% | 0.19–5.9% |
-| Express | 1 / 92 | 1.09% | 0.19–5.9% |
-| React Native | 1 / 92 | 1.09% | 0.19–5.9% |
-| WinUI / Windows App SDK | 1 / 92 | 1.09% | 0.19–5.9% |
+| No framework detected | 56 / 91 | 61.54% | 51.27–70.87% |
+| Next.js | 13 / 91 | 14.28% | 8.54–22.92% |
+| React | 11 / 91 | 12.09% | 6.89–20.36% |
+| Angular | 2 / 91 | 2.2% | 0.6–7.66% |
+| Electron | 2 / 91 | 2.2% | 0.6–7.66% |
+| Vue | 2 / 91 | 2.2% | 0.6–7.66% |
+| Windows Forms | 2 / 91 | 2.19% | 0.6–7.66% |
+| FastAPI | 1 / 91 | 1.1% | 0.19–5.96% |
+| Flask | 1 / 91 | 1.1% | 0.19–5.96% |
+| Spring Boot | 1 / 91 | 1.1% | 0.19–5.96% |
+
+## Project application and automation types
+
+Share of complete repository scans with collected project findings, including libraries/tools and non-Windows PowerShell. Each repository counts once per category across its projects. Categories overlap: Windows desktop app includes Windows Forms, WPF, WinUI, and UWP; shares need not sum to 100%. Older inventories without project findings are excluded. Static indicators do not prove executable or runtime behavior.
+
+![Project application and automation types](project_types.svg)
+
+| Category | Count / denominator | Share | CI |
+| --- | ---: | ---: | --- |
+| Unknown / no findings | 80 / 91 | 87.91% | 79.64–93.11% |
+| PowerShell | 8 / 91 | 8.79% | 4.52–16.4% |
+| Cross-platform: Electron | 2 / 91 | 2.2% | 0.6–7.66% |
+| Windows Forms app | 2 / 91 | 2.2% | 0.6–7.66% |
+| Windows desktop app | 2 / 91 | 2.2% | 0.6–7.66% |
+| Cross-platform: React Native | 1 / 91 | 1.1% | 0.19–5.96% |
+| Service management | 1 / 91 | 1.1% | 0.19–5.96% |
+| UWP app | 0 / 91 | 0.0% | 0.0–4.05% |
+| WPF app | 0 / 91 | 0.0% | 0.0–4.05% |
+| WinUI app | 0 / 91 | 0.0% | 0.0–4.05% |
+| Windows service | 0 / 91 | 0.0% | 0.0–4.05% |
 
 ## Windows application types
 
@@ -106,11 +129,11 @@ Complete Windows application scans; types can overlap.
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| Native / Win32 \(UI not proven\) | 7 / 11 | 63.64% | 35.38–84.83% |
+| Native / Win32 \(UI not proven\) | 9 / 11 | 81.82% | 52.3–94.86% |
+| PowerShell install script | 3 / 11 | 27.27% | 9.75–56.56% |
+| PowerShell script | 3 / 11 | 27.27% | 9.75–56.56% |
 | Windows Forms | 2 / 11 | 18.18% | 5.14–47.7% |
-| Console / other / unknown | 1 / 11 | 9.09% | 1.62–37.74% |
-| Cross-platform: .NET MAUI | 1 / 11 | 9.09% | 1.62–37.74% |
-| WinUI / Windows App SDK | 1 / 11 | 9.09% | 1.62–37.74% |
+| Cross-platform: React Native | 1 / 11 | 9.09% | 1.62–37.74% |
 
 ## Windows component adoption
 
@@ -120,13 +143,13 @@ Complete Windows application scans; components overlap.
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| Win32 | 8 / 11 | 72.73% | 43.44–90.25% |
-| .NET native interop | 3 / 11 | 27.27% | 9.75–56.56% |
-| COM | 2 / 11 | 18.18% | 5.14–47.7% |
-| DirectX | 0 / 11 | 0.0% | 0.0–25.88% |
-| WinRT | 0 / 11 | 0.0% | 0.0–25.88% |
-| Windows Registry | 0 / 11 | 0.0% | 0.0–25.88% |
-| Windows Shell | 0 / 11 | 0.0% | 0.0–25.88% |
+| Win32 | 10 / 11 | 90.91% | 62.26–98.38% |
+| COM | 3 / 11 | 27.27% | 9.75–56.56% |
+| .NET native interop | 2 / 11 | 18.18% | 5.14–47.7% |
+| DirectX | 1 / 11 | 9.09% | 1.62–37.74% |
+| WinRT | 1 / 11 | 9.09% | 1.62–37.74% |
+| Windows Registry | 1 / 11 | 9.09% | 1.62–37.74% |
+| Windows Shell | 1 / 11 | 9.09% | 1.62–37.74% |
 | Windows services | 0 / 11 | 0.0% | 0.0–25.88% |
 
 ## Exploratory: all Windows candidates
@@ -137,119 +160,119 @@ Includes libraries/tools; not an application metric.
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| Win32 | 12 / 15 | 80.0% | 54.81–92.95% |
-| .NET native interop | 4 / 15 | 26.67% | 10.9–51.95% |
-| COM | 2 / 15 | 13.33% | 3.74–37.88% |
-| DirectX | 0 / 15 | 0.0% | 0.0–20.39% |
-| WinRT | 0 / 15 | 0.0% | 0.0–20.39% |
-| Windows Registry | 0 / 15 | 0.0% | 0.0–20.39% |
-| Windows Shell | 0 / 15 | 0.0% | 0.0–20.39% |
-| Windows services | 0 / 15 | 0.0% | 0.0–20.39% |
+| Win32 | 19 / 20 | 95.0% | 76.39–99.11% |
+| COM | 4 / 20 | 20.0% | 8.07–41.6% |
+| .NET native interop | 2 / 20 | 10.0% | 2.79–30.1% |
+| Windows Shell | 2 / 20 | 10.0% | 2.79–30.1% |
+| DirectX | 1 / 20 | 5.0% | 0.89–23.61% |
+| WinRT | 1 / 20 | 5.0% | 0.89–23.61% |
+| Windows Registry | 1 / 20 | 5.0% | 0.89–23.61% |
+| Windows services | 0 / 20 | 0.0% | 0.0–16.11% |
 
 ## Sampled repositories
 
 | Repository | Scan | Language | Platform | Framework | Windows app types | Components |
 | --- | --- | --- | --- | --- | --- | --- |
-| mikelear/leartech-automated-agent | success | Python | Containers / Kubernetes | No framework detected |  |  |
-| kaybenleroll/ai\_assisted\_research | success | HTML | Linux | No framework detected |  |  |
-| mirai-construction-dx/Construction-Enterprise-OS | partial | HTML | Web | Next.js |  |  |
-| Zubs/islamichub | success | JavaScript | Web | Next.js |  |  |
-| BodyMaps/BodyMaps-website | success | TypeScript | Windows | Next.js | Native / Win32 \(UI not proven\) | Win32 |
-| eoko-dev/gideon | success | Python | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| tjstinso/simple-loop | success | TypeScript | Node.js tooling/runtime \(OS unspecified\) | No framework detected |  |  |
-| Vasile07/ubb-events-backend | success | Java | Windows | Spring Boot | Native / Win32 \(UI not proven\) | Win32 |
-| aaron996/kas\_shopee\_performance | success | JavaScript | Web | Svelte |  |  |
-| Ticker-Events/whatomate | success | Go | Web | Next.js |  |  |
-| briandenicola/Aurearia | success | Go | Web | Vue |  |  |
-| gorillanobakaa-dot/Gorilla.Fieldkit | success | Python | Multiple OS \(incl. Windows\) | Windows Forms | Windows Forms | .NET native interop, COM |
-| BintzGavin/lean-code-rust | success | Rust | Native code \(OS unspecified\) | No framework detected |  |  |
-| raju-santhani/star-log | success | JavaScript | Web | No framework detected |  |  |
-| andersonvazvieira/TechStore | success | C# | Multiple OS \(incl. Windows\) | WinUI / Windows App SDK | Cross-platform: .NET MAUI, WinUI / Windows App SDK |  |
-| hilather/go-lab-netconf | success | Go | Web | React |  |  |
-| JFETA/simple-sticky-notes-codex | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| inrupt/solid-client-access-grants-js | success | TypeScript | Web | Next.js |  |  |
-| Tatsh/scenechange | success | C | macOS | No framework detected |  |  |
-| tool-jx3/toolkit | success | TypeScript | Web | React |  |  |
-| lvahost/hiveku-claude-plugin | success | JavaScript | Unknown | No framework detected |  |  |
-| Fchery87/furrow | success | Lua | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| madebyjeffrey/sdl-stars | success | C | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| hehaize88-code/hehaize | success | HTML | Web | Next.js |  |  |
-| Valorian0108/permanence-protocol | success | TypeScript | Smart contracts | Next.js |  |  |
-| ch-holt/UDEs\_recovering\_functional\_forms | success | Julia | Shell / automation \(OS unspecified\) | No framework detected |  |  |
-| TheManoeuvre/StockSmith-App | success | Python | Web | React |  |  |
-| unmango/go-gmk | success | Go | Unknown | No framework detected |  |  |
-| PianoNic/ngx-prompt-kit | success | TypeScript | Web | Angular |  |  |
-| henrymosk1011/tenelevenmedia-website | success | HTML | Web | No framework detected |  |  |
-| j-grok/cockpit-kit | success | JavaScript | Web | No framework detected |  |  |
-| ArloL/nvd-cves | partial | Shell | Shell / automation \(OS unspecified\) | No framework detected |  |  |
-| ianlintner/python-oauth2-server | success | Python | Web | FastAPI |  |  |
-| aurora-silicon/mesa | partial | C | Multiple OS \(incl. Windows\) | Next.js | Native / Win32 \(UI not proven\) | DirectX, Win32, Windows Registry, Windows Shell |
-| mrcjkb/haskell-tools.nvim | success | Lua | Unknown | No framework detected |  |  |
-| seeker19110/hotel-manager | success | TypeScript | Web | Next.js |  |  |
-| michealet/closet-app | success | TypeScript | Web | Next.js |  |  |
-| accountinglms/accountinglms.github.io | success | JavaScript | Web | No framework detected |  |  |
-| Let-s-intern/ogonggo-FE | success | TypeScript | Web | Next.js |  |  |
-| olly-styles/logbook | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| MOTHblank/pokeidle-addons | success | Rust | Linux | No framework detected |  |  |
-| thanhtantran/agents-radar | success | TypeScript | Web | No framework detected |  |  |
-| sorrycc/Mayoi | success | Go | Web | Vue |  |  |
-| manosliod/score-4 | success | TypeScript | Web | React |  |  |
-| kj299/doze\_sec | success | PowerShell | Windows | No framework detected | Native / Win32 \(UI not proven\) | .NET native interop, Win32 |
-| stumarti/Shopping-list | success | TypeScript | Web | React Native |  |  |
-| HotCode2025/DebuggersUTN-Cuarto-Semestre | not\_applicable | Unknown | Unknown | No framework detected |  |  |
-| GiorgiKhorbaladze/PowerSim-repository | success | HTML | Windows | FastAPI | Console / other / unknown |  |
-| fredibaques/salesmate | success | TypeScript | Web | Next.js |  |  |
-| n8n-io/n8n-kiro-power | success | JavaScript | Node.js tooling/runtime \(OS unspecified\) | No framework detected |  |  |
-| dipilo/Put-A-Plug-In-it- | success | Java | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| Father-Pumpkin/ocr | success | TypeScript | Web | React |  |  |
-| ashlrai/lexicon | success | TypeScript | Multiple OS \(incl. Windows\) | Windows Forms | Windows Forms | .NET native interop, COM, Win32 |
-| ecmwf-projects/c3s2-eqc-quality-assessment | success | Jupyter Notebook | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| flashcatcloud/flashduty-cli | success | Go | Shell / automation \(OS unspecified\) | No framework detected |  |  |
-| CenterForOpenScience/helm-charts | success | Go Template | Web | Spring Boot |  |  |
-| Gcango/equipa1\_plataforma\_pedagogica | success | JavaScript | Web | No framework detected |  |  |
-| Oppulence-Engineering/paperless-check-if-email-exists | success | TypeScript | Multiple OS \(incl. Windows\) | Next.js | Native / Win32 \(UI not proven\) | Win32 |
-| leveret-dev/leveret | success | TypeScript | Android | Svelte |  |  |
-| conda-forge/trove-classifiers-feedstock | success | Unknown | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| sdvp-3/poetic-random-generator-images | success | JavaScript | Web | No framework detected |  |  |
-| Mpho6746/silent-killer-ai-cvd | success | Jupyter Notebook | Android | FastAPI |  |  |
-| ROCm/roc-optiq | partial | C++ | Multiple OS \(incl. Windows\) | No framework detected | Native / Win32 \(UI not proven\) | Win32, Windows Shell |
-| Pavithran030/Pambaram-Game-Development-Project | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| HansKristoffer/agentgate | success | TypeScript | Linux | React |  |  |
-| muyuzhong/Featherlog | success | TypeScript | Web | Electron |  |  |
-| lander16/voz-local | success | Kotlin | Android | No framework detected |  |  |
-| lucacodorean/otel-for-agents | success | Python | Containers / Kubernetes | No framework detected |  |  |
-| RedHatInsights/insights-operator-gathering-conditions-service | success | Go | Containers / Kubernetes | No framework detected |  |  |
-| sucuklutank123456789-coder/Token-Panel | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| bgstratt/seriesmith | success | Python | Web | React |  |  |
-| triade-prog/T-shirtclub.br | success | TypeScript | Web | Next.js |  |  |
-| EvolvingAgentsLabs/lora-kernel | success | Python | Web | Next.js |  |  |
-| Ju4mpizel/dev-idea | success | JavaScript | Web | Next.js |  |  |
-| akshatn70-prog/Shop-Management-Storage-Test | success | PLpgSQL | Multiple OS \(incl. Windows\) | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| pipecrew-ai/pipecrew | success | JavaScript | Web | No framework detected |  |  |
-| BigJohnMoss/Pathfinder1e | success | JavaScript | Web | Next.js |  |  |
-| rowan-franciscus/onus-health-application | success | JavaScript | Web | React |  |  |
-| auspuru/pte-scoring-api | success | JavaScript | Web | Express |  |  |
-| lazyoracle/isotropic-grover-proof | success | Lean | Unknown | No framework detected |  |  |
-| ruip005/SD-2026-2027 | success | HTML | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| Azure/sonic-host-services.msft | not\_applicable | Unknown | Unknown | No framework detected |  |  |
-| phall1/opencode | partial | TypeScript | Multiple OS \(incl. Windows\) | Windows Forms | Cross-platform: Electron, Windows Forms | .NET native interop, Win32 |
-| tawounfouet/pyaccountingkit | success | Python | Web | Django |  |  |
-| proteus1208/talenttekpro.com | success | TypeScript | Web | Next.js |  |  |
-| Rascal-Company/rascal-pages | success | TypeScript | Web | Next.js |  |  |
-| MOdformazione/app-template-custom-shipping-rates | success | TypeScript | Web | Next.js |  |  |
-| sadouninc/Sado-Investment-Lab | success | Python | Web | No framework detected |  |  |
-| CoolHunter76/ivanllopis | success | Python | Web | Next.js |  |  |
-| abrance/ptdoc | success | TypeScript | Web | No framework detected |  |  |
-| AtlasRoX/kairos | success | TypeScript | Web | Next.js |  |  |
-| bhavikbhoir/the-gooners-world | success | JavaScript | Web | React |  |  |
-| fragoulis/pf-goapp | success | Go | Unknown | No framework detected |  |  |
-| dirac1974/gavel-race | success | Luau | Python runtime \(OS unspecified\) | No framework detected |  |  |
-| nlabrazi/riftvision | success | TypeScript | Web | Vue |  |  |
-| julcapp/soft-ice-platform | partial | JavaScript | Web | React |  |  |
-| jPurin-gg/fitlog | success | Go | Web | Next.js |  |  |
-| zsoltacsai/wpcaregrid | success | PHP | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
-| ryanduguid/ryanduguid.github.io | success | Rust | Windows | No framework detected | Native / Win32 \(UI not proven\) | .NET native interop, Win32 |
-| wmcbay13/ticket-platform | success | Go | Web | React |  |  |
+| WilliamHudspeth/institutional-alpha | success | Python | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| FS-GG/FS.GG.Templates | success | Python | Linux | No framework detected |  |  |
+| Iridescent-Technologies/proposals | success | HTML | Web | No framework detected |  |  |
+| MochiesCode/Mochies-Unity-Shaders | success | HLSL | Unknown | No framework detected |  |  |
+| blaiseratcliffe/bitedj | partial | C++ | Multiple OS \(incl. Windows\) | Qt | Cross-platform: Qt, PowerShell script | COM, Win32 |
+| papataku/honda\_ehev\_analyzer | success | Swift | Multiple OS \(no Windows\) | No framework detected |  |  |
+| Demolinator/revit-mcp-server | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| thomas-maurice/hindlearn | success | JavaScript | Web | No framework detected |  |  |
+| Bogzx/prop-firm-calendar | success | Python | Web | Next.js |  |  |
+| gm64x/June | not\_applicable | GDScript | Unknown | No framework detected |  |  |
+| eellison/better-benchmark | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| kiva/ui | success | JavaScript | Web | Vue |  |  |
+| MvRens/ha-enever | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| OpenPLi/enigma2 | success | Python | Windows | Next.js | Native / Win32 \(UI not proven\) | Win32 |
+| pinobatch/rfk-nes | success | Assembly | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| TimmyTheTurtle/skills-copilot-10-agentic-workflows-that-read-the-room | success | Astro | Web | No framework detected |  |  |
+| lawanmuk/hbn-parabolic-two-band-model | success | Jupyter Notebook | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| pjb0811/use-hooks | success | TypeScript | Web | React |  |  |
+| fastcat/gdev | success | Go | Linux | No framework detected |  |  |
+| rootxkit/uspace-ussp | success | Go | Web | Next.js |  |  |
+| Lad-Company/superbloom | success | TypeScript | Web | React |  |  |
+| ontripai/dorvia | partial | TypeScript | Web | Next.js |  |  |
+| eliasmacielr/website | success | TypeScript | Web | Next.js |  |  |
+| cyphylax/sungrow2mqtt | success | Python | Containers / Kubernetes | No framework detected |  |  |
+| compucorp/civirules | success | PHP | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| 1Bnja/Typr | success | Python | Web | React |  |  |
+| Nico6719/windhawk-mod-mobile-open-animation | success | C++ | Windows | No framework detected | Native / Win32 \(UI not proven\) | COM, Win32, Windows Shell |
+| Tylervitale/munder-difflin | success | TypeScript | Web | Electron | Cross-platform: Electron |  |
+| Igorjr19/last-month-recap | success | JavaScript | Node.js tooling/runtime \(OS unspecified\) | No framework detected |  |  |
+| iggym/systems-bench | success | HTML | Web | Next.js |  |  |
+| jangjunseo518-collab/springlog-Repetitive-learning | success | Java | Windows | Spring Boot | Native / Win32 \(UI not proven\) | Win32 |
+| shnug/OSSRanking | not\_applicable | Unknown | Unknown | No framework detected |  |  |
+| kanywst/wtfi2 | success | Rust | Linux | No framework detected |  |  |
+| pedrobtz/zuxml | success | R | Unknown | No framework detected |  |  |
+| apache/james-mime4j | success | Java | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| zenadell/Aethron | success | HTML | macOS | Next.js |  |  |
+| Andrey31072/test-manager-library-3145555-page | success | HTML | Web | No framework detected |  |  |
+| djbclark/plektra-djbclark | success | Kotlin | Android | No framework detected |  |  |
+| GEUS-Glaciology-and-Climate/pypromice | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| PyAutoLabs/PyAutoMemory | success | TeX | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| turkmenos/tm-data | success | TSQL | Native code \(OS unspecified\) | No framework detected |  |  |
+| protoledger/protoledger-backend | success | Rust | Web | No framework detected |  |  |
+| Terminator364/BuildHub | success | C++ | Windows | No framework detected | Native / Win32 \(UI not proven\) | COM, Win32, Windows Shell |
+| mirzatghayrat/mirzatghayrat.github.io | partial | HTML | Web | Next.js |  |  |
+| hari2629-p/Sudoko | success | CSS | Web | No framework detected |  |  |
+| MoaidHathot/Podium | success | C# | Linux | Vue | PowerShell script |  |
+| Sharif2023/single-vendor | success | TypeScript | Windows | Next.js | Native / Win32 \(UI not proven\) | Win32 |
+| Fei-Away/Codex-Dream-Skin | success | JavaScript | Multiple OS \(incl. Windows\) | Windows Forms | PowerShell install script, PowerShell script, Windows Forms | .NET native interop, COM, Win32 |
+| PlatformRelay/MKurator | success | Go | Linux | No framework detected |  |  |
+| icreated/lumnik-site | success | HTML | Web | No framework detected |  |  |
+| SoundMatt/c-RCP | success | C | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| lwz20210407/ZotWatch | success | HTML | Windows | Next.js | Native / Win32 \(UI not proven\), PowerShell install script, PowerShell script | Win32 |
+| bettsLee/osaka\_lunch\_app | success | TypeScript | Windows | Next.js | Native / Win32 \(UI not proven\) | Win32 |
+| NereaV04/Restaurante | success | C# | .NET runtime \(OS unspecified\) | No framework detected |  |  |
+| LouHeb/TrainingGitHubBAM | not\_applicable | Unknown | Unknown | No framework detected |  |  |
+| allenpiscitello/ducy | success | Rust | WebAssembly | No framework detected |  |  |
+| Ncloclo/Ncloclo | success | Python | Windows | Next.js | Native / Win32 \(UI not proven\) | Win32 |
+| bradhermsen/TipIn | success | C++ | Windows | Windows Forms | Cross-platform: React Native, Windows Forms |  |
+| telicent-oss/jwt-servlet-auth | success | Java | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| gmargonato/HSInspired | success | TypeScript | Web | Electron | Cross-platform: Electron |  |
+| corca-ai/wasmtex | success | TypeScript | Linux | No framework detected |  |  |
+| robertguss/safe-c | success | C | Linux | No framework detected |  |  |
+| astro-trove/trove | success | Python | Web | Next.js |  |  |
+| Skiepy/Le-ptit-bot | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| mishan/mullion-gtk | success | C | Native code \(OS unspecified\) | No framework detected |  |  |
+| onOffice-Web-Org/oo-wp-plugin | success | PHP | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| BeatrizJover/rail-punctuality-rag | success | Python | Server / backend | FastAPI |  |  |
+| SnapPwd/snappwd-service | success | Rust | Containers / Kubernetes | No framework detected |  |  |
+| spectonio/spectoncr | success | Rust | Web | React |  |  |
+| psandhir/horustrace | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| evergage/mongodb\_exporter | failed |  |  |  |  |  |
+| briandconnelly/codex-in-claude | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| jdwillmsen/dotfiles | success | Shell | Native code \(OS unspecified\) | No framework detected | PowerShell script |  |
+| hinshiba/CostDropout | success | Rust | Native code \(OS unspecified\) | No framework detected |  |  |
+| BryanChavesSalas/SodaYa | success | PHP | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| gsamuele78/RumblingStone | failed |  |  |  |  |  |
+| babylonlabs-io/.github | not\_applicable | Python | Unknown | No framework detected |  |  |
+| 2008monana/monana-financial | success | PHP | Windows | No framework detected | Native / Win32 \(UI not proven\) | Win32 |
+| mirrorfolio-idea-labs/AEOS | success | TypeScript | Web | React |  |  |
+| jo-fleck/Taxsim.jl | success | Julia | Unknown | No framework detected |  |  |
+| Tsuchinoko0/neon-gate | success | HTML | Web | No framework detected |  |  |
+| jejjohnson/vardax | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| caosuoming/InteSchool | success | TypeScript | Web | React | PowerShell script |  |
+| Tramsey00/MathStart-Python | success | HTML | Web | React | PowerShell script |  |
+| Domimueller85/guardian | success | TypeScript | Windows | Angular | Native / Win32 \(UI not proven\) | Win32 |
+| atravis817/matchlatch | success | JavaScript | Web | No framework detected |  |  |
+| shivaansh0610-LUFFY/RTI-Copilot | success | Python | Web | React |  |  |
+| dennycrafter/tapedeck | success | TypeScript | Web | Next.js |  |  |
+| exharmonic/gradeops | success | JavaScript | Web | React |  |  |
+| rayrayraykk/CoPaw | success | Python | Multiple OS \(incl. Windows\) | Next.js | Native / Win32 \(UI not proven\), PowerShell install script, PowerShell script | .NET native interop, COM, DirectX, Win32, WinRT, Windows Registry |
+| chrisrios-334/cafe-tacuba-frontend | success | JavaScript | Web | React |  |  |
+| alexmathieu22-ops/home-ops | success | HCL | Cloud / infrastructure | No framework detected |  |  |
+| jordanhubbard/webmux | success | TypeScript | Web | React | PowerShell module, PowerShell script, Service management |  |
+| slashme/parliamentdiagram | success | JavaScript | Web | Flask |  |  |
+| HorneroOS/greeter | success | Python | Linux | No framework detected |  |  |
+| krystof-pilnacek-home/vtherm\_tpi\_hysteresis | success | Python | Python runtime \(OS unspecified\) | No framework detected |  |  |
+| cybrid-systems/aura | success | C++ | Native code \(OS unspecified\) | No framework detected |  |  |
+| sonuKumar03/bundleradar | success | Go | Web | Angular |  |  |
+| IBM/dra-node-sdk | success | JavaScript | Node.js tooling/runtime \(OS unspecified\) | No framework detected |  |  |
+| mkny13/couch-tour | success | Kotlin | Multiple OS \(no Windows\) | No framework detected |  |  |
 
 Static source-level evidence is not proof of runtime use or OS compatibility. Component and application-type categories can overlap. Partial and failed scans are nonresponse; their exclusion can bias estimates. Sampling intervals do not measure classification error or nonresponse bias.
 
