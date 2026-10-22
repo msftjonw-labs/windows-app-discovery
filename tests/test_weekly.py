@@ -266,6 +266,24 @@ class PdfReportTests(unittest.TestCase):
         self.assertIn("Fallback reason: down", html)
         self.assertNotIn("% CI", html)
 
+    def test_archive_name_uses_generated_utc_date(self):
+        self.assertEqual(report_pdf.archive_name("2026-10-19T17:00:00Z"), "report-2026-10-19.pdf")
+        self.assertEqual(report_pdf.archive_name("2026-10-19T20:00:00-07:00"), "report-2026-10-20.pdf")
+        with self.assertRaises(ValueError):
+            report_pdf.archive_name("2026-10-19T17:00:00")
+
+    def test_archive_pdf_keeps_previous_reports(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            pdf, history = Path(temporary) / "report.pdf", Path(temporary) / "report-history"
+            pdf.write_bytes(b"%PDF-first")
+            first = report_pdf.archive_pdf(pdf, "2026-10-12T17:00:00Z", history)
+            pdf.write_bytes(b"%PDF-second")
+            second = report_pdf.archive_pdf(pdf, "2026-10-19T17:00:00Z", history)
+            self.assertEqual(sorted(p.name for p in history.iterdir()),
+                             ["report-2026-10-12.pdf", "report-2026-10-19.pdf"])
+            self.assertEqual(first.read_bytes(), b"%PDF-first")
+            self.assertEqual(second.read_bytes(), b"%PDF-second")
+
 
 class EmailTests(unittest.TestCase):
     def test_message_attaches_pdf_and_summarizes_sample(self):

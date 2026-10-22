@@ -4,6 +4,7 @@ Run with: python -m discovery.report_pdf --input site/data/latest.json --output 
 """
 
 import argparse
+from datetime import datetime, timezone
 from html import escape
 import os
 from pathlib import Path
@@ -180,15 +181,37 @@ def render_pdf(html, output, browser=None):
     return output
 
 
+def archive_name(generated_at):
+    """Return a sortable, filesystem-safe file name for a report generated at an ISO-8601 time."""
+    moment = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    if moment.tzinfo is None:
+        raise ValueError("generated_at must include a UTC offset")
+    return f"report-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
+
+
+def archive_pdf(pdf, generated_at, directory):
+    """Copy the PDF into directory (created if needed) under its dated name (replacing a same-day report) and return the path."""
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / archive_name(generated_at)
+    shutil.copyfile(pdf, target)
+    return target
+
+
 def main():
     import json
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=ROOT / "site" / "data" / "latest.json")
     parser.add_argument("--output", type=Path, default=ROOT / "site" / "report.pdf")
     parser.add_argument("--pages-url", default=os.environ.get("PAGES_URL"))
+    parser.add_argument("--archive-dir", type=Path,
+                        help="Also copy the PDF here as report-<generated UTC date yyyy-mm-dd>.pdf (e.g. report-history)")
     args = parser.parse_args()
     report = json.loads(args.input.read_text(encoding="utf-8"))
-    print(render_pdf(build_html(report, args.pages_url), args.output))
+    output = render_pdf(build_html(report, args.pages_url), args.output)
+    print(output)
+    if args.archive_dir:
+        print(archive_pdf(output, report["generated_at"], args.archive_dir))
 
 
 if __name__ == "__main__":
