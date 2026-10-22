@@ -75,6 +75,12 @@ class MarkdownReportTests(unittest.TestCase):
         report["generated_at"] = original["generated_at"]
         self.assertEqual(report, original)
 
+    def test_weekly_publication_stages_every_generated_chart(self):
+        workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "weekly-report.yml").read_text(encoding="utf-8")
+        staging = next(line for line in workflow.splitlines() if "git add --" in line)
+        for key, _, _ in SECTIONS:
+            self.assertIn(f"reports/{key}.svg", staging)
+
     def test_no_complete_scans_does_not_create_output(self):
         report = sample_report()
         report["metrics"]["successful"] = 0
