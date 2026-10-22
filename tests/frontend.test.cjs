@@ -172,6 +172,9 @@ test("supplemental tool failures are visible without hiding completed scans", ()
   assert.equal(run('$("rows").children[0].children[4].children[0].textContent'), "success");
   assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
     "Supplemental Semgrep: partial · Semgrep timeout");
+  run('report.repositories[0].semgrep = {status: "partial", errors: 2, rejected_findings: 1}; renderRows()');
+  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+    "Supplemental Semgrep: partial · 2 errors · 1 rejected findings");
 });
 
 test("CSV preserves structured project labels and evidence instead of object strings", async () => {

@@ -257,7 +257,7 @@ def source_exclusion(path):
         return "data_assets"
     if path.suffix.lower() == ".txt" and name != "cmakelists.txt" and not re.fullmatch(r"requirements[\w.-]*\.txt", name):
         return "data_assets"
-    if name in EXTENSIONLESS_NAMES or name.startswith("dockerfile."):
+    if name in EXTENSIONLESS_NAMES or name == "go.mod" or name.startswith("dockerfile."):
         return None
     if path.suffix.lower() not in EXTENSIONS:
         return "unsupported_extensions"
@@ -647,7 +647,6 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
                 analysis["frameworks"] = sorted((set(analysis["frameworks"]) - {"Unknown"}) | set(result["frameworks"])) or ["Unknown"]
                 analysis["evidence"] = (result["evidence"] + analysis["evidence"])[:200]
                 project_inspector_evidence = [item for item in result["evidence"] if item.get("label")]
-                analysis["application_types"] = application_types(analysis["frameworks"], result["components"])
                 inspector_incomplete = result["incomplete"]
                 analysis["windows_scan"] = "partial" if inspector_incomplete else "success"
             analysis["inspector_incomplete"] = inspector_incomplete
@@ -658,6 +657,12 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
                              if label.startswith(("PowerShell", "Cross-platform:"))
                              or label in {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP",
                                           "Windows service", "Service management"}}
+            if "Windows" in analysis["platforms"]:
+                # Inspector's broad service component includes management APIs.
+                # Only project host evidence promotes it to an application type.
+                type_components = [component for component in analysis["components"]
+                                   if component != "Windows services" or "Windows service" in project_types]
+                analysis["application_types"] = application_types(analysis["frameworks"], type_components)
             analysis["application_types"] = sorted(set(analysis["application_types"]) | project_types)
             analysis["inspector_strategy"] = INSPECTOR_STRATEGY
             analysis["status"] = "partial" if inspector_incomplete or any(skipped.get(k) for k in PARTIAL_REASONS) else "success"

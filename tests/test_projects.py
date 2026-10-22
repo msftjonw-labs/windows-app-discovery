@@ -1,9 +1,11 @@
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import Mock, patch
 
 from discovery import pilot, semgrep
@@ -56,6 +58,22 @@ class ProjectTests(unittest.TestCase):
         self.assertNotIn("Windows service", by_path["package.json"]["labels"])
         self.assertIn("Windows service", by_path["nested/App.csproj"]["labels"])
         self.assertNotIn("nested/Program.cs", by_path["package.json"]["files"])
+
+    def test_go_mod_survives_extraction_and_defines_nested_boundary(self):
+        content = io.BytesIO()
+        with zipfile.ZipFile(content, "w") as archive:
+            for path, text in [("package.json", "{}"), ("nested/go.mod", "module example.org/nested"),
+                               ("nested/main.go", "package main\nfunc main() {}")]:
+                archive.writestr("root/" + path, text)
+        with tempfile.TemporaryDirectory() as folder:
+            files, skipped = pilot.extract_sources(content.getvalue(), Path(folder))
+        self.assertIn("nested/go.mod", dict(files))
+        self.assertEqual(skipped, {})
+        self.assertIsNone(pilot.source_exclusion(Path("nested/go.mod")))
+        self.assertEqual(pilot.source_exclusion(Path("nested/other.mod")), "unsupported_extensions")
+        result = {project["path"]: project for project in projects(files)}
+        self.assertIn("nested/main.go", result["nested/go.mod"]["files"])
+        self.assertNotIn("nested/main.go", result["package.json"]["files"])
 
     def test_same_directory_projects_have_explicit_ambiguous_files(self):
         result = projects([("A.csproj", "<Project/>"), ("B.csproj", "<Project/>"),
@@ -139,6 +157,16 @@ class ProjectTests(unittest.TestCase):
                            ("Program.cs", "builder.Services.AddWindowsService();")])
         self.assertIn("Windows service", result[0]["labels"])
         self.assertIn("Windows", pilot.classify([("Program.cs", "builder.Services.AddWindowsService();")])["platforms"])
+
+    def test_safe_avalonia_package_metadata_and_conditional_confidence(self):
+        for package in ("Avalonia", "Avalonia.Desktop"):
+            for condition, confidence in [("", "medium"), (' Condition="false"', "low")]:
+                with self.subTest(package=package, condition=condition):
+                    text = f'<Project><ItemGroup{condition}><PackageReference Include="{package}" Version="1"/></ItemGroup></Project>'
+                    result = projects([("App.csproj", text)], [{
+                        "path": "App.csproj", "line": 1, "label": "Avalonia", "engine": "Application Inspector"}])
+                    self.assertEqual(result[0]["labels"], ["Cross-platform: Avalonia"])
+                    self.assertEqual(result[0]["label_confidence"]["Cross-platform: Avalonia"], confidence)
 
     def test_powershell_is_not_windows_and_management_is_not_host(self):
         for text in ("Get-Process", "Get-Service foo", "Start-Service foo",
@@ -351,6 +379,25 @@ class RepositoryIntegrationTests(unittest.TestCase):
         self.assertEqual(record["windows_scan"], "success")
         self.assertEqual(record["components"], ["COM"])
         self.assertEqual(record["semgrep"]["status"], "partial")
+
+    def test_inspector_service_component_does_not_make_management_utility_a_service(self):
+        for source, is_host in [
+                ("using System.ServiceProcess;\nServiceController.GetServices();", False),
+                ("builder.UseWindowsService();", True),
+                ("builder.Services.AddWindowsService();", True),
+                ("ServiceBase.Run(new Worker());", True),
+                ("StartServiceCtrlDispatcherW(table);", True)]:
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as folder, \
+                    patch("discovery.pilot.acquire_sources", return_value=([
+                        ("App.csproj", "<Project><OutputType>Exe</OutputType></Project>"),
+                        ("Program.cs", source)], {}, "archive")), \
+                    patch("discovery.pilot.inspect_sources", return_value={
+                        "components": ["Windows services"], "frameworks": [], "evidence": [],
+                        "incomplete": {}}):
+                record = pilot.analyze_repository({"name": "o/r"}, Path("inspector"), Path(folder))
+                self.assertIn("Windows services", record["components"])
+                self.assertEqual("Windows service" in record["application_types"], is_host)
+                self.assertEqual("Windows service" in record["projects"][0]["labels"], is_host)
 
     def test_cache_separates_disabled_configured_and_engine_versions(self):
         with patch("discovery.pilot.acquire_sources", return_value=(

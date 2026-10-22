@@ -56,6 +56,8 @@ def metadata(path, text):
             package = node.get("Include", "")
             label = {"Microsoft.WindowsAppSDK": "WinUI / Windows App SDK",
                      "Microsoft.NETCore.UniversalWindowsPlatform": "UWP",
+                     "Avalonia": "Cross-platform: Avalonia",
+                     "Avalonia.Desktop": "Cross-platform: Avalonia",
                      "Microsoft.Extensions.Hosting.WindowsServices": "Windows service integration",
                      "System.ServiceProcess.ServiceController": "Service management"}.get(package)
         if label:

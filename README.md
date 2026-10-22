@@ -227,7 +227,9 @@ For supplemental refinement, pass `--semgrep PATH` pointing to a compatible,
 locally installed Semgrep executable. Semgrep is optional and is never downloaded
 automatically; the default collector still needs no Python packages. Only bundled
 local rules are used, with metrics and version checks disabled; repository rule
-configuration is not executed. Supplemental engine status and failures are recorded
+configuration is not executed. Language-aware C# rules refine Forms inheritance,
+service-host calls, and PowerShell host creation; generic text indicators remain
+lower confidence. Supplemental engine status and failures are recorded
 separately and shown in the dashboard, without replacing Application Inspector or
 turning its successful scan into a failure. Engine identity and rule configuration
 participate in cache selection.

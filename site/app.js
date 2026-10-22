@@ -136,7 +136,10 @@ function renderRows() {
     if (repo.note) scan.append(element("p", repo.note));
     if (repo.projects && repo.projects.length) scan.append(projectFindings(repo));
     if (repo.semgrep) {
-      scan.append(element("p", `Supplemental Semgrep: ${repo.semgrep.status}${repo.semgrep.reason ? ` · ${repo.semgrep.reason}` : ""}`, "muted"));
+      const diagnostics = [repo.semgrep.reason,
+        repo.semgrep.errors ? `${repo.semgrep.errors} errors` : "",
+        repo.semgrep.rejected_findings ? `${repo.semgrep.rejected_findings} rejected findings` : ""].filter(Boolean);
+      scan.append(element("p", `Supplemental Semgrep: ${[repo.semgrep.status, ...diagnostics].join(" · ")}`, "muted"));
     }
     if (repo.inspector_incomplete && Object.keys(repo.inspector_incomplete).length) {
       scan.append(element("p", `Inspector incomplete: ${JSON.stringify(repo.inspector_incomplete)}`, "muted"));
