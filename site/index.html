@@ -49,6 +49,15 @@
           <p>Most specific detected framework per repository (e.g. Next.js before React). Detected declarations
           and source patterns, not verified runtime use.</p><div id="frameworks"></div></article>
       </div>
+      <article>
+        <h3>Project application and automation types</h3>
+        <p>Share of complete repository scans with collected project findings, including libraries/tools
+          and non-Windows PowerShell. Each repository counts once per category across its projects.
+          Categories overlap: Windows desktop app includes Windows Forms, WPF, WinUI, and UWP,
+          so shares need not sum to 100%. Older inventories without project findings are excluded.
+          Static indicators do not prove executable or runtime behavior.</p>
+        <div id="project_types"></div>
+      </article>
     </section>
     <section id="windows" aria-labelledby="windows-heading">
       <h2 id="windows-heading">Windows application development</h2>
@@ -106,8 +115,9 @@
         <article><h3>Static analysis</h3><p>Snapshots are pinned to the default-branch SHA at scan time.
           Versioned regex/manifest rules infer platform and framework evidence. Windows candidates
           are scanned by Microsoft Application Inspector with custom pilot rules (bundled rules
-          disabled). No repository code or build scripts are executed. Classification is repository-level,
-          not project-level; monorepos can combine unrelated signals. Comments and strings may
+          disabled). No repository code or build scripts are executed. Project findings preserve
+          multiple labels with file/line evidence and qualitative confidence; repository summaries can combine signals.
+          Comments and strings may
           produce false positives. Absence of a match is not proof of non-use.</p></article>
         <article><h3>Denominators and exclusions</h3><p>Platforms, languages, and frameworks use complete scans only and assign each
           repository to exactly one category, so each chart sums to 100%. Every detected signal remains listed per repository.

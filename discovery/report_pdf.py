@@ -27,6 +27,11 @@ SECTIONS = (
      "targets = Multiple OS, otherwise the most specific environment; generic runtimes/scripts come last."),
     ("languages", "Primary programming language", "GitHub's primary language per repository."),
     ("frameworks", "Framework evidence", "Most specific detected framework per repository (e.g. Next.js before React)."),
+    ("project_types", "Project application and automation types",
+     "Share of complete repository scans with collected project findings, including libraries/tools and non-Windows "
+     "PowerShell. Each repository counts once per category across its projects. Categories overlap: Windows desktop "
+     "app includes Windows Forms, WPF, WinUI, and UWP; shares need not sum to 100%. Older inventories without project "
+     "findings are excluded. Static indicators do not prove executable or runtime behavior."),
     ("application_types", "Windows application types", "Complete Windows application scans; types can overlap."),
     ("components", "Windows component adoption", "Complete Windows application scans; components overlap."),
     ("candidate_components", "Exploratory: all Windows candidates", "Includes libraries/tools; not an application metric."),
@@ -135,7 +140,10 @@ def build_html(report, pages_url=None):
         if key in EXCLUSIVE:
             parts.append(f'<p class="denominator-note"><strong>{text(denominator_note)}</strong></p>')
         parts.append(f"<p class=\"muted\">{text(note)}</p>")
-        parts.append(distribution_table(metrics.get(key), confidence if representative else None))
+        if key == "project_types" and key not in metrics:
+            parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
+        else:
+            parts.append(distribution_table(metrics.get(key), confidence if representative else None))
     rows = "".join(
         f"<tr><td>{text(r['name'])}</td><td>{text(r['status'])}</td><td>{text(r.get('primary_language'))}</td>"
         f"<td>{text(r.get('primary_platform'))}</td><td>{text(r.get('primary_framework'))}</td>"

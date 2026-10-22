@@ -78,7 +78,7 @@ To generate the repository-readable report and charts from the same collected da
 python -m discovery.report_markdown
 ```
 
-This writes `reports/README.md` and six SVG charts. It refuses reports with no
+This writes `reports/README.md` and seven SVG charts. It refuses reports with no
 complete scans. It does not collect new data or commit files itself.
 
 Run the real-tool contract tests after installation:
@@ -209,11 +209,41 @@ application denominator. This intentionally conservative pilot misses some appli
 including some CMake, Rust, Flutter, MAUI, and legacy project layouts. Libraries
 and unknown repository purposes are visible but excluded from that denominator.
 
-Classification is **repository-level**, not a project dependency graph. Signals in
-different projects in a monorepo can combine. Regex matching can also match comments,
-strings, unused declarations, or conditional code. Dependencies do not establish
-runtime API use; precision/recall have not been benchmarked. The pilot rules are
-indicators, not authoritative compatibility assertions.
+Repository summaries retain all signals, while `projects` records project-scoped,
+**multi-label** findings. A repository can contain a Windows Forms desktop project,
+a Windows service, and PowerShell installation scripts without collapsing them into
+one application type. The dashboard's expandable **Project findings** shows labels,
+qualitative confidence, and supporting file/line links pinned to the scanned commit.
+Project paths and labels are searchable; the CSV includes the full `projects` array
+as a JSON cell, and the JSON report preserves the structured findings.
+
+Literal MSBuild XML metadata is inspected without evaluating conditions, imports,
+or build tasks. Conditional settings remain lower-confidence evidence. Sources
+without a unique nearest project, including shared build properties, remain
+explicit shared/ambiguous/unassigned entries rather than being copied to every
+project.
+
+For supplemental refinement, pass `--semgrep PATH` pointing to a compatible,
+locally installed Semgrep executable. Semgrep is optional and is never downloaded
+automatically; the default collector still needs no Python packages. Only bundled
+local rules are used, with metrics and version checks disabled; repository rule
+configuration is not executed. Language-aware C# rules refine Forms inheritance,
+service-host calls, and PowerShell host creation; generic text indicators remain
+lower confidence. Supplemental engine status and failures are recorded
+separately and shown in the dashboard, without replacing Application Inspector or
+turning its successful scan into a failure. Engine identity and rule configuration
+participate in cache selection.
+
+PowerShell scripts and modules do **not** imply Windows compatibility. Installation
+and service-management scripts are distinct from evidence of a PowerShell-backed
+service: managing a service does not prove that PowerShell implements it.
+
+Classification confidence describes the strength of static evidence, **not** a
+measured probability or the statistical confidence intervals used in charts.
+Project association is not a resolved dependency graph. Regex matching can match
+comments, strings, unused declarations, or conditional code. Dependencies do not
+establish runtime API use; precision/recall have not been benchmarked. The pilot
+rules are indicators, not authoritative compatibility assertions.
 
 ## Metric definitions
 
@@ -222,6 +252,7 @@ indicators, not authoritative compatibility assertions.
 | Platform/framework prevalence | All complete source scans |
 | OS-target distribution | All complete source scans; runtime-only evidence remains OS Unspecified |
 | Primary-language distribution | All complete source scans |
+| Project application and automation types | Complete repository scans with collected `projects` inventories; each repository counts once per category across all its projects |
 | Windows application types | Complete Windows scans with explicit application evidence |
 | Windows component adoption | Same eligible Windows application repositories |
 | Exploratory Windows-candidate component adoption | All complete Windows-targeting scans, including libraries/unknown purposes |
@@ -232,6 +263,20 @@ of repository size or number of matches. This equals the average per-repository
 indicator. Win32 and COM overlap; percentages need not sum to 100%.
 No eligible repositories produces `null` / **N/A**, not 0%.
 These figures are not source-line shares or runtime-call percentages.
+
+The **Project application and automation types** table and chart use the newly
+collected project findings rather than the narrower Windows application denominator.
+They show measured shares for Windows desktop app, Windows Forms app, WPF app,
+WinUI app, UWP app, Windows service, PowerShell, and other detected categories.
+Windows desktop app is an umbrella for the four Windows UI frameworks, not proof
+that a project is executable. PowerShell includes scripts, modules, and hosting
+indicators and does not imply Windows. Categories overlap and need not total 100%;
+multiple matching projects in one repository still contribute only one count per
+category. Partial/failed scans and older records without `projects` are excluded;
+inventories with no recognized type remain in the denominator as unknown.
+The report displays counts, denominator, measured percentage, and sampling intervals
+when representative, using the same table/chart style as existing distributions.
+Example percentages are never substituted for collected results.
 The separately labeled exploratory Windows-candidate chart is not an application
 distribution and must not be substituted for the application-level headline metric.
 
@@ -250,8 +295,8 @@ error or nonresponse bias from partial/failed scans. The population is in the mi
 so no finite-population correction is applied. GraphQL-fallback reports set these to `null`.
 The explorer shows all selected repositories, including errors, source-retrieval
 method, Inspector incompleteness, and exclusion counts.
-JSON downloads contain the full report; CSV contains repository-level classifications
-and source-retrieval information.
+JSON downloads contain the full report; CSV contains repository-level classifications,
+project findings with evidence and confidence, and source-retrieval information.
 
 ## Bounds, safety, and persistence
 
@@ -316,7 +361,7 @@ syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workf
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
 Inspector, draws the GH Archive sample, analyzes it, renders `site/report.pdf`, keeps
-the JSON and PDF as a 90-day artifact, commits the latest Markdown report and six SVG
+the JSON and PDF as a 90-day artifact, commits the latest Markdown report and seven SVG
 charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
 emails the PDF. Scheduled workflows run only from the default branch. Repository
 publishing also runs only on the default branch; manual runs on other branches

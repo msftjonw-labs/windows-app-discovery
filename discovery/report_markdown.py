@@ -82,6 +82,9 @@ def build_markdown(report):
                           f"{metrics['successful']} complete scans only. Partial, failed, and no-eligible-source "
                           "repositories are excluded.", ""])
         lines.extend([f"![{title}]({key}.svg)", ""])
+        if key == "project_types" and key not in metrics:
+            lines.append("Not collected by this report; rerun the collector to populate project findings.")
+            continue
         rows = metrics.get(key) or []
         if not rows or all(row["denominator"] == 0 for row in rows):
             lines.append("N/A — no eligible repositories.")

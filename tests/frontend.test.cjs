@@ -12,10 +12,13 @@ function app() {
       append(...children) { this.children.push(...children); },
       replaceChildren(...children) { this.children = children; },
       setAttribute(name, value) { this[name] = value; },
+      click() {},
     };
   }
   const context = vm.createContext({
     URL,
+    Blob,
+    setTimeout: () => {},
     document: {
       createElement: node,
       getElementById: (id) => {
@@ -91,7 +94,8 @@ test("Windows tiles render as a separate complete-scan subset with denominator n
   const data = { schema_version: 1, generated_at: "g", window: { start: "s", end: "e" }, ruleset_version: "r", inspector_version: "i",
     coverage: { representative_sample: false, items_examined: 1, eligible_repositories: 1, truncated_connections: 0, searches: [] },
     metrics: { selected: 100, successful: 93, partial: 4, failed: 1, not_applicable: 2, windows_repositories: 15, windows_applications: 6,
-      platforms: [], languages: [], frameworks: [], application_types: [], components: [], candidate_components: [] },
+      platforms: [], languages: [], frameworks: [], application_types: [], components: [], candidate_components: [],
+      project_types: [{label: "PowerShell", count: 11, denominator: 93, percent: 11.83}] },
     repositories: [] };
   run(`fetch = async () => ({ ok: true, json: async () => (${JSON.stringify(data)}) }); document.getElementById("filter").addEventListener = () => {}; document.getElementById("scan-status").addEventListener = () => {}; document.getElementById("csv").addEventListener = () => {};`);
   await run("load()");
@@ -101,6 +105,8 @@ test("Windows tiles render as a separate complete-scan subset with denominator n
   assert.equal(run('$("windows-cards").children[0].className'), "card subset");
   assert.equal(run('$("windows-cards").children[1].children[2].textContent'), "of 93 complete scans");
   assert.match(run('$("platforms-note").textContent'), /only from the 93 complete scans, excluding 4 partial scans, 1 failed scans.*100%/);
+  assert.equal(run('$("project_types").children[0].children[0].children[0].textContent'), "PowerShell");
+  assert.equal(run('$("project_types").children[0].children[0].children[1].textContent'), "11.83% · 11/93");
 });
 
 test("repository filters preserve N/A notes and partial Inspector counters", () => {
@@ -115,4 +121,77 @@ test("repository filters preserve N/A notes and partial Inspector counters", () 
   assert.equal(run('$("rows").children[0].children[4].children[1].textContent'), "No eligible source");
   run('$("scan-status").value = "partial"; renderRows()');
   assert.match(run('$("rows").children[0].children[4].children[1].textContent'), /filesSkipped.*2/);
+});
+
+test("project findings retain multiple labels, confidence and pinned evidence links", () => {
+  const run = app();
+  run(`report = {repositories: [{
+    name: "o/mixed", url: "https://github.com/o/mixed", sha: "abc123", status: "success",
+    activity_evidence: "https://github.com/o/mixed/issues/1",
+    projects: [{path: "desktop/App.csproj", kind: "dotnet",
+      labels: ["Windows Forms", "Windows service"], confidence: "high",
+      evidence: [{label: "Windows Forms", path: "desktop/a b.cs", line: 7,
+        engine: "project metadata", confidence: "high"}]}]
+  }]}`);
+  run('$("filter").value = "windows service"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 1);
+  const details = '$("rows").children[0].children[4].children[1]';
+  assert.equal(run(`${details}.children[0].textContent`), "Project findings (1)");
+  assert.match(run(`${details}.children[1].textContent`), /not statistical/);
+  assert.equal(run(`${details}.children[3].textContent`), "Windows Forms, Windows service · high confidence");
+  assert.equal(run(`${details}.children[4].children[0].children[0].href`),
+    "https://github.com/o/mixed/blob/abc123/desktop/a%20b.cs#L7");
+  assert.match(run(`${details}.children[4].children[0].children[1].textContent`), /high confidence/);
+  run('$("filter").value = "desktop/app.csproj"; renderRows()');
+  assert.equal(run('$("rows").children.length'), 1);
+});
+
+test("project findings render untrusted project names as text", () => {
+  const run = app();
+  assert.equal(run(`projectFindings({projects: [{
+    path: "<img src=x>", kind: "script", labels: ["PowerShell automation"],
+    confidence: "medium", evidence: []
+  }]}).children[2].textContent`), "<img src=x> · script");
+});
+
+test("project findings distinguish per-label confidence and association limitations", () => {
+  const run = app();
+  run(`let findings = projectFindings({projects: [{
+    path: ".", kind: "shared", labels: ["PowerShell module", "Windows service"],
+    confidence: "high", label_confidence: {"PowerShell module": "high", "Windows service": "low"},
+    notes: ["No unique project ownership"], evidence: []
+  }]});`);
+  assert.equal(run("findings.children[3].textContent"),
+    "PowerShell module (high), Windows service (low) · high confidence");
+  assert.equal(run("findings.children[4].textContent"), "No unique project ownership");
+});
+
+test("supplemental tool failures are visible without hiding completed scans", () => {
+  const run = app();
+  run(`report = {repositories: [{
+    name: "o/r", status: "success", activity_evidence: "https://github.com/o/r/issues/1",
+    semgrep: {status: "partial", reason: "Semgrep timeout"}
+  }]}; renderRows();`);
+  assert.equal(run('$("rows").children[0].children[4].children[0].textContent'), "success");
+  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+    "Supplemental Semgrep: partial · Semgrep timeout");
+  run('report.repositories[0].semgrep = {status: "partial", errors: 2, rejected_findings: 1}; renderRows()');
+  assert.equal(run('$("rows").children[0].children[4].children[1].textContent'),
+    "Supplemental Semgrep: partial · 2 errors · 1 rejected findings");
+});
+
+test("CSV preserves structured project labels and evidence instead of object strings", async () => {
+  const run = app();
+  const projects = [{
+    path: "scripts/install.ps1", kind: "powershell", labels: ["PowerShell automation", "Installation script"],
+    confidence: "medium", evidence: [{path: "scripts/install.ps1", line: 1, label: "Installation script",
+      engine: "PowerShell heuristic", confidence: "medium"}],
+  }];
+  run(`report = {repositories: [{name: "o/r", projects: ${JSON.stringify(projects)}}]};
+    let capturedCsv; URL = {createObjectURL(blob) {capturedCsv = blob; return "blob:test";}, revokeObjectURL() {}};
+    downloadCsv();`);
+  const csv = await run("capturedCsv.text()");
+  assert.match(csv.split("\r\n")[0], /"projects"/);
+  assert.ok(csv.includes(run(`csvCell(${JSON.stringify(JSON.stringify(projects))})`)));
+  assert.ok(!csv.includes("[object Object]"));
 });
