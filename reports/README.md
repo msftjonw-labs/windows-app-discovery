@@ -72,6 +72,14 @@ Share of complete repository scans with collected project findings, including li
 | Windows desktop app | 0 / 1 | 0.0% | 0.0–79.35% |
 | Windows service | 0 / 1 | 0.0% | 0.0–79.35% |
 
+Breakdown of **Unknown / no findings** by primary platform. Platforms above 30% of
+the unknown group are listed separately; all others are combined.
+
+| Platform | Count / denominator | Share |
+| --- | ---: | ---: |
+| Web | 35 / 84 | 41.67% |
+| Others | 49 / 84 | 58.33% |
+
 ## Windows application types
 
 Complete Windows application scans; types can overlap.

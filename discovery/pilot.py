@@ -748,6 +748,7 @@ def aggregate(records, confidence=None):
         "Service management": "Service management",
     }
     inventories = []
+    unknown_project_platforms = []
     for record in complete:
         if not isinstance(record.get("projects"), list):
             continue
@@ -759,6 +760,8 @@ def aggregate(records, confidence=None):
             detected.add("PowerShell")
         detected.update(label for label in labels if label.startswith("Cross-platform:"))
         inventories.append({"project_types": sorted(detected) or ["Unknown / no findings"]})
+        if not detected:
+            unknown_project_platforms.append({"primary_platform": record.get("primary_platform", "Unknown")})
     return {
         "selected": len(records), "successful": len(complete),
         "partial": sum(r["status"] == "partial" for r in records),
@@ -777,6 +780,9 @@ def aggregate(records, confidence=None):
             inventories, "project_types",
             [*project_labels.values(), "Windows desktop app", "PowerShell", "Unknown / no findings"],
             z=z,
+        ),
+        "unknown_project_platforms": distribution(
+            unknown_project_platforms, "primary_platform", exclusive=True,
         ),
         "components": distribution(applications, "components", COMPONENTS, z=z),
         "candidate_components": distribution(windows, "components", COMPONENTS, z=z),

@@ -97,14 +97,25 @@ class MarkdownReportTests(unittest.TestCase):
              "ci_low": 11.76, "ci_high": 76.93},
             {"label": "PowerShell", "count": 1, "denominator": 5, "percent": 20.0,
              "ci_low": 3.62, "ci_high": 62.45}]
+        report["metrics"]["unknown_project_platforms"] = [
+            {"label": "Web", "count": 3, "denominator": 8, "percent": 37.5},
+            {"label": "Windows", "count": 2, "denominator": 8, "percent": 25.0},
+            {"label": "Linux", "count": 2, "denominator": 8, "percent": 25.0},
+            {"label": "Unknown", "count": 1, "denominator": 8, "percent": 12.5},
+        ]
         markdown = report_markdown.build_markdown(report)
         section = markdown.split("## Project application and automation types")[1].split("## Windows application types")[0]
         self.assertIn("categories", section.lower())
         self.assertIn("Categories overlap", section)
         self.assertIn("| Windows desktop app | 2 / 5 | 40.0% | 11.76–76.93% |", section)
         self.assertIn("| PowerShell | 1 / 5 | 20.0%", section)
+        self.assertIn("| Web | 3 / 8 | 37.5% |", section)
+        self.assertIn("| Others | 5 / 8 | 62.5% |", section)
+        self.assertNotIn("| Windows | 2 / 8 |", section)
         html = build_html(report)
         self.assertIn('Windows desktop app</td><td class="num">2/5</td><td class="num">40.0%</td>', html)
+        self.assertIn("Unknown / no findings by primary platform", html)
+        self.assertIn("Others</td><td class=\"num\">5/8</td>", html)
         svg = report_markdown.chart_svg(report["metrics"]["project_types"], "Project types")
         self.assertIn("PowerShell", svg)
         self.assertIn("20.0%", svg)
@@ -124,6 +135,18 @@ class MarkdownReportTests(unittest.TestCase):
             result = render(report)
             self.assertNotIn("Not collected by this report", result)
             self.assertIn("N/A — no eligible repositories.", result)
+
+    def test_unknown_project_platform_breakdown_uses_strict_thirty_percent_cutoff(self):
+        rows = [
+            {"label": "Web", "count": 3, "denominator": 10, "percent": 30.0},
+            {"label": "Windows", "count": 4, "denominator": 10, "percent": 40.0},
+            {"label": "Other platform", "count": 3, "denominator": 10, "percent": 30.0},
+        ]
+        self.assertEqual(
+            report_markdown.unknown_project_platform_rows(rows),
+            [{"label": "Windows", "count": 4, "denominator": 10, "percent": 40.0},
+             {"label": "Others", "count": 6, "denominator": 10, "percent": 60.0}],
+        )
 
     def test_cli_accepts_input_and_output(self):
         with tempfile.TemporaryDirectory() as temporary:

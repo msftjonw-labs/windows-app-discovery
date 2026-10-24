@@ -292,6 +292,8 @@ indicators and does not imply Windows. Categories overlap and need not total 100
 multiple matching projects in one repository still contribute only one count per
 category. Partial/failed scans and older records without `projects` are excluded;
 inventories with no recognized type remain in the denominator as unknown.
+The unknown group is further broken down by primary platform: groups above 30% are
+shown individually and all remaining platforms are combined as **Others**.
 The report displays counts, denominator, measured percentage, and sampling intervals
 when representative, using the same table/chart style as existing distributions.
 Example percentages are never substituted for collected results.
