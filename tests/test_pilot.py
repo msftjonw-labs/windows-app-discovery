@@ -622,10 +622,12 @@ class ClassificationTests(unittest.TestCase):
             self.project_record([{"labels": []}]),
             self.project_record([]),
         ]
-        rows = {r["label"]: r for r in aggregate(records)["project_types"]}
+        metrics = aggregate(records)
+        rows = {r["label"]: r for r in metrics["project_types"]}
         self.assertEqual(rows["Unknown / no findings"]["count"], 3)
         self.assertEqual(rows["Windows desktop app"]["count"], 0)
         self.assertEqual(rows["WPF app"]["count"], 0)
+        self.assertEqual(sum(row["count"] for row in metrics["unknown_project_platforms"]), 3)
 
     def test_project_types_have_stable_zero_rows_and_optional_intervals(self):
         labels = {"Windows desktop app", "Windows Forms app", "WPF app", "WinUI app",
