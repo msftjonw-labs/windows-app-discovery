@@ -587,7 +587,7 @@ class ClassificationTests(unittest.TestCase):
         rows = {r["label"]: r for r in aggregate(records)["project_types"]}
         self.assertTrue(all(row["denominator"] == 2 for row in rows.values()))
         self.assertEqual(rows["PowerShell"]["percent"], 50)
-        self.assertEqual(rows["Unknown / no findings"]["percent"], 50)
+        self.assertEqual(aggregate(records)["project_types_unclassified"], 1)
         self.assertEqual(rows["WPF app"]["count"], 0)
 
     def test_project_types_distinguish_service_hosts_and_powershell_findings(self):
@@ -613,7 +613,7 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(rows["Cross-platform: Avalonia"]["count"], 2)
         self.assertEqual(rows["Cross-platform: Electron"]["percent"], 50)
         self.assertEqual(rows["Windows desktop app"]["count"], 0)
-        self.assertEqual(rows["Unknown / no findings"]["count"], 0)
+        self.assertFalse(any(label.startswith("Unknown / no findings") for label in rows))
 
     def test_project_types_do_not_infer_desktop_from_executable_or_windows_target(self):
         records = [
@@ -624,15 +624,16 @@ class ClassificationTests(unittest.TestCase):
         ]
         metrics = aggregate(records)
         rows = {r["label"]: r for r in metrics["project_types"]}
-        self.assertEqual(rows["Unknown / no findings"]["count"], 3)
+        self.assertEqual(metrics["project_types_unclassified"], 2)
+        self.assertEqual(rows["Executable application"]["count"], 1)
+        self.assertFalse(any(label.startswith("Unknown") for label in rows))
         self.assertEqual(rows["Windows desktop app"]["count"], 0)
         self.assertEqual(rows["WPF app"]["count"], 0)
-        self.assertEqual(sum(row["count"] for row in metrics["unknown_project_platforms"]), 3)
+        self.assertTrue(all(row["denominator"] == 3 for row in rows.values()))
 
     def test_project_types_have_stable_zero_rows_and_optional_intervals(self):
         labels = {"Windows desktop app", "Windows Forms app", "WPF app", "WinUI app",
-                  "UWP app", "Windows service", "Service management", "PowerShell",
-                  "Unknown / no findings"}
+                  "UWP app", "Windows service", "Service management", "PowerShell"}
         for records in ([], [self.project_record(None)]):
             with self.subTest(records=records):
                 rows = aggregate(records, confidence=0.95)["project_types"]

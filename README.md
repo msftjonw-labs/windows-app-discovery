@@ -292,8 +292,18 @@ indicators and does not imply Windows. Categories overlap and need not total 100
 multiple matching projects in one repository still contribute only one count per
 category. Partial/failed scans and older records without `projects` are excluded;
 inventories with no recognized type remain in the denominator as unknown.
-The unknown group is further broken down by primary platform: groups above 30% are
-shown individually and all remaining platforms are combined as **Others**.
+Source-based application types also include web frontends, backend/API services,
+command-line tools, executable applications, libraries/SDKs, Python applications/scripts,
+shell/batch automation, build automation, infrastructure as code, container/orchestration
+configuration, notebooks, mobile and macOS applications, native desktop applications,
+embedded firmware, and smart contracts. These require matching source patterns or
+literal project metadata; an OS target or programming language alone is not a type.
+All observed types appear in the same table, with no percentage cutoff or **Others**
+grouping. A separate coverage note counts repositories with insufficient evidence;
+they remain in the denominator but are not assigned a type. New types require
+recollection with ruleset `pilot-5`; historical inventories cannot be reclassified
+from platform labels alone. Existing source exclusions still apply, including
+`.github`, tests, generated files, and dependencies.
 The report displays counts, denominator, measured percentage, and sampling intervals
 when representative, using the same table/chart style as existing distributions.
 Example percentages are never substituted for collected results.

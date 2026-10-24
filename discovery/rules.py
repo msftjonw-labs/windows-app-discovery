@@ -2,7 +2,7 @@
 
 import re
 
-RULESET_VERSION = "pilot-4"
+RULESET_VERSION = "pilot-5"
 OS_TARGETS = {"Windows", "Linux", "Android", "iOS", "macOS", "BSD"}
 
 # These are indicators, not proofs of runtime behavior or supported platforms.
@@ -128,7 +128,7 @@ EXTENSIONS = {
     ".html", ".htm", ".css", ".scss", ".sass", ".vue", ".svelte", ".astro", ".mdx",
     ".sh", ".bash", ".zsh", ".ps1", ".psm1", ".psd1", ".nu", ".bat", ".cmd",
     ".tf", ".hcl", ".bicep", ".sol", ".php", ".rb", ".ex", ".exs", ".ino",
-    ".pyw", ".jsonc",
+    ".pyw", ".jsonc", ".ipynb",
 }
 EXTENSIONLESS_NAMES = {"dockerfile", "containerfile", "makefile", "gemfile", "rakefile"}
 JSON_MANIFEST = re.compile(

@@ -31,7 +31,9 @@ SECTIONS = (
      "Share of complete repository scans with collected project findings, including libraries/tools and non-Windows "
      "PowerShell. Each repository counts once per category across its projects. Categories overlap: Windows desktop "
      "app includes Windows Forms, WPF, WinUI, and UWP; shares need not sum to 100%. Older inventories without project "
-     "findings are excluded. Static indicators do not prove executable or runtime behavior."),
+     "findings are excluded. Types are identified from source patterns and project metadata, not inferred from OS "
+     "or language. Repositories without sufficient type evidence remain in the denominator and are reported in "
+     "the classification coverage note, not as application types. Static indicators do not prove executable or runtime behavior."),
     ("application_types", "Windows application types", "Complete Windows application scans; types can overlap."),
     ("components", "Windows component adoption", "Complete Windows application scans; components overlap."),
     ("candidate_components", "Exploratory: all Windows candidates", "Includes libraries/tools; not an application metric."),
@@ -90,25 +92,6 @@ def distribution_table(rows, confidence):
     return f"<table>{head}{''.join(body)}</table>"
 
 
-def unknown_project_platform_rows(rows):
-    if not rows:
-        return []
-    denominator = rows[0]["denominator"]
-    if not denominator:
-        return []
-    visible = [row for row in rows if row["count"] / denominator * 100 > 30]
-    remainder = denominator - sum(row["count"] for row in visible)
-    result = [
-        {"label": row["label"], "count": row["count"], "denominator": denominator,
-         "percent": round(row["count"] / denominator * 100, 2)}
-        for row in visible
-    ]
-    if remainder:
-        result.append({"label": "Others", "count": remainder, "denominator": denominator,
-                       "percent": round(remainder / denominator * 100, 2)})
-    return result
-
-
 def build_html(report, pages_url=None):
     metrics, coverage, window = report["metrics"], report["coverage"], report["window"]
     confidence = metrics.get("confidence_level")
@@ -163,12 +146,10 @@ def build_html(report, pages_url=None):
             parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
         else:
             parts.append(distribution_table(metrics.get(key), confidence if representative else None))
-            if key == "project_types" and "unknown_project_platforms" in metrics:
-                rows = unknown_project_platform_rows(metrics["unknown_project_platforms"])
-                if rows:
-                    parts.append("<h3>Unknown / no findings by primary platform</h3>")
-                    parts.append('<p class="muted">Platforms above 30% are listed separately; the rest are grouped as Others.</p>')
-                    parts.append(distribution_table(rows, None))
+            if key == "project_types" and "project_types_unclassified" in metrics:
+                parts.append(f'<p class="muted">Classification coverage: {metrics["project_types_unclassified"]} '
+                             'repositories have insufficient application-type evidence in the scanned source. '
+                             'They remain in the denominator but are not assigned an application type.</p>')
     rows = "".join(
         f"<tr><td>{text(r['name'])}</td><td>{text(r['status'])}</td><td>{text(r.get('primary_language'))}</td>"
         f"<td>{text(r.get('primary_platform'))}</td><td>{text(r.get('primary_framework'))}</td>"

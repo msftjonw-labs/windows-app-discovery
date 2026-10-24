@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from discovery.report_pdf import EXCLUSIVE, ROOT, SECTIONS, number, unknown_project_platform_rows
+from discovery.report_pdf import EXCLUSIVE, ROOT, SECTIONS, number
 
 
 def text(value):
@@ -96,16 +96,10 @@ def build_markdown(report):
                         f"{text(number(row.get('ci_high'), '%'))} |") if confidence else ""
             lines.append(f"| {text(row['label'])} | {row['count']} / {row['denominator']} | "
                          f"{text(number(row['percent'], '%'))} |{interval}")
-        if key == "project_types" and "unknown_project_platforms" in metrics:
-            unknown_rows = unknown_project_platform_rows(metrics["unknown_project_platforms"])
-            if unknown_rows:
-                lines.extend(["", "### Unknown / no findings by primary platform", "",
-                              "Platforms above 30% are listed separately; the rest are grouped as Others.", "",
-                              "| Platform | Count / denominator | Share |",
-                              "| --- | ---: | ---: |"])
-                for row in unknown_rows:
-                    lines.append(f"| {text(row['label'])} | {row['count']} / {row['denominator']} | "
-                                 f"{text(number(row['percent'], '%'))} |")
+        if key == "project_types" and "project_types_unclassified" in metrics:
+            lines.extend(["", f"Classification coverage: {metrics['project_types_unclassified']} repositories have "
+                          "insufficient application-type evidence in the scanned source. They remain in the "
+                          "denominator but are not assigned an application type."])
     lines.extend(["", "## Sampled repositories", "",
                   "| Repository | Scan | Language | Platform | Framework | Windows app types | Components |",
                   "| --- | --- | --- | --- | --- | --- | --- |"])
