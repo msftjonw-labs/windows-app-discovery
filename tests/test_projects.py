@@ -25,6 +25,64 @@ def repository():
 
 
 class ProjectTests(unittest.TestCase):
+    def test_application_types_use_source_evidence_and_preserve_project_scope(self):
+        result = projects([
+            ("web/package.json", '{"dependencies":{"react-dom":"1","express":"1"}}'),
+            ("cli/pyproject.toml", '[project.scripts]\nhello = "hello:main"'),
+            ("lib/Library.csproj", "<Project><OutputType>Library</OutputType></Project>"),
+            ("api/Api.csproj", '<Project Sdk="Microsoft.NET.Sdk.Web"/>'),
+            ("infra/main.tf", 'resource "example" "main" {}'),
+            ("scripts/run.sh", "#!/bin/sh\necho hello"),
+            ("analysis/run.ipynb", '{"cells": []}'),
+        ])
+        by_path = {project["path"]: project for project in result}
+        self.assertIn("Web frontend", by_path["web/package.json"]["labels"])
+        self.assertIn("Backend / API", by_path["web/package.json"]["labels"])
+        self.assertIn("Command-line tool", by_path["cli/pyproject.toml"]["labels"])
+        self.assertIn("Library / SDK", by_path["lib/Library.csproj"]["labels"])
+        self.assertIn("Backend / API", by_path["api/Api.csproj"]["labels"])
+        self.assertNotIn("Web frontend", by_path["cli/pyproject.toml"]["labels"])
+        for project in result:
+            for item in project["evidence"]:
+                self.assertIn(item["path"], project["files"])
+                self.assertGreaterEqual(item["line"], 1)
+
+    def test_application_rules_do_not_infer_type_from_runtime_or_os(self):
+        result = projects([
+            ("App.csproj", "<Project><TargetFramework>net8.0-windows</TargetFramework></Project>"),
+            ("package.json", '{"dependencies":{"typescript":"1"}}'),
+            ("script.py", "import os\nvalue = 1"),
+        ])
+        from discovery.projects import APPLICATION_TYPES
+        self.assertFalse(any(APPLICATION_TYPES.intersection(project["labels"]) for project in result))
+
+    def test_application_rule_examples(self):
+        examples = [
+            ("index.html", "<html><body>Hello</body></html>", "Web frontend"),
+            ("server.py", "app = FastAPI()", "Backend / API"),
+            ("cli.py", "parser = argparse.ArgumentParser()", "Command-line tool"),
+            ("tool.py", 'if __name__ == "__main__":\n    run()', "Python application / script"),
+            ("main.rs", "fn main() {}", "Executable application"),
+            ("Cargo.toml", "[lib]\npath = 'src/lib.rs'", "Library / SDK"),
+            ("Makefile", "all:\n\techo hello", "Build automation"),
+            ("Dockerfile", "FROM python:3", "Container / orchestration configuration"),
+            ("compose.yaml", "services:\n  api: {}", "Container / orchestration configuration"),
+            ("Main.swift", "import UIKit", "Mobile app"),
+            ("App.swift", "import AppKit", "macOS app"),
+            ("main.c", "CreateWindowExW();", "Native desktop app"),
+            ("main.ino", "#include <Arduino.h>", "Embedded / firmware"),
+            ("contract.sol", "pragma solidity ^0.8.0;", "Smart contract"),
+        ]
+        for path, source, label in examples:
+            with self.subTest(path=path):
+                self.assertIn(label, projects([(path, source)])[0]["labels"])
+        self.assertIsNone(pilot.source_exclusion(Path("analysis.ipynb")))
+
+    def test_invalid_application_metadata_is_reported(self):
+        for path, source in [("package.json", "{"), ("pyproject.toml", "[project")]:
+            with self.subTest(path=path), self.assertLogs("discovery.projects", level="WARNING"):
+                projects([(path, source)])
+
     def test_mixed_projects_do_not_leak_frameworks_or_service_labels(self):
         result = projects([
             ("desktop/App.csproj", "<Project><PropertyGroup><UseWPF>true</UseWPF><OutputType>WinExe</OutputType></PropertyGroup></Project>"),

@@ -97,25 +97,14 @@ class MarkdownReportTests(unittest.TestCase):
              "ci_low": 11.76, "ci_high": 76.93},
             {"label": "PowerShell", "count": 1, "denominator": 5, "percent": 20.0,
              "ci_low": 3.62, "ci_high": 62.45}]
-        report["metrics"]["unknown_project_platforms"] = [
-            {"label": "Web", "count": 3, "denominator": 8, "percent": 37.5},
-            {"label": "Windows", "count": 2, "denominator": 8, "percent": 25.0},
-            {"label": "Linux", "count": 2, "denominator": 8, "percent": 25.0},
-            {"label": "Unknown", "count": 1, "denominator": 8, "percent": 12.5},
-        ]
         markdown = report_markdown.build_markdown(report)
         section = markdown.split("## Project application and automation types")[1].split("## Windows application types")[0]
         self.assertIn("categories", section.lower())
         self.assertIn("Categories overlap", section)
         self.assertIn("| Windows desktop app | 2 / 5 | 40.0% | 11.76–76.93% |", section)
         self.assertIn("| PowerShell | 1 / 5 | 20.0%", section)
-        self.assertIn("| Web | 3 / 8 | 37.5% |", section)
-        self.assertIn("| Others | 5 / 8 | 62.5% |", section)
-        self.assertNotIn("| Windows | 2 / 8 |", section)
         html = build_html(report)
         self.assertIn('Windows desktop app</td><td class="num">2/5</td><td class="num">40.0%</td>', html)
-        self.assertIn("Unknown / no findings by primary platform", html)
-        self.assertIn("Others</td><td class=\"num\">5/8</td>", html)
         svg = report_markdown.chart_svg(report["metrics"]["project_types"], "Project types")
         self.assertIn("PowerShell", svg)
         self.assertIn("20.0%", svg)
@@ -136,17 +125,37 @@ class MarkdownReportTests(unittest.TestCase):
             self.assertNotIn("Not collected by this report", result)
             self.assertIn("N/A — no eligible repositories.", result)
 
-    def test_unknown_project_platform_breakdown_uses_strict_thirty_percent_cutoff(self):
-        rows = [
-            {"label": "Web", "count": 3, "denominator": 10, "percent": 30.0},
-            {"label": "Windows", "count": 4, "denominator": 10, "percent": 40.0},
-            {"label": "Other platform", "count": 3, "denominator": 10, "percent": 30.0},
+    def test_application_types_appear_in_main_table_without_platform_inference(self):
+        from discovery.pilot import aggregate
+        from tests.test_pilot import ClassificationTests
+
+        records = [
+            ClassificationTests.project_record([{"labels": ["Web frontend"]}], platforms=["Web"]),
+            ClassificationTests.project_record([{"labels": ["Backend / API", "Command-line tool"]}]),
+            ClassificationTests.project_record([{"labels": ["Library / SDK"]}]),
+            ClassificationTests.project_record([{"labels": ["UWP"]}], platforms=["Windows"]),
+            ClassificationTests.project_record([], platforms=["Linux"]),
         ]
-        self.assertEqual(
-            report_markdown.unknown_project_platform_rows(rows),
-            [{"label": "Windows", "count": 4, "denominator": 10, "percent": 40.0},
-             {"label": "Others", "count": 6, "denominator": 10, "percent": 60.0}],
-        )
+        report = sample_report()
+        report["metrics"] = aggregate(records, confidence=0.95)
+        report["repositories"] = []
+        rows = report["metrics"]["project_types"]
+        self.assertFalse(any("Unknown" in row["label"] for row in rows))
+        self.assertTrue(all(row["denominator"] == 5 for row in rows))
+        self.assertEqual(report["metrics"]["project_types_unclassified"], 1)
+        for render in (report_markdown.build_markdown, build_html):
+            section = render(report).split("Project application and automation types", 1)[1].split(
+                "Windows application types")[0]
+            for label in ["Web frontend", "Backend / API", "Command-line tool", "Library / SDK", "UWP app"]:
+                self.assertIn(label, section)
+            self.assertIn("1 repositories have insufficient application-type evidence", section)
+            self.assertNotIn("Others", section)
+            self.assertNotIn("### Unknown", section)
+            self.assertNotIn("<h3>", section)
+            self.assertNotIn("30%", section)
+        svg = report_markdown.chart_svg(rows, "Project types")
+        self.assertIn("Web frontend", svg)
+        self.assertIn("20.0%", svg)
 
     def test_cli_accepts_input_and_output(self):
         with tempfile.TemporaryDirectory() as temporary:

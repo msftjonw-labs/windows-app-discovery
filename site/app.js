@@ -269,6 +269,9 @@ async function load() {
     for (const field of ["platforms", "languages", "frameworks", "project_types", "application_types", "components", "candidate_components"]) {
       bars(field, metrics[field]);
     }
+    if (metrics.project_types_unclassified !== undefined) {
+      $("project-types-coverage").textContent = `Classification coverage: ${metrics.project_types_unclassified} repositories have insufficient application-type evidence in the scanned source. They remain in the denominator but are not assigned an application type.`;
+    }
     $("versions").textContent = `Ruleset ${report.ruleset_version}; Microsoft Application Inspector ${report.inspector_version}. Cached scans retain their original scan timestamps.`;
     $("filter").addEventListener("input", renderRows);
     $("scan-status").addEventListener("change", renderRows);

@@ -109,7 +109,6 @@ Share of complete repository scans with collected project findings, including li
 
 | Category | Count / denominator | Share | CI |
 | --- | ---: | ---: | --- |
-| Unknown / no findings | 81 / 95 | 85.26% | 76.77–91.01% |
 | PowerShell | 11 / 95 | 11.58% | 6.59–19.55% |
 | Cross-platform: Electron | 2 / 95 | 2.11% | 0.58–7.35% |
 | WPF app | 2 / 95 | 2.11% | 0.58–7.35% |
@@ -121,14 +120,10 @@ Share of complete repository scans with collected project findings, including li
 | WinUI app | 0 / 95 | 0.0% | 0.0–3.89% |
 | Windows service | 0 / 95 | 0.0% | 0.0–3.89% |
 
-### Unknown / no findings by primary platform
-
-Platforms above 30% are listed separately; the rest are grouped as Others.
-
-| Platform | Count / denominator | Share |
-| --- | ---: | ---: |
-| Web | 35 / 81 | 43.21% |
-| Others | 46 / 81 | 56.79% |
+Classification coverage: 81 repositories had no recognized application type under
+the original `pilot-4` rules. They remain in the denominator. The broader
+source-based application and automation classification requires a fresh scan with
+`pilot-5`; platform labels alone cannot establish these application types.
 
 ## Windows application types
 

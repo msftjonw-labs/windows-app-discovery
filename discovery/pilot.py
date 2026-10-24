@@ -23,7 +23,7 @@ import zipfile
 
 from discovery import gharchive
 from discovery import semgrep as semgrep_engine
-from discovery.projects import classify_projects
+from discovery.projects import APPLICATION_TYPES, classify_projects
 from discovery.rules import (
     COMPILED, COMPILED_FILE_RULES, COMPONENTS, EXCLUDED_DIRS, EXTENSIONS,
     EXTENSIONLESS_NAMES, GENERATED_NAMES, JSON_MANIFEST, OS_TARGETS, RULES, RULESET_VERSION,
@@ -748,20 +748,23 @@ def aggregate(records, confidence=None):
         "Service management": "Service management",
     }
     inventories = []
-    unknown_project_platforms = []
+    unclassified = 0
     for record in complete:
         if not isinstance(record.get("projects"), list):
             continue
         labels = {label for project in record["projects"] for label in project.get("labels", [])}
         detected = {project_labels[label] for label in labels if label in project_labels}
+        detected.update(labels & APPLICATION_TYPES)
+        if "Executable" in labels:
+            detected.add("Executable application")
         if labels & {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP"}:
             detected.add("Windows desktop app")
         if any(label.startswith("PowerShell") for label in labels):
             detected.add("PowerShell")
         detected.update(label for label in labels if label.startswith("Cross-platform:"))
-        inventories.append({"project_types": sorted(detected) or ["Unknown / no findings"]})
+        inventories.append({"project_types": sorted(detected)})
         if not detected:
-            unknown_project_platforms.append({"primary_platform": record.get("primary_platform", "Unknown")})
+            unclassified += 1
     return {
         "selected": len(records), "successful": len(complete),
         "partial": sum(r["status"] == "partial" for r in records),
@@ -778,12 +781,10 @@ def aggregate(records, confidence=None):
         "application_types": distribution(applications, "application_types", z=z),
         "project_types": distribution(
             inventories, "project_types",
-            [*project_labels.values(), "Windows desktop app", "PowerShell", "Unknown / no findings"],
+            [*project_labels.values(), "Windows desktop app", "PowerShell"],
             z=z,
         ),
-        "unknown_project_platforms": distribution(
-            unknown_project_platforms, "primary_platform", exclusive=True,
-        ),
+        "project_types_unclassified": unclassified,
         "components": distribution(applications, "components", COMPONENTS, z=z),
         "candidate_components": distribution(windows, "components", COMPONENTS, z=z),
     }
