@@ -248,6 +248,78 @@ def sample_report(representative=True):
 
 
 class PdfReportTests(unittest.TestCase):
+    def test_repository_table_matches_windows_candidates_including_multi_os_and_libraries(self):
+        report = sample_report()
+        report["repositories"] = [
+            {"name": "o/windows-app", "status": "success", "platforms": ["Windows"]},
+            {"name": "o/multi-os-library", "status": "success", "platforms": ["Linux", "Windows"],
+             "primary_platform": "Multiple OS (incl. Windows)", "purpose": "Library"},
+            {"name": "o/linux-only", "status": "success", "platforms": ["Linux"]},
+            {"name": "o/partial-windows", "status": "partial", "platforms": ["Windows"]},
+            {"name": "o/failed-windows", "status": "failed", "platforms": ["Windows"]},
+            {"name": "o/no-source", "status": "not_applicable", "platforms": ["Windows"]},
+            {"name": "o/unknown", "status": "success"},
+        ]
+        report["metrics"]["windows_repositories"] = 2
+        html = report_pdf.build_html(report)
+        self.assertIn("Windows candidates", html)
+        self.assertIn("<strong>2</strong>", html)
+        table = html.split("<h2>Identified Windows repositories</h2>")[1].split("</table>")[0]
+        self.assertEqual(table.count("<tbody>"), 1)
+        self.assertEqual(table.count("<tr>") - 1, report["metrics"]["windows_repositories"])
+        self.assertIn("o/windows-app", table)
+        self.assertIn("o/multi-os-library", table)
+        for name in ("linux-only", "partial-windows", "failed-windows", "no-source", "unknown"):
+            self.assertNotIn(f"o/{name}", table)
+        self.assertNotIn("<h2>Sampled repositories</h2>", html)
+
+    def test_repository_analysis_renders_grounded_summaries_and_escapes_content(self):
+        report = sample_report()
+        report["repositories"][0]["analysis"] = {
+            "status": "success", "problem": "Solves <b>tasks</b>",
+            "development": "Experimental & maintained", "community": "Users report <script>bugs</script>",
+            "problem_sources": ["S1"], "development_sources": ["S2"],
+            "community_sources": ["S3", "S4"],
+            "sources": [
+                {"id": "S1", "kind": "readme", "url": "https://github.com/o/r/blob/sha/README.md"},
+                {"id": "S2", "kind": "repository_status", "url": "https://github.com/o/r"},
+                {"id": "S3", "kind": "comment", "url": "https://github.com/o/r/issues/1#issuecomment-1"},
+                {"id": "S4", "kind": "comment", "url": 'javascript:alert("x")'},
+            ],
+            "window": report["window"], "model": "test-model", "generated_at": report["generated_at"],
+            "limitations": "Bounded sample <not all feedback>",
+        }
+        html = report_pdf.build_html(report)
+        self.assertIn(">Repository analysis</th>", html)
+        for expected in ("Problems solved", "Development status", "Latest community feedback",
+                         "Solves &lt;b&gt;tasks&lt;/b&gt;", "Experimental &amp; maintained",
+                         "Users report &lt;script&gt;bugs&lt;/script&gt;",
+                         'href="https://github.com/o/r/blob/sha/README.md"',
+                         'href="https://github.com/o/r/issues/1#issuecomment-1"',
+                         "Feedback window (UTC)", "test-model", "Bounded sample &lt;not all feedback&gt;"):
+            self.assertIn(expected, html)
+        self.assertNotIn("javascript:", html)
+        self.assertNotIn("<script>", html)
+
+    def test_missing_failed_and_legacy_analysis_are_explicit(self):
+        self.assertIn("Analysis not collected", report_pdf.repository_analysis({}))
+        self.assertIn("Analysis unavailable: API &lt;failed&gt;",
+                      report_pdf.repository_analysis({"analysis": {"status": "failed", "error": "API <failed>"}}))
+        legacy = report_pdf.repository_analysis({"analysis": {
+            "status": "success", "problem": "Automation", "community": "No feedback"}})
+        self.assertIn("Automation", legacy)
+        self.assertIn("Development status", legacy)
+        self.assertIn("Not collected. Rerun the AI analysis step.", legacy)
+
+    def test_empty_windows_population_is_explicit(self):
+        report = sample_report()
+        report["repositories"][0]["platforms"] = ["Linux"]
+        report["metrics"]["windows_repositories"] = 0
+        html = report_pdf.build_html(report)
+        self.assertIn("<h2>Identified Windows repositories</h2>", html)
+        self.assertIn("No Windows candidates identified.", html)
+        self.assertNotIn("o/&lt;b&gt;r&lt;/b&gt;", html)
+
     def test_html_escapes_untrusted_labels_and_shows_intervals(self):
         html = report_pdf.build_html(sample_report(), "https://example.github.io/x/")
         self.assertNotIn("<script>x</script>", html)

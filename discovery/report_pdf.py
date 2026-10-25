@@ -41,6 +41,7 @@ SECTIONS = (
 EXCLUSIVE = {"platforms", "languages", "frameworks"}
 CSS = """
 @page { size: Letter; margin: 14mm 12mm; }
+@page windows-repositories { size: Letter landscape; margin: 14mm 12mm; }
 body { font: 10pt/1.4 "Segoe UI", Arial, sans-serif; color: #17202a; }
 h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 13pt; margin: 18px 0 6px; border-bottom: 1px solid #ccd; }
 .muted { color: #5b6773; } .notice { background: #f3f6fb; border-left: 4px solid #2f6fdd; padding: 6px 10px; }
@@ -57,7 +58,12 @@ th { background: #f5f6f8; } tr { page-break-inside: avoid; } td.num { text-align
 .bar { background: #e6ebf2; height: 8px; width: 120px; position: relative; }
 .fill { background: #2f6fdd; height: 8px; position: absolute; left: 0; top: 0; }
 .ci { border: 1px solid #10294f; height: 4px; position: absolute; top: 1px; border-width: 0 1px; }
-.repos td { font-size: 8pt; }
+.windows-repositories { page: windows-repositories; }
+.repos { table-layout: fixed; }
+.repos th, .repos td { font-size: 8pt; overflow-wrap: anywhere; }
+.repos .repository-analysis { width: 40%; }
+.repos p { margin: 2px 0 5px; }
+.repos .sources { font-size: 7pt; }
 """
 
 
@@ -90,6 +96,36 @@ def distribution_table(rows, confidence):
                     f"<td class=\"num\">{number(row['percent'], '%')}</td>{interval}"
                     f'<td><div class="bar">{bar}</div></td></tr>')
     return f"<table>{head}{''.join(body)}</table>"
+
+
+def repository_analysis(repository):
+    analysis = repository.get("analysis")
+    if not analysis or analysis.get("status") != "success":
+        message = (f"Analysis unavailable: {analysis.get('error', 'Unknown error')}"
+                   if analysis and analysis.get("status") == "failed"
+                   else "Analysis not collected. Run the AI analysis step to populate this column.")
+        return f'<p class="muted">{text(message)}</p>'
+    parts = []
+    sources = {source["id"]: source for source in analysis.get("sources", [])}
+    for field, label in (("problem", "Problems solved"), ("development", "Development status"),
+                         ("community", "Latest community feedback")):
+        summary = analysis.get(field) or "Not collected. Rerun the AI analysis step."
+        parts.append(f"<strong>{label}</strong><p>{text(summary)}</p>")
+        links = []
+        for source_id in analysis.get(f"{field}_sources", []):
+            source = sources.get(source_id)
+            if source and source.get("url", "").startswith("https://github.com/"):
+                links.append(f'<a href="{text(source["url"])}">{text(source_id)}: {text(source["kind"])}</a>')
+        if links:
+            parts.append(f'<p class="sources">{"; ".join(links)}</p>')
+    if analysis.get("window"):
+        parts.append(f'<p class="muted">Feedback window (UTC): {text(analysis["window"]["start"])} '
+                     f'→ {text(analysis["window"]["end"])}.</p>')
+    parts.append(f'<p class="muted">AI-generated at {text(analysis.get("generated_at"))} '
+                 f'with {text(analysis.get("model"))}; verify against sources.</p>')
+    if analysis.get("limitations"):
+        parts.append(f'<p class="muted">{text(analysis["limitations"])}</p>')
+    return "".join(parts)
 
 
 def build_html(report, pages_url=None):
@@ -153,13 +189,22 @@ def build_html(report, pages_url=None):
     rows = "".join(
         f"<tr><td>{text(r['name'])}</td><td>{text(r['status'])}</td><td>{text(r.get('primary_language'))}</td>"
         f"<td>{text(r.get('primary_platform'))}</td><td>{text(r.get('primary_framework'))}</td>"
-        f"<td>{text(r.get('application_types'))}</td><td>{text(r.get('components'))}</td></tr>"
-        for r in report["repositories"])
-    parts.append("<h2>Sampled repositories</h2><table class=\"repos\"><tr><th>Repository</th><th>Scan</th><th>Language</th>"
-                 f"<th>Platform</th><th>Framework</th><th>Windows app type</th><th>Windows components</th></tr>{rows}</table>")
+        f"<td>{text(r.get('application_types'))}</td><td>{text(r.get('components'))}</td>"
+        f'<td class="repository-analysis">{repository_analysis(r)}</td></tr>'
+        for r in report["repositories"]
+        if r["status"] == "success" and "Windows" in r.get("platforms", []))
+    parts.append('<section class="windows-repositories"><h2>Identified Windows repositories</h2>'
+                 "<p class=\"muted\">Windows candidates: complete scans with a Windows platform signal, including "
+                 "libraries/tools and multi-OS repositories. Community feedback is limited to the report window "
+                 "and the collected sample, not a live or community-wide assessment.</p>"
+                 "<table class=\"repos\"><thead><tr><th>Repository</th><th>Scan</th><th>Language</th>"
+                 "<th>Platform</th><th>Framework</th><th>Windows app type</th><th>Windows components</th>"
+                 f'<th class="repository-analysis">Repository analysis</th></tr></thead><tbody>{rows}</tbody></table>')
+    if not rows:
+        parts.append('<p class="muted">No Windows candidates identified.</p>')
     parts.append("<p class=\"muted\">Static, source-level evidence only; detection of a pattern is not proof of runtime use, "
                  "and absence of a match is not proof of non-use. Partial and failed scans are nonresponse and are excluded "
-                 "from distributions, which can bias estimates if they differ systematically.</p></body></html>")
+                 "from distributions, which can bias estimates if they differ systematically.</p></section></body></html>")
     return "".join(parts)
 
 

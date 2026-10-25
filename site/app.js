@@ -123,6 +123,9 @@ function analysisCell(repo) {
   };
   cell.append(element("strong", "Problems solved"), element("p", analysis.problem),
     citations(analysis.problem_sources),
+    element("strong", "Development status"),
+    element("p", analysis.development || "Not collected. Rerun the AI analysis step."),
+    citations(analysis.development_sources || []),
     element("strong", "Community response"),
     element("p", `${analysis.issues_opened} issues opened in the report window (excluding PRs). Feedback sample: ${analysis.issues_sampled} issues, ${analysis.comments_sampled} human comments.`, "muted"),
     element("p", analysis.community), citations(analysis.community_sources));
