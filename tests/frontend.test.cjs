@@ -217,16 +217,18 @@ test("CSV preserves structured project labels and evidence instead of object str
   assert.ok(!csv.includes("[object Object]"));
 });
 
-test("Analysis shows problems, measured issue counts, community feedback and source links", () => {
+test("Analysis shows problems, development status, measured issue counts, feedback and source links", () => {
   const run = app();
   const analysis = {
     status: "success", problem: "<img src=x> Automates desktop tasks.",
+    development: "Experimental <not stable>; archive status is false.",
     community: "Sampled comments report startup problems, not community-wide dissatisfaction.",
     issues_opened: 15, issues_sampled: 2, comments_sampled: 3,
-    problem_sources: ["S1"], community_sources: ["S2"],
+    problem_sources: ["S1"], development_sources: ["S3"], community_sources: ["S2"],
     sources: [
       {id: "S1", kind: "readme", url: "https://github.com/o/r/blob/abc/README.md"},
       {id: "S2", kind: "comment", url: "https://github.com/o/r/issues/1#issuecomment-2"},
+      {id: "S3", kind: "repository_status", url: "https://github.com/o/r"},
     ],
     window: {start: "2026-10-01T00:00:00Z", end: "2026-10-31T00:00:00Z"},
     limitations: "Bounded sample, not community-wide sentiment.", model: "gpt-4o", generated_at: "now",
@@ -235,13 +237,20 @@ test("Analysis shows problems, measured issue counts, community feedback and sou
   assert.equal(run("cell.children[0].textContent"), "Problems solved");
   assert.equal(run("cell.children[1].textContent"), analysis.problem);
   assert.equal(run("cell.children[2].children[0].href"), analysis.sources[0].url);
-  assert.equal(run("cell.children[3].textContent"), "Community response");
-  assert.equal(run("cell.children[4].textContent"),
+  assert.equal(run("cell.children[3].textContent"), "Development status");
+  assert.equal(run("cell.children[4].textContent"), analysis.development);
+  assert.equal(run("cell.children[5].children[0].href"), analysis.sources[2].url);
+  assert.equal(run("cell.children[6].textContent"), "Community response");
+  assert.equal(run("cell.children[7].textContent"),
     "15 issues opened in the report window (excluding PRs). Feedback sample: 2 issues, 3 human comments.");
-  assert.equal(run("cell.children[5].textContent"), analysis.community);
-  assert.equal(run("cell.children[6].children[0].href"), analysis.sources[1].url);
-  assert.equal(run("cell.children[7].tag"), "details");
-  assert.match(run("cell.children[7].children[2].textContent"), /Bounded sample/);
+  assert.equal(run("cell.children[8].textContent"), analysis.community);
+  assert.equal(run("cell.children[9].children[0].href"), analysis.sources[1].url);
+  assert.equal(run("cell.children[10].tag"), "details");
+  assert.match(run("cell.children[10].children[2].textContent"), /Bounded sample/);
+  delete analysis.development;
+  delete analysis.development_sources;
+  run(`cell = analysisCell({analysis: ${JSON.stringify(analysis)}})`);
+  assert.equal(run("cell.children[4].textContent"), "Not collected. Rerun the AI analysis step.");
 });
 
 test("Analysis explicitly distinguishes uncollected and failed summaries and collapses scan evidence", () => {

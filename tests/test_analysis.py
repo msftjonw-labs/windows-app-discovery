@@ -29,7 +29,8 @@ def issue(when=START, comments=None):
 
 def github_data(issues):
     return {"repository": {"isPrivate": False, "description": "Desktop task automation",
-                           "url": "https://github.com/o/r"},
+                           "url": "https://github.com/o/r", "isArchived": False,
+                           "pushedAt": stamp(START), "latestRelease": None},
             "recent": {"issueCount": 30, "pageInfo": {"hasNextPage": True}, "nodes": issues},
             "opened": {"issueCount": 15}}
 
@@ -40,7 +41,8 @@ def candidate(**extra):
 
 def response(summary=None, finish="stop"):
     value = summary or {"problem": "Automates desktop tasks.", "community": "Users report startup friction.",
-                        "problem_sources": ["S1"], "community_sources": ["S2"]}
+                        "development": "Development stage is undocumented.",
+                        "problem_sources": ["S1"], "development_sources": ["S1"], "community_sources": ["S2"]}
     handle = mock.MagicMock()
     handle.__enter__.return_value.read.return_value = json.dumps({
         "choices": [{"finish_reason": finish, "message": {"content": json.dumps(value)}}]
@@ -61,7 +63,12 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["issues_sampled"], 1)
         self.assertEqual(evidence["comments_sampled"], 1)
         self.assertEqual([source["kind"] for source in evidence["sources"]],
-                         ["description", "readme", "issue", "comment"])
+                         ["description", "readme", "repository_status", "issue", "comment"])
+        status = json.loads(evidence["sources"][2]["text"])
+        self.assertFalse(status["archived"])
+        self.assertEqual(status["last_push"], stamp(START))
+        self.assertIsNone(status["latest_release"])
+        self.assertIn("collected_at", status)
         self.assertIn("created:" + stamp(START) + ".." + stamp(END - timedelta(seconds=1)),
                       graphql.call_args.kwargs["opened"])
         self.assertEqual(graphql.call_args.kwargs["opened"].count("created:"), 1)
@@ -79,9 +86,22 @@ class EvidenceTests(unittest.TestCase):
         ])
         evidence = analysis.collect_evidence(candidate(), START, END)
         self.assertEqual(evidence["issues_sampled"], 1)
-        self.assertEqual(evidence["sources"][1]["kind"], "issue_context")
-        self.assertEqual(len(evidence["sources"][2]["text"]), analysis.COMMENT_LENGTH)
-        self.assertTrue(evidence["sources"][2]["truncated"])
+        self.assertEqual(evidence["sources"][2]["kind"], "issue_context")
+        self.assertEqual(len(evidence["sources"][3]["text"]), analysis.COMMENT_LENGTH)
+        self.assertTrue(evidence["sources"][3]["truncated"])
+
+    @mock.patch.object(analysis, "readme", return_value=None)
+    @mock.patch.object(analysis, "graphql")
+    def test_archived_and_release_metadata_are_grounded_status_evidence(self, graphql, _):
+        data = github_data([])
+        data["repository"].update(isArchived=True, latestRelease={
+            "tagName": "v1.2", "publishedAt": stamp(START)})
+        graphql.return_value = data
+        evidence = analysis.collect_evidence(candidate(), START, END)
+        status = json.loads(evidence["sources"][1]["text"])
+        self.assertTrue(status["archived"])
+        self.assertEqual(status["latest_release"]["tagName"], "v1.2")
+        self.assertIn("does not establish active maintenance", evidence["limitations"])
 
     @mock.patch.object(analysis, "readme")
     @mock.patch.object(analysis, "graphql")
@@ -118,6 +138,7 @@ class SummaryTests(unittest.TestCase):
         self.assertTrue(payload["response_format"]["json_schema"]["strict"])
         properties = payload["response_format"]["json_schema"]["schema"]["properties"]
         self.assertEqual(properties["problem_sources"]["items"]["enum"], ["S1", "S2"])
+        self.assertEqual(properties["development_sources"]["items"]["enum"], ["S1"])
         self.assertEqual(properties["community_sources"]["items"]["enum"], ["S2"])
         self.assertEqual(properties["community_sources"]["minItems"], 1)
         self.assertIn("untrusted", payload["messages"][0]["content"])
@@ -129,6 +150,7 @@ class SummaryTests(unittest.TestCase):
             with self.subTest(citations=citations):
                 urlopen.return_value = response({
                     "problem": "Automation", "community": "Startup friction",
+                    "development": "Undocumented stage", "development_sources": ["S1"],
                     "problem_sources": ["S1"], "community_sources": citations})
                 with self.assertRaisesRegex(PilotError, "citations"):
                     analysis.summarize(self.evidence, "key", "gpt-4o")
@@ -137,6 +159,7 @@ class SummaryTests(unittest.TestCase):
     def test_empty_feedback_requires_no_fabricated_citation(self, urlopen):
         urlopen.return_value = response({
             "problem": "Automation", "community": "Insufficient recent feedback",
+            "development": "Undocumented stage", "development_sources": ["S1"],
             "problem_sources": ["S1"], "community_sources": []})
         result = analysis.summarize({"sources": self.evidence["sources"][:1]}, "key", "gpt-4o")
         self.assertEqual(result["community_sources"], [])
@@ -151,6 +174,28 @@ class SummaryTests(unittest.TestCase):
         analysis.summarize(evidence, "key", "gpt-4o")
         properties = json.loads(urlopen.call_args.args[0].data)["response_format"]["json_schema"]["schema"]["properties"]
         self.assertEqual(properties["problem_sources"]["items"]["enum"], ["S1", "S2", "S3"])
+        self.assertEqual(properties["community_sources"]["items"]["enum"], ["S2"])
+
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_development_rejects_feedback_citations_and_empty_text(self, urlopen):
+        for development, ids in (("Maintained", ["S2"]), ("Maintained", []),
+                                 ("", ["S1"]), ("Maintained", ["invented"])):
+            with self.subTest(development=development, ids=ids):
+                urlopen.return_value = response({
+                    "problem": "Automation", "community": "Startup friction",
+                    "development": development, "development_sources": ids,
+                    "problem_sources": ["S1"], "community_sources": ["S2"]})
+                with self.assertRaisesRegex(PilotError, "development"):
+                    analysis.summarize(self.evidence, "key", "gpt-4o")
+
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_repository_status_is_eligible_for_development_not_feedback(self, urlopen):
+        urlopen.return_value = response()
+        evidence = {"sources": [*self.evidence["sources"],
+                                {"id": "S3", "kind": "repository_status", "text": "Archived"}]}
+        analysis.summarize(evidence, "key", "gpt-4o")
+        properties = json.loads(urlopen.call_args.args[0].data)["response_format"]["json_schema"]["schema"]["properties"]
+        self.assertEqual(properties["development_sources"]["items"]["enum"], ["S1", "S3"])
         self.assertEqual(properties["community_sources"]["items"]["enum"], ["S2"])
 
     @mock.patch.object(analysis.urllib.request, "urlopen")
@@ -180,11 +225,13 @@ class EnrichmentTests(unittest.TestCase):
         report = {"window": {"start": stamp(START), "end": stamp(END)}, "repositories": [
             candidate(), candidate(status="partial"), candidate(platforms=["Linux"])]}
         collect.return_value = {"sources": [{"id": "S1", "text": "excerpt", "url": "url", "kind": "readme"}]}
-        summarize.return_value = {"problem": "Automation", "community": "Insufficient evidence"}
+        summarize.return_value = {"problem": "Automation", "development": "Experimental",
+                                  "community": "Insufficient evidence"}
         analysis.enrich(report, "key", "gpt-4o")
         collect.assert_called_once()
         summarize.assert_called_once()
         self.assertEqual(report["repositories"][0]["analysis"]["status"], "success")
+        self.assertEqual(report["repositories"][0]["analysis"]["development"], "Experimental")
         self.assertNotIn("text", report["repositories"][0]["analysis"]["sources"][0])
         self.assertNotIn("analysis", report["repositories"][1])
 
@@ -203,7 +250,8 @@ class EnrichmentTests(unittest.TestCase):
     @mock.patch.object(analysis, "summarize")
     def test_command_persists_analysis_without_changing_metrics(self, summarize, collect):
         collect.return_value = {"sources": []}
-        summarize.return_value = {"problem": "Automation", "community": "Insufficient evidence"}
+        summarize.return_value = {"problem": "Automation", "development": "Experimental",
+                                  "community": "Insufficient evidence"}
         report = {"schema_version": 1, "window": {"start": stamp(START), "end": stamp(END)},
                   "metrics": {"windows_repositories": 1}, "repositories": [candidate()]}
         with tempfile.TemporaryDirectory() as directory:
@@ -214,4 +262,5 @@ class EnrichmentTests(unittest.TestCase):
             saved = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(saved["metrics"], report["metrics"])
             self.assertEqual(saved["repositories"][0]["analysis"]["status"], "success")
+            self.assertEqual(saved["repositories"][0]["analysis"]["development"], "Experimental")
             self.assertFalse(path.with_suffix(".tmp").exists())

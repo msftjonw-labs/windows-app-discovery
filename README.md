@@ -56,6 +56,15 @@ Missing configuration fails the step explicitly. Individual repository/API failu
 are logged and shown as unavailable analysis without changing scan results or metrics.
 Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
 Use `--report PATH` to enrich another report in place.
+The PDF's **Identified Windows repositories** table contains only Windows candidates
+(complete scans with a Windows platform signal, including libraries/tools and
+multi-OS repositories), matching the Windows candidates count at the start.
+Its **Repository analysis** column shows problems solved, development status, and
+the latest collected community feedback, with source links and analysis limitations.
+This table uses landscape pages to keep the analysis and classification columns readable.
+Missing or failed analysis is explicitly labeled; older analyses without development
+status require rerunning `discovery.analysis`. The sampled-repository count and
+the broader distribution denominators are unchanged.
 
 The first run downloads Application Inspector **1.10.2** into `.tools\inspector`
 and verifies the pinned Windows release's SHA-256. Later runs omit
@@ -327,7 +336,8 @@ The explorer shows only Windows candidates (complete scans with a Windows platfo
 signal), matching the Windows candidates tile, including source-retrieval method,
 Inspector incompleteness, and exclusion counts. Search and scan-status filters apply
 within that subset.
-The **Analysis** column explains the problems solved and summarizes community feedback
+The dashboard's **Analysis** and PDF's **Repository analysis** columns explain the
+problems solved, summarize development status, and summarize community feedback
 using OpenAI-generated text with source links. Counts are issues opened during the
 report's existing UTC window, excluding pull requests (bot-created issues are included
 in this count). Feedback uses only human issue openings/comments in that same window,
@@ -337,9 +347,15 @@ can still contain eligible comments, so the search has no upper update-time boun
 Recent activity can push relevant older issues/comments outside this sample, especially
 when enriching old reports. Issue count alone is never treated as sentiment or popularity;
 absent feedback is reported as insufficient evidence.
+Development status uses documentation plus GitHub archive status, last-push time,
+and latest-release metadata retrieved at analysis time. These are not historical
+window snapshots. A recent push or issue activity alone is not evidence of active
+maintenance, maturity, or abandonment; undocumented development stages are labeled
+as insufficient evidence.
 
 Only currently public repositories are analyzed. Public description, README at the
-scanned SHA, and issue/comment excerpts are sent to OpenAI: README up to 8,000 characters,
+scanned SHA, archive/last-push/latest-release metadata, and issue/comment excerpts
+are sent to OpenAI: README up to 8,000 characters,
 issue excerpts up to 800, comments up to 400. Descriptions and issue bodies reflect
 their retrieved versions, not historical window snapshots. The report publishes summary,
 counts, source URLs, model/time, and sampling limitations, not raw excerpts.
