@@ -128,7 +128,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/language_platforms.svg reports/windows_ci.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg report-history/report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg report-history/report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else
