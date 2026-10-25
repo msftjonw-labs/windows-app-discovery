@@ -89,13 +89,17 @@ def build_markdown(report):
         if not rows or all(row["denominator"] == 0 for row in rows):
             lines.append("N/A — no eligible repositories.")
             continue
-        lines.extend(["| Category | Count / denominator | Share |" + (" CI |" if confidence else ""),
-                      "| --- | ---: | ---: |" + (" --- |" if confidence else "")])
+        mixed = key == "language_platforms"
+        lines.extend(["| Category | Count / denominator | Share |" + (" CI |" if confidence else "")
+                      + (" Target platform distribution |" if mixed else ""),
+                      "| --- | ---: | ---: |" + (" --- |" if confidence else "") + (" --- |" if mixed else "")])
         for row in rows:
             interval = (f" {text(number(row.get('ci_low')))}–"
                         f"{text(number(row.get('ci_high'), '%'))} |") if confidence else ""
+            mix = (" " + ", ".join(f"{text(item['label'])}: {text(number(item['percent'], '%'))}"
+                                   for item in row.get("platforms", [])) + " |") if mixed else ""
             lines.append(f"| {text(row['label'])} | {row['count']} / {row['denominator']} | "
-                         f"{text(number(row['percent'], '%'))} |{interval}")
+                         f"{text(number(row['percent'], '%'))} |{interval}{mix}")
         if key == "project_types" and "project_types_unclassified" in metrics:
             lines.extend(["", f"Classification coverage: {metrics['project_types_unclassified']} repositories have "
                           "insufficient application-type evidence in the scanned source. They remain in the "

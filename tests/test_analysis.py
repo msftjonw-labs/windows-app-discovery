@@ -42,6 +42,7 @@ def candidate(**extra):
 def response(summary=None, finish="stop"):
     value = summary or {"problem": "Automates desktop tasks.", "community": "Users report startup friction.",
                         "development": "Development stage is undocumented.",
+                        "motivation": "Not documented.", "motivation_sources": ["S1"],
                         "problem_sources": ["S1"], "development_sources": ["S1"], "community_sources": ["S2"]}
     handle = mock.MagicMock()
     handle.__enter__.return_value.read.return_value = json.dumps({
@@ -149,7 +150,7 @@ class SummaryTests(unittest.TestCase):
         for citations in (["invented"], ["S1"], [], "S2", [2]):
             with self.subTest(citations=citations):
                 urlopen.return_value = response({
-                    "problem": "Automation", "community": "Startup friction",
+                    "problem": "Automation", "motivation": "Sharing", "motivation_sources": ["S1"], "community": "Startup friction",
                     "development": "Undocumented stage", "development_sources": ["S1"],
                     "problem_sources": ["S1"], "community_sources": citations})
                 with self.assertRaisesRegex(PilotError, "citations"):
@@ -158,7 +159,7 @@ class SummaryTests(unittest.TestCase):
     @mock.patch.object(analysis.urllib.request, "urlopen")
     def test_empty_feedback_requires_no_fabricated_citation(self, urlopen):
         urlopen.return_value = response({
-            "problem": "Automation", "community": "Insufficient recent feedback",
+            "problem": "Automation", "motivation": "Sharing", "motivation_sources": ["S1"], "community": "Insufficient recent feedback",
             "development": "Undocumented stage", "development_sources": ["S1"],
             "problem_sources": ["S1"], "community_sources": []})
         result = analysis.summarize({"sources": self.evidence["sources"][:1]}, "key", "gpt-4o")
@@ -182,7 +183,7 @@ class SummaryTests(unittest.TestCase):
                                  ("", ["S1"]), ("Maintained", ["invented"])):
             with self.subTest(development=development, ids=ids):
                 urlopen.return_value = response({
-                    "problem": "Automation", "community": "Startup friction",
+                    "problem": "Automation", "motivation": "Sharing", "motivation_sources": ["S1"], "community": "Startup friction",
                     "development": development, "development_sources": ids,
                     "problem_sources": ["S1"], "community_sources": ["S2"]})
                 with self.assertRaisesRegex(PilotError, "development"):

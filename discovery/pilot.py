@@ -245,7 +245,48 @@ def safe_path(name):
     return path
 
 
+CI_PATH = re.compile(
+    r"(?:\.github/workflows/[^/]+\.ya?ml|\.?appveyor\.ya?ml|azure-pipelines\.ya?ml|\.gitlab-ci\.ya?ml"
+    r"|\.circleci/config\.ya?ml)", re.I)
+CI_SYSTEMS = (("GitHub Actions", ".github/workflows/"), ("AppVeyor", "appveyor"),
+              ("Azure Pipelines", "azure-pipelines"), ("GitLab CI", ".gitlab-ci"), ("CircleCI", ".circleci/"))
+CI_WINDOWS_LINE = re.compile(
+    r"windows-(?:latest|\d{2,4})|\bGOOS\s*[:=]\s*['\"]?windows|\bVisual Studio\b"
+    r"|(?:runs-on|vmImage|\bos\b|\bimage\b|platform|executor|goos|matrix)\b.*\bwindows\b"
+    r"|^\s*-\s*['\"]?windows[-\w.]*['\"]?\s*$", re.I)
+CI_TEST_COMMAND = re.compile(r"\b(?:pytest|unittest|tox|nox|go\s+test|go\s+build|npm\s+(?:run\s+)?test|dotnet\s+test|"
+                             r"cargo\s+test|ctest|mvn\s+test|gradlew?\s+test)\b", re.I)
+
+
+def is_ci_file(path):
+    return bool(CI_PATH.fullmatch(path if isinstance(path, str) else path.as_posix()))
+
+
+def ci_signals(ci_files):
+    """Windows CI evidence from workflow/pipeline config. It shows intent to build/test on Windows, not run results."""
+    systems = set()
+    windows_systems = set()
+    evidence = []
+    tests = False
+    for path, text in ci_files:
+        system = next((name for name, marker in CI_SYSTEMS if marker in path.lower()), "CI")
+        systems.add(system)
+        for number, line in enumerate(text.split("\n"), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            if CI_TEST_COMMAND.search(line):
+                tests = True
+            if CI_WINDOWS_LINE.search(line):
+                windows_systems.add(system)
+                if len(evidence) < 10:
+                    evidence.append({"path": path, "line": number, "system": system, "excerpt": line.strip()[:120]})
+    return {"systems": sorted(systems), "windows": bool(windows_systems), "windows_systems": sorted(windows_systems),
+            "runs_tests": tests, "evidence": evidence}
+
+
 def source_exclusion(path):
+    if is_ci_file(path):
+        return None
     if any(part.lower() in EXCLUDED_DIRS for part in path.parts[:-1]):
         return "excluded_directories"
     name = path.name.lower()
@@ -625,6 +666,8 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
     key = hashlib.sha256(f"{repo['id']}:{sha}:{RULESET_VERSION}:{INSPECTOR_VERSION}:{json.dumps(engine_config, sort_keys=True)}".encode()).hexdigest()
     cached = cache / f"{key}.json"
     analysis = json.loads(cached.read_text(encoding="utf-8")) if cached.exists() else None
+    if analysis and "ci" not in analysis:
+        analysis = None
     if analysis and "Windows" in analysis["platforms"] and analysis.get("inspector_strategy") != INSPECTOR_STRATEGY:
         analysis = None
     if analysis and semgrep is not None and analysis.get("semgrep", {}).get("status") != "success":
@@ -636,7 +679,12 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
             source = work / "source"
             source.mkdir()
             files, skipped, source_method = acquire_sources(repo["nameWithOwner"], sha, source)
+            ci_files = [item for item in files if is_ci_file(item[0])]
+            files = [item for item in files if not is_ci_file(item[0])]
+            for path, _ in ci_files:
+                (source / path).unlink(missing_ok=True)
             analysis = classify(files)
+            analysis["ci"] = ci_signals(ci_files)
             analysis.update({"files_scanned": len(files), "excluded": skipped, "source_method": source_method,
                              "components": [], "application_types": [], "windows_scan": "not_applicable"})
             inspector_incomplete = {}
@@ -730,6 +778,29 @@ def distribution(records, field, labels=None, z=None, exclusive=False):
     return rows
 
 
+def language_platforms(records, z):
+    """Primary-language distribution; each row carries that language's exclusive platform distribution."""
+    rows = distribution(records, "primary_language", z=z, exclusive=True)
+    for row in rows:
+        members = [r for r in records if r["primary_language"] == row["label"]]
+        counts = Counter(r["primary_platform"] for r in members)
+        shares = exclusive_percentages(counts, len(members))
+        row["platforms"] = [{"label": label, "count": count, "percent": shares[label]}
+                            for label, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))]
+    return rows
+
+
+def windows_ci_by_language(records, z):
+    rows = []
+    for row in distribution(records, "primary_language", z=z, exclusive=True):
+        members = [r for r in records if r["primary_language"] == row["label"]]
+        count = sum(bool((r.get("ci") or {}).get("windows")) for r in members)
+        low, high = wilson(count, len(members), z)
+        rows.append({"label": row["label"], "count": count, "denominator": len(members),
+                     "percent": round(count / len(members) * 100, 2), "ci_low": low, "ci_high": high})
+    return rows
+
+
 def aggregate(records, confidence=None):
     z = z_score(confidence)
     for record in records:
@@ -778,6 +849,8 @@ def aggregate(records, confidence=None):
         "platforms": distribution(complete, "primary_platform", z=z, exclusive=True),
         "frameworks": distribution(complete, "primary_framework", z=z, exclusive=True),
         "languages": distribution(complete, "primary_language", z=z, exclusive=True),
+        "language_platforms": language_platforms(complete, z),
+        "windows_ci": windows_ci_by_language(complete, z),
         "application_types": distribution(applications, "application_types", z=z),
         "project_types": distribution(
             inventories, "project_types",
