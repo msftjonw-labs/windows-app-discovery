@@ -119,6 +119,50 @@ class ArchiveDiscoveryTests(unittest.TestCase):
             self.assertTrue(any(Path(cache).glob("*.json.gz")))
 
 
+class LanguagePlatformTests(unittest.TestCase):
+    @staticmethod
+    def record(language, platforms, ci=False):
+        return {"status": "success", "platforms": platforms, "os_targets": ["Unspecified"], "frameworks": ["Unknown"],
+                "primary_language": language, "purpose": "Library", "windows_scan": "not_applicable",
+                "components": [], "application_types": [], "ci": {"windows": ci}}
+
+    def test_language_rows_carry_platform_mix_summing_to_100(self):
+        records = [self.record("Python", ["Linux"], True), self.record("Python", ["Windows"]),
+                   self.record("Python", ["Linux"]), self.record("Go", ["Windows"], True)]
+        metrics = pilot.aggregate(records, 0.95)
+        rows = {row["label"]: row for row in metrics["language_platforms"]}
+        self.assertEqual(rows["Python"]["count"], 3)
+        self.assertEqual({p["label"]: p["percent"] for p in rows["Python"]["platforms"]},
+                         {"Linux": 66.67, "Windows": 33.33})
+        for row in rows.values():
+            self.assertAlmostEqual(sum(p["percent"] for p in row["platforms"]), 100.0)
+        ci = {row["label"]: row["count"] for row in metrics["windows_ci"]}
+        self.assertEqual(ci, {"Python": 1, "Go": 1})
+
+    def test_ci_signals_detect_windows_runners_and_ignore_comments(self):
+        workflow = ("jobs:\n  t:\n    runs-on: ${{ matrix.os }}\n    strategy:\n      matrix:\n"
+                    "        os: [ubuntu-latest, windows-latest]\n    steps:\n      - run: pytest\n")
+        found = pilot.ci_signals([(".github/workflows/ci.yml", workflow)])
+        self.assertTrue(found["windows"] and found["runs_tests"])
+        self.assertEqual(found["windows_systems"], ["GitHub Actions"])
+        quiet = pilot.ci_signals([(".github/workflows/ci.yml", "# windows-latest\nruns-on: ubuntu-latest\n")])
+        self.assertFalse(quiet["windows"])
+        goos = pilot.ci_signals([(".gitlab-ci.yml", "script:\n  - GOOS=windows go build\n")])
+        self.assertTrue(goos["windows"])
+
+    def test_ci_files_pass_source_filter_despite_excluded_github_directory(self):
+        self.assertIsNone(pilot.source_exclusion(pilot.PurePosixPath(".github/workflows/ci.yml")))
+        self.assertTrue(pilot.is_ci_file("appveyor.yml"))
+        self.assertFalse(pilot.is_ci_file("docs/ci.yml"))
+
+    def test_pdf_shows_single_language_table_with_platform_column(self):
+        html = report_pdf.build_html(sample_report())
+        self.assertIn("Primary programming languages and their target platforms", html)
+        self.assertIn("Target platform distribution", html)
+        self.assertIn("Linux: 60.0%, Windows: 40.0%", html)
+        self.assertNotIn("<h2>Target platform</h2>", html)
+
+
 class StatisticsTests(unittest.TestCase):
     def test_wilson_interval_matches_reference_values(self):
         z = pilot.z_score(0.95)
@@ -231,7 +275,8 @@ class ExclusiveDistributionTests(unittest.TestCase):
 
 def sample_report(representative=True):
     row = {"label": "<script>x</script>", "count": 10, "denominator": 95, "percent": 10.53,
-           "ci_low": 5.8 if representative else None, "ci_high": 18.3 if representative else None}
+           "ci_low": 5.8 if representative else None, "ci_high": 18.3 if representative else None,
+           "platforms": [{"label": "Linux", "count": 6, "percent": 60.0}, {"label": "Windows", "count": 4, "percent": 40.0}]}
     return {
         "generated_at": "2026-10-19T17:00:00Z", "ruleset_version": "pilot-3", "inspector_version": "1.10.2",
         "window": {"start": "2026-09-19T13:00:00Z", "end": "2026-10-19T13:00:00Z"},
@@ -277,7 +322,7 @@ class PdfReportTests(unittest.TestCase):
         report = sample_report()
         report["repositories"][0]["analysis"] = {
             "status": "success", "problem": "Solves <b>tasks</b>",
-            "development": "Experimental & maintained", "community": "Users report <script>bugs</script>",
+            "development": "Experimental & maintained", "motivation": "Shares tooling", "community": "Users report <script>bugs</script>",
             "problem_sources": ["S1"], "development_sources": ["S2"],
             "community_sources": ["S3", "S4"],
             "sources": [
@@ -291,7 +336,7 @@ class PdfReportTests(unittest.TestCase):
         }
         html = report_pdf.build_html(report)
         self.assertIn(">Repository analysis</th>", html)
-        for expected in ("Problems solved", "Development status", "Latest community feedback",
+        for expected in ("Problems solved", "Development status", "Why open source", "Latest community feedback",
                          "Solves &lt;b&gt;tasks&lt;/b&gt;", "Experimental &amp; maintained",
                          "Users report &lt;script&gt;bugs&lt;/script&gt;",
                          'href="https://github.com/o/r/blob/sha/README.md"',

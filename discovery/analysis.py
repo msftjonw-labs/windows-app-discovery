@@ -57,11 +57,16 @@ Distinguish participant feedback from maintainer responses only when supported.
 Issue volume is NOT sentiment, popularity, quality, or community-wide satisfaction.
 Do not generalize this bounded sample to the whole community. If feedback is absent
 or insufficient, say so. Do not treat old issue bodies as recent reactions.
-problem_sources, development_sources and community_sources: IDs of supplied sources supporting each
+motivation: In 1-3 sentences state why the developers publish this application as open source,
+only if the documentation explicitly states or clearly implies it (e.g. community contribution,
+transparency, sharing a tool, learning, vendor/company open-source policy, license choice).
+Do not speculate; say the motivation is not documented when it is not.
+problem_sources, development_sources, motivation_sources and community_sources: IDs of supplied sources supporting each
 summary, respectively. Never invent sources or use documentation as community feedback.
 Only issue and comment sources support community reactions; issue_context sources
 are older/background context, not evidence of recent community reactions.
 Only description, readme and repository_status sources support development status.
+Only description and readme sources support motivation.
 """
 
 
@@ -163,6 +168,8 @@ def summarize(evidence, token, model):
         "problem": [source["id"] for source in evidence["sources"]],
         "development": [source["id"] for source in evidence["sources"]
                         if source["kind"] in ("description", "readme", "repository_status")],
+        "motivation": [source["id"] for source in evidence["sources"]
+                       if source["kind"] in ("description", "readme")],
         "community": [source["id"] for source in evidence["sources"]
                       if source["kind"] in ("issue", "comment")],
     }
@@ -171,13 +178,15 @@ def summarize(evidence, token, model):
         "properties": {
             "problem": {"type": "string"},
             "development": {"type": "string"},
+            "motivation": {"type": "string"},
             "community": {"type": "string"},
             "problem_sources": {"type": "array", "items": {"type": "string"}},
             "development_sources": {"type": "array", "items": {"type": "string"}},
+            "motivation_sources": {"type": "array", "items": {"type": "string"}},
             "community_sources": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["problem", "development", "community",
-                     "problem_sources", "development_sources", "community_sources"],
+        "required": ["problem", "development", "motivation", "community",
+                     "problem_sources", "development_sources", "motivation_sources", "community_sources"],
         "additionalProperties": False,
     }
     for field, ids in allowed.items():
@@ -188,7 +197,7 @@ def summarize(evidence, token, model):
         else:
             citations["maxItems"] = 0
     payload = {
-        "model": model, "temperature": 0, "max_tokens": 1300,
+        "model": model, "temperature": 0, "max_tokens": 1600,
         "messages": [{"role": "system", "content": SYSTEM},
                      {"role": "user", "content": json.dumps(evidence)}],
         "response_format": {"type": "json_schema", "json_schema": {
@@ -218,7 +227,7 @@ def summarize(evidence, token, model):
     result = json.loads(message["content"])
     if not isinstance(result, dict) or set(result) != set(schema["required"]):
         raise PilotError("OpenAI analysis has an invalid shape")
-    for field in ("problem", "development", "community"):
+    for field in ("problem", "development", "motivation", "community"):
         if not isinstance(result[field], str) or not result[field].strip() or len(result[field]) > 4000:
             raise PilotError(f"OpenAI analysis has invalid {field} text")
         ids = result[f"{field}_sources"]

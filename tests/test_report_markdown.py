@@ -52,7 +52,7 @@ class MarkdownReportTests(unittest.TestCase):
         self.assertNotIn("0%", "".join(ET.fromstring(svg).itertext()))
 
     def test_svg_is_valid_xml_and_contains_no_active_content(self):
-        svg = report_markdown.chart_svg(sample_report()["metrics"]["platforms"], '<script>"title"</script>')
+        svg = report_markdown.chart_svg(sample_report()["metrics"]["language_platforms"], '<script>"title"</script>')
         root = ET.fromstring(svg)
         self.assertNotIn("<script>", svg)
         self.assertIn("&lt;script&gt;", svg)

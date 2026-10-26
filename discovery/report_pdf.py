@@ -23,9 +23,10 @@ BROWSERS = (
     "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge",
 )
 SECTIONS = (
-    ("platforms", "Target platform", "One primary platform per repository: an explicit OS target wins, several OS "
-     "targets = Multiple OS, otherwise the most specific environment; generic runtimes/scripts come last."),
-    ("languages", "Primary programming language", "GitHub's primary language per repository."),
+    ("language_platforms", "Primary programming languages and their target platforms",
+     "GitHub's primary language per repository. The last column splits each language's repositories by primary target "
+     "platform (an explicit OS target wins, several OS targets = Multiple OS, otherwise the most specific environment; "
+     "generic runtimes/scripts come last), so each language's platform shares add up to 100%."),
     ("frameworks", "Framework evidence", "Most specific detected framework per repository (e.g. Next.js before React)."),
     ("project_types", "Project application and automation types",
      "Share of complete repository scans with collected project findings, including libraries/tools and non-Windows "
@@ -36,9 +37,13 @@ SECTIONS = (
      "the classification coverage note, not as application types. Static indicators do not prove executable or runtime behavior."),
     ("application_types", "Windows application types", "Complete Windows application scans; types can overlap."),
     ("components", "Windows component adoption", "Complete Windows application scans; components overlap."),
+    ("windows_ci", "Windows CI by primary language",
+     "Complete scans whose CI configuration (GitHub Actions, AppVeyor, Azure Pipelines, GitLab CI, CircleCI) "
+     "references a Windows runner or GOOS=windows. Shows intent to build/test on Windows, not run results; "
+     "dynamic matrices and external CI are not detected. Not an application metric."),
     ("candidate_components", "Exploratory: all Windows candidates", "Includes libraries/tools; not an application metric."),
 )
-EXCLUSIVE = {"platforms", "languages", "frameworks"}
+EXCLUSIVE = {"language_platforms", "frameworks"}
 CSS = """
 @page { size: Letter; margin: 14mm 12mm; }
 @page windows-repositories { size: Letter landscape; margin: 14mm 12mm; }
@@ -77,11 +82,16 @@ def number(value, suffix=""):
     return "N/A" if value is None else f"{value}{suffix}"
 
 
-def distribution_table(rows, confidence):
+def platform_mix(row):
+    return ", ".join(f"{text(item['label'])}: {number(item['percent'], '%')}" for item in row.get("platforms", []))
+
+
+def distribution_table(rows, confidence, platforms=False):
     if not rows or all(row["denominator"] == 0 for row in rows):
         return '<p class="muted">N/A — no eligible repositories.</p>'
     ci = f"{round(confidence * 100)}% CI" if confidence else None
-    head = "<tr><th>Category</th><th>Count / n</th><th>Share</th>" + (f"<th>{ci}</th>" if ci else "") + "<th></th></tr>"
+    head = "<tr><th>Category</th><th>Count / n</th><th>Share</th>" + (f"<th>{ci}</th>" if ci else "") + (
+        "<th>Target platform distribution</th></tr>" if platforms else "<th></th></tr>")
     body = []
     for row in rows:
         percent = row["percent"] or 0
@@ -92,9 +102,9 @@ def distribution_table(rows, confidence):
             interval = f'<td class="num">{number(low)}–{number(high, "%")}</td>'
             if low is not None:
                 bar += f'<div class="ci" style="left:{low * 1.2:.1f}px;width:{(high - low) * 1.2:.1f}px"></div>'
+        last = f"<td>{platform_mix(row)}</td>" if platforms else f'<td><div class="bar">{bar}</div></td>'
         body.append(f"<tr><td>{text(row['label'])}</td><td class=\"num\">{row['count']}/{row['denominator']}</td>"
-                    f"<td class=\"num\">{number(row['percent'], '%')}</td>{interval}"
-                    f'<td><div class="bar">{bar}</div></td></tr>')
+                    f"<td class=\"num\">{number(row['percent'], '%')}</td>{interval}{last}</tr>")
     return f"<table>{head}{''.join(body)}</table>"
 
 
@@ -108,7 +118,7 @@ def repository_analysis(repository):
     parts = []
     sources = {source["id"]: source for source in analysis.get("sources", [])}
     for field, label in (("problem", "Problems solved"), ("development", "Development status"),
-                         ("community", "Latest community feedback")):
+                         ("motivation", "Why open source"), ("community", "Latest community feedback")):
         summary = analysis.get(field) or "Not collected. Rerun the AI analysis step."
         parts.append(f"<strong>{label}</strong><p>{text(summary)}</p>")
         links = []
@@ -181,7 +191,8 @@ def build_html(report, pages_url=None):
         if key == "project_types" and key not in metrics:
             parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
         else:
-            parts.append(distribution_table(metrics.get(key), confidence if representative else None))
+            parts.append(distribution_table(metrics.get(key), confidence if representative else None,
+                                            platforms=key == "language_platforms"))
             if key == "project_types" and "project_types_unclassified" in metrics:
                 parts.append(f'<p class="muted">Classification coverage: {metrics["project_types_unclassified"]} '
                              'repositories have insufficient application-type evidence in the scanned source. '
