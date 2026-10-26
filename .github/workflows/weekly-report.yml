@@ -65,8 +65,6 @@ jobs:
           PILOT_LIMIT: ${{ inputs.limit || '100' }}
           PILOT_DISCOVERY: ${{ inputs.discovery || 'auto' }}
         run: python -m discovery.pilot --limit $env:PILOT_LIMIT --discovery $env:PILOT_DISCOVERY --confidence 0.95
-      - name: Analyze Windows-container compatibility evidence
-        run: python -m discovery.windows_container
       - name: Analyze Windows candidate purpose and community feedback
         env:
           GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
@@ -130,7 +128,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/language_platforms.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/windows_ci.svg reports/candidate_components.svg reports/platforms.svg reports/languages.svg report-history/report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg report-history/report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else

@@ -1005,6 +1005,8 @@ def main():
         "coverage": coverage,
         "metrics": aggregate(records, confidence), "repositories": records,
     }
+    from discovery.windows_container import analyze_report  # test branch only: workflow step cannot be pushed
+    analyze_report(report)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     pending = args.output.with_suffix(".tmp")
     pending.write_text(json.dumps(report, indent=2), encoding="utf-8")
