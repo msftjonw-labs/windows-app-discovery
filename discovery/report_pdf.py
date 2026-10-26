@@ -13,6 +13,8 @@ import subprocess
 import tempfile
 import time
 
+from discovery.windows_container import report_rows
+
 ROOT = Path(__file__).resolve().parents[1]
 BROWSERS = (
     os.environ.get("PDF_BROWSER", ""),
@@ -197,6 +199,40 @@ def build_html(report, pages_url=None):
                 parts.append(f'<p class="muted">Classification coverage: {metrics["project_types_unclassified"]} '
                              'repositories have insufficient application-type evidence in the scanned source. '
                              'They remain in the denominator but are not assigned an application type.</p>')
+    compatibility = metrics.get("windows_container_compatibility")
+    if compatibility:
+        parts.extend([
+            "<h2>Windows-container compatibility and containerization potential</h2>",
+            f'<p class="muted">{text(compatibility["method"])} '
+            "Source indicators do not prove build or runtime compatibility; absence of a Dockerfile is not "
+            "proof of incompatibility.</p>",
+        ])
+        if compatibility.get("candidate_method"):
+            parts.append(f'<p class="muted">{text(compatibility["candidate_method"])}</p>')
+        parts.extend([
+            "<p>The two assessment scopes overlap; their counts must not be added together.</p>",
+            "<table><thead><tr><th>Scope</th><th>Assessment</th><th>Repositories</th></tr></thead><tbody>",
+        ])
+        summary, repositories = report_rows(report)
+        parts.extend(
+            f"<tr><td>{text(scope)}</td><td>{text(label)}</td><td>{count}</td></tr>"
+            for scope, label, count in summary
+        )
+        parts.append("</tbody></table>")
+        if repositories:
+            parts.extend([
+                "<table><thead><tr><th>Repository</th><th>Existing container evidence</th>"
+                "<th>Containerization potential</th><th>Source evidence</th>"
+                "</tr></thead><tbody>",
+            ])
+            for repository, existing, potential, evidence in repositories:
+                name = text(repository.get("name"))
+                url = repository.get("url", "")
+                repository_link = (f'<a href="{escape(url, quote=True)}">{name}</a>'
+                                   if url.startswith("https://github.com/") else name)
+                parts.append(f"<tr><td>{repository_link}</td><td>{text(existing)}</td>"
+                             f"<td>{text(potential)}</td><td>{text(evidence)}</td></tr>")
+            parts.append("</tbody></table>")
     rows = "".join(
         f"<tr><td>{text(r['name'])}</td><td>{text(r['status'])}</td><td>{text(r.get('primary_language'))}</td>"
         f"<td>{text(r.get('primary_platform'))}</td><td>{text(r.get('primary_framework'))}</td>"

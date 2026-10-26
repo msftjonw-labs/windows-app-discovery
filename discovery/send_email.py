@@ -30,6 +30,27 @@ def summary_lines(report):
     lines.append(f"Scans: {metrics['successful']} complete, {metrics['partial']} partial, {metrics['failed']} failed, "
                  f"{metrics.get('not_applicable', 0)} no eligible source.")
     lines.append(f"Windows: {metrics['windows_repositories']} candidates, {metrics['windows_applications']} applications.")
+    compatibility = metrics.get("windows_container_compatibility")
+    if compatibility:
+        counts = compatibility["counts"]
+        lines.append(
+            "Windows-container evidence: "
+            f"{counts.get('windows_base_image', 0)} Windows base image(s), "
+            f"{counts.get('linux_base_image', 0)} Linux base image(s), "
+            f"{counts.get('ambiguous_or_mixed_images', 0)} mixed/ambiguous, "
+            f"{counts.get('no_container_image_evidence', 0)} with no base-image evidence."
+        )
+        lines.append("This is static source analysis, not a Windows-container build or runtime test.")
+        candidates = compatibility.get("containerization_candidates")
+        if candidates:
+            lines.append(
+                "Windows-targeted, not-yet-containerized suitability screen: "
+                f"{candidates.get('potentially_suitable', 0)} potentially suitable, "
+                f"{candidates.get('conditional', 0)} conditional, "
+                f"{candidates.get('poor_fit', 0)} poor fit, "
+                f"{candidates.get('insufficient_evidence', 0)} insufficient evidence."
+            )
+            lines.append("Suitability is a heuristic; candidates require Windows-container build and runtime validation.")
     top = [f"{row['label']} {row['percent']}%" for row in metrics.get("platforms", [])[:5]]
     if top:
         lines.append("Top platforms: " + ", ".join(top))

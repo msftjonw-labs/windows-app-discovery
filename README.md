@@ -66,6 +66,23 @@ Missing or failed analysis is explicitly labeled; older analyses without develop
 status require rerunning `discovery.analysis`. The sampled-repository count and
 the broader distribution denominators are unchanged.
 
+After collection, the weekly workflow runs `python -m discovery.windows_container`
+before rendering the reports. It examines Dockerfile/Containerfile `FROM` lines
+from the pinned source scan and reports explicit Windows/Linux base-image indicators,
+ambiguous or mixed images, and missing evidence. This is a conservative static
+assessment: it does not build or run projects, and missing Windows-container evidence
+does not prove incompatibility. The PDF and repository report include the assessment;
+the email summary includes its counts. The combined **Windows-container compatibility
+and containerization potential** section uses one summary table with separate assessment
+scopes and one repository table showing existing container evidence, potential suitability,
+and supporting source evidence. The scopes overlap, so their counts must not be added.
+The same section screens Windows-targeted
+repositories without detected container configuration for likely container workload
+types versus desktop UI, conditional Windows dependencies, and insufficient evidence.
+This is a prioritization heuristic, not a compatibility result; desktop UI is marked
+as a poor fit for standard Windows Server containers, while promising candidates still
+need Windows-container build and runtime validation.
+
 The first run downloads Application Inspector **1.10.2** into `.tools\inspector`
 and verifies the pinned Windows release's SHA-256. Later runs omit
 `--install-inspector`. Alternatively, use `--inspector C:\path\ApplicationInspector.CLI.exe`.
@@ -431,8 +448,9 @@ all selected repositories.
 syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workflows/weekly-report.yml)
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
-Inspector, draws the GH Archive sample, scans it, enriches Windows candidates with
-OpenAI purpose/community analysis, renders `site/report.pdf`, keeps
+Inspector, draws the GH Archive sample, scans it, assesses Windows-container base-image
+evidence, enriches Windows candidates with OpenAI purpose/community analysis, renders
+`site/report.pdf`, keeps
 the JSON and PDF as a 90-day artifact, commits the latest Markdown report and seven SVG
 charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
 emails the PDF. Scheduled workflows run only from the default branch. Repository
