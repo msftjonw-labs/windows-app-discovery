@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 
 from discovery.report_pdf import EXCLUSIVE, ROOT, SECTIONS, number
+from discovery.windows_container import report_rows
 
 
 def text(value):
@@ -111,6 +112,26 @@ def build_markdown(report):
         lines.append("| " + " | ".join(text(repository.get(key)) for key in (
             "name", "status", "primary_language", "primary_platform", "primary_framework",
             "application_types", "components")) + " |")
+    compatibility = metrics.get("windows_container_compatibility")
+    if compatibility:
+        lines.extend(["", "## Windows-container compatibility and containerization potential", "",
+                      text(compatibility["method"]), ""])
+        if compatibility.get("candidate_method"):
+            lines.extend([text(compatibility["candidate_method"]), ""])
+        lines.extend(["The two assessment scopes overlap; their counts must not be added together.", "",
+                      "| Scope | Assessment | Repositories |",
+                      "| --- | --- | ---: |"])
+        summary, repositories = report_rows(report)
+        for scope, label, count in summary:
+            lines.append(f"| {text(scope)} | {text(label)} | {count} |")
+        lines.extend(["", "These are source-level indicators, not proof of build or runtime compatibility. "
+                      "No detected Dockerfile is not proof of incompatibility."])
+        if repositories:
+            lines.extend(["", "| Repository | Existing container evidence | Containerization potential | Source evidence |",
+                          "| --- | --- | --- | --- |"])
+            for repository, existing, potential, evidence in repositories:
+                lines.append(f"| [{text(repository['name'])}]({text(repository['url'])}) | "
+                             f"{text(existing)} | {text(potential)} | {text(evidence)} |")
     lines.extend(["", "Static source-level evidence is not proof of runtime use or OS compatibility. "
                   "Component and application-type categories can overlap. Partial and failed scans are "
                   "nonresponse; their exclusion can bias estimates. Sampling intervals do not measure "

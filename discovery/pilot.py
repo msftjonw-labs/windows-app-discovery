@@ -24,6 +24,7 @@ import zipfile
 from discovery import gharchive
 from discovery import semgrep as semgrep_engine
 from discovery.projects import APPLICATION_TYPES, classify_projects
+from discovery.windows_container import base_images
 from discovery.rules import (
     COMPILED, COMPILED_FILE_RULES, COMPONENTS, EXCLUDED_DIRS, EXTENSIONS,
     EXTENSIONLESS_NAMES, GENERATED_NAMES, JSON_MANIFEST, OS_TARGETS, RULES, RULESET_VERSION,
@@ -668,6 +669,8 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
     analysis = json.loads(cached.read_text(encoding="utf-8")) if cached.exists() else None
     if analysis and "ci" not in analysis:
         analysis = None
+    if analysis and "container_base_images" not in analysis:
+        analysis = None
     if analysis and "Windows" in analysis["platforms"] and analysis.get("inspector_strategy") != INSPECTOR_STRATEGY:
         analysis = None
     if analysis and semgrep is not None and analysis.get("semgrep", {}).get("status") != "success":
@@ -679,11 +682,13 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
             source = work / "source"
             source.mkdir()
             files, skipped, source_method = acquire_sources(repo["nameWithOwner"], sha, source)
+            container_images = base_images(files)
             ci_files = [item for item in files if is_ci_file(item[0])]
             files = [item for item in files if not is_ci_file(item[0])]
             for path, _ in ci_files:
                 (source / path).unlink(missing_ok=True)
             analysis = classify(files)
+            analysis["container_base_images"] = container_images
             analysis["ci"] = ci_signals(ci_files)
             analysis.update({"files_scanned": len(files), "excluded": skipped, "source_method": source_method,
                              "components": [], "application_types": [], "windows_scan": "not_applicable"})
