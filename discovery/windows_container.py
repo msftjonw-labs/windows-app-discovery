@@ -12,7 +12,8 @@ WINDOWS_IMAGE = re.compile(
     re.I,
 )
 LINUX_IMAGE = re.compile(
-    r"(?:^|/)(?:alpine|amazonlinux|busybox|centos|debian|fedora|opensuse|rockylinux|ubuntu)(?=[:@]|$)|^scratch$",
+    r"(?:^|[/:._-])(?:alpine[\d.]*|amazonlinux|busybox|centos|debian|fedora|opensuse|rockylinux|ubuntu|distroless"
+    r"|slim|bookworm|bullseye|buster|trixie|bionic|focal|jammy|noble|ol\d+)(?=[/:@._-]|$)|^scratch$",
     re.I,
 )
 CONTAINER_LABEL = "Container / orchestration configuration"

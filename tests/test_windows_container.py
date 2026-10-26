@@ -30,6 +30,18 @@ class WindowsContainerTests(unittest.TestCase):
                 })
                 self.assertEqual(result["status"], expected)
 
+    def test_linux_distribution_tags_and_os_neutral_tags(self):
+        def kind(image):
+            record = {"status": "success", "container_base_images": [{"path": "Dockerfile", "line": 1, "image": image}]}
+            return windows_container.classify(record)["evidence"][0]["image_os"]
+
+        for image in ("node:20-alpine", "python:3.11-slim", "eclipse-temurin:21-jdk-noble",
+                      "python:3.14.7-alpine3.24", "gcr.io/distroless/static:nonroot", "ghcr.io/graalvm/jdk:ol8-java11"):
+            self.assertEqual(kind(image), "linux", image)
+        for image in ("node:22", "mcr.microsoft.com/dotnet/sdk:8.0", "${BASE_IMAGE}", "myslimapp:1"):
+            self.assertEqual(kind(image), "unknown", image)
+        self.assertEqual(kind("python:3.12-windowsservercore-ltsc2022"), "windows")
+
     def test_absent_and_incomplete_evidence_do_not_claim_incompatibility(self):
         missing = windows_container.classify({"status": "success", "container_base_images": []})
         self.assertEqual(missing["status"], "no_container_image_evidence")
