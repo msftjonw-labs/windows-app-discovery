@@ -15,34 +15,26 @@ from discovery.pilot import ROOT, PilotError, fetch_source_batch, safe_path, sta
 from discovery.rules import EXCLUDED_DIRS
 
 LOG = logging.getLogger("cross_os")
-VERSION = "cross-os-3"
+VERSION = "cross-os-4"
 MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_EVIDENCE_CHARS = 96000
-MAX_REQUEST_BYTES = 96000
 OS_NAMES = ("Windows", "Linux", "macOS", "Android", "iOS", "FreeBSD", "OpenBSD", "NetBSD", "ChromeOS")
 OS_PATTERN = re.compile(
     r"\b(?:windows|win32|win64|linux|ubuntu|debian|macos|mac\s+os|darwin|"
     r"android|ios|freebsd|openbsd|netbsd|chromeos|cross[- ]platform|operating systems?)\b", re.I)
 METHOD = (
     "Deterministic review of pinned public GitHub documentation; no OpenAI API is used. "
-    "A repository is counted only when an application document explicitly says it supports "
-    "at least two operating systems, or explicitly limits application support to one. "
+    "Cross-OS requires explicit documentation of application support for at least two operating systems. "
     "CI runners, languages, frameworks, browser access, and inferred portability do not qualify. "
-    "Ambiguous or undocumented repositories are excluded from both categories. Static evidence "
-    "review, not cross-OS runtime testing; results describe only the classifiable subset and "
-    "may be biased if ambiguous repositories differ from classifiable ones."
+    "All other sampled repositories are non-cross-OS: support not demonstrated, not proven "
+    "OS-specificity or incompatibility. Both categories use the full sample denominator, including "
+    "ambiguous and undocumented repositories. Static evidence review, not cross-OS runtime testing."
 )
 SUPPORT_MARKER = re.compile(
     r"\b(?:support(?:s|ed)?|available|download(?:s)?|release(?:s|d)?|compatible|runs?\s+on)\b",
     re.I,
-)
-SINGLE_OS_ONLY = re.compile(
-    r"(?:\bonly\b[^.\n]{0,40}\b(?:support|available|run|work)|"
-    r"\b(?:support|available|run|work)[a-z]*\b[^.\n]{0,40}\bonly\b|"
-    r"\b(?:windows|win(?:32|64)|linux|macos|mac\s+os|darwin|android|ios|"
-    r"freebsd|openbsd|netbsd|chrome\s*os)[- ]only\b)", re.I,
 )
 OS_PATTERNS = {
     "Windows": re.compile(r"\b(?:windows|win32|win64)\b", re.I),
@@ -202,18 +194,10 @@ def classify(evidence):
                 }
                 validate_decision(decision, [source])
                 return {"decision": decision, "sources": [{**source, "lines": [line]}]}
-            if len(systems) == 1 and SINGLE_OS_ONLY.search(value):
-                return {
-                    "decision": {
-                        "cross_os": False, "application": "",
-                        "rationale": f"An application document explicitly limits support to {systems[0]}.",
-                        "support": [],
-                    },
-                    "sources": [{**source, "lines": [line]}],
-                    "evidence": [{"os": systems[0], "source_id": source["id"],
-                                  "line": line["line"], "quote": value}],
-                }
-    return None
+    return {"decision": {
+        "cross_os": False, "application": "", "support": [],
+        "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence.",
+    }, "sources": []}
 
 
 def source_quote(citation, ids):
@@ -262,20 +246,16 @@ def enrich(report):
                       "generated_at": stamp(datetime.now(timezone.utc))}
         try:
             if not repository.get("sha"):
-                assessment.update(status="ambiguous", reason="No pinned commit available")
+                assessment.update(status="success", **classify({"sources": []}),
+                                  documents_reviewed=0, limitations=["No pinned commit available"])
                 repository["cross_os"] = assessment
                 continue
             LOG.info("Checking pinned GitHub evidence: %s", repository["name"])
             evidence = collect_evidence(repository)
             result = classify(evidence)
-            if result is None:
-                assessment.update(status="ambiguous", reason="No explicit qualifying OS-support statement found",
-                                  documents_reviewed=len(evidence["sources"]))
-            else:
-                assessment.update(status="success", decision=result["decision"],
-                                  sources=result["sources"], evidence=result.get("evidence", []),
-                                  documents_reviewed=len(evidence["sources"]),
-                                  limitations=evidence["limitations"])
+            assessment.update(status="success", **result,
+                              documents_reviewed=len(evidence["sources"]),
+                              limitations=evidence["limitations"])
         except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
                 OSError, ValueError, KeyError, TypeError) as error:
             LOG.error("%s: GitHub evidence review failed: %s", repository["name"], error)
@@ -295,6 +275,7 @@ def summary(report):
             missing.append(repository["name"])
         elif result.get("status") == "ambiguous" and result.get("sha") == repository.get("sha"):
             ambiguous.append(repository["name"])
+            groups[False].append(repository)
         elif result.get("status") != "success" or result.get("sha") != repository.get("sha"):
             failures.append(repository["name"])
         else:
@@ -319,7 +300,7 @@ def summary(report):
                 "top_languages": top,
             })
     return {"complete": complete, "selected": total, "assessed": denominator,
-            "ambiguous": ambiguous, "skipped": len(ambiguous),
+            "ambiguous": ambiguous, "skipped": 0,
             "failed": failures, "missing": missing, "rows": rows, "method": METHOD}
 
 

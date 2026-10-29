@@ -151,13 +151,11 @@ def cross_os_section(report):
     assessment = cross_os_summary(report)
     complete = assessment["complete"]
     total = assessment["selected"]
-    classified = assessment["assessed"]
-    skipped = assessment["skipped"]
     rows = assessment["rows"]
     cards = "".join(
         f'<div class="card cross-os"><strong>{row["count"] if complete else "N/A"}</strong>'
         f'{text(label)} applications<small>'
-        f'{"of " + str(classified) + " classifiable; " + str(skipped) + " skipped" if complete else "Review not complete"}</small></div>'
+        f'{"of " + str(total) + " sampled repositories" if complete else "Review not complete"}</small></div>'
         for label, row in zip(("Cross-OS", "Non-cross-OS"),
                               rows if complete else ({}, {})))
     parts = ['<section class="cross-os-summary">', f'<div class="cards">{cards}</div>',
@@ -169,9 +167,6 @@ def cross_os_section(report):
                    f'{len(assessment["failed"])} failed, {len(assessment["missing"])} not collected. '
                    "The binary distribution is withheld; failures are not counted as non-cross-OS.")
         parts.append(f'<p class="muted">{text(message)}</p>')
-    elif not classified:
-        parts.append(f'<p class="muted">No unambiguous repositories could be classified; '
-                     f'{skipped} of {total} sampled repositories were skipped.</p>')
     else:
         parts.append("<table><thead><tr><th>Category</th><th>Repositories</th>"
                      "<th>Most used language</th><th>Second most used</th></tr></thead><tbody>")
@@ -187,8 +182,9 @@ def cross_os_section(report):
                 f'({number(row["percent"], "%")})</td><td>{languages[0]}</td><td>{languages[1]}</td></tr>')
         parts.append("</tbody></table>")
         parts.append(
-            f'<p class="muted">Distribution denominator: {classified} repositories with explicit, unambiguous '
-            f'OS-support evidence; {skipped} of {total} sampled repositories skipped as ambiguous. '
+            f'<p class="muted">Distribution denominator: all {total} sampled repositories. '
+            'Non-cross-OS includes ambiguous, undocumented, and non-application repositories; '
+            'it means support not demonstrated, not proven OS-specificity. '
             'Languages use GitHub\'s primary language per repository; percentages are within each category. '
             'Ties are retained. The second column of languages shows the next distinct frequency rank.</p>')
     parts.append(f'<p class="muted">{text(assessment["method"])}</p></section>')

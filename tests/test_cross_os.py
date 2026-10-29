@@ -159,9 +159,9 @@ class ClassificationTests(unittest.TestCase):
             source("The desktop application is supported on Linux only.")
         ]})
         self.assertFalse(result["decision"]["cross_os"])
-        self.assertEqual(result["evidence"][0]["os"], "Linux")
+        self.assertIn("not demonstrated", result["decision"]["rationale"])
 
-    def test_ambiguous_or_nonapplication_evidence_is_skipped(self):
+    def test_ambiguous_or_nonapplication_evidence_counts_as_non_cross_os(self):
         cases = [
             source("This project uses Python on Linux and Windows."),
             source("CI runs on Linux and Windows."),
@@ -172,11 +172,18 @@ class ClassificationTests(unittest.TestCase):
         ]
         for evidence in cases:
             with self.subTest(evidence=evidence):
-                self.assertIsNone(cross_os.classify({"sources": [evidence]}))
+                result = cross_os.classify({"sources": [evidence]})
+                self.assertFalse(result["decision"]["cross_os"])
+                cross_os.validate_decision(result["decision"], result["sources"])
+
+    def test_no_evidence_counts_as_non_cross_os(self):
+        result = cross_os.classify({"sources": []})
+        self.assertFalse(result["decision"]["cross_os"])
+        self.assertEqual(result["decision"]["support"], [])
 
 
 class SummaryTests(unittest.TestCase):
-    def test_ambiguous_repositories_are_excluded_from_both_category_denominators(self):
+    def test_legacy_ambiguous_repositories_count_in_non_cross_os_and_full_denominator(self):
         records = [record(f"o/t{i}") for i in range(6)]
         records += [record(f"o/p{i}", "Python") for i in range(3)]
         records += [record(f"o/g{i}", "Go") for i in range(3)]
@@ -187,12 +194,13 @@ class SummaryTests(unittest.TestCase):
         result = cross_os.summary({"repositories": records})
         self.assertTrue(result["complete"])
         self.assertEqual(result["selected"], 19)
-        self.assertEqual(result["assessed"], 13)
-        self.assertEqual(result["skipped"], 6)
-        self.assertEqual([row["count"] for row in result["rows"]], [12, 1])
-        self.assertEqual([row["denominator"] for row in result["rows"]], [13, 13])
-        self.assertEqual(result["rows"][0]["percent"], 92.31)
-        self.assertEqual(result["rows"][1]["percent"], 7.69)
+        self.assertEqual(result["assessed"], 19)
+        self.assertEqual(result["skipped"], 0)
+        self.assertEqual([row["count"] for row in result["rows"]], [12, 7])
+        self.assertEqual([row["denominator"] for row in result["rows"]], [19, 19])
+        self.assertEqual(result["rows"][0]["percent"], 63.16)
+        self.assertEqual(result["rows"][1]["percent"], 36.84)
+        self.assertEqual(result["rows"][1]["top_languages"][0][0]["count"], 6)
         self.assertEqual([x["language"] for x in result["rows"][0]["top_languages"][1]],
                          ["Go", "Python"])
 
@@ -214,16 +222,24 @@ class SummaryTests(unittest.TestCase):
 
 
 class EnrichmentTests(unittest.TestCase):
-    @mock.patch.object(cross_os, "classify", return_value=None)
     @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": [], "limitations": []})
-    def test_classifies_ambiguous_repositories_without_any_model_client(self, collect, classify):
+    def test_classifies_ambiguous_repositories_without_any_model_client(self, collect):
         report = {"metrics": {}, "repositories": [
             {"name": "o/r", "sha": "abc", "primary_language": "Python"}]}
         cross_os.enrich(report)
-        self.assertEqual(report["repositories"][0]["cross_os"]["status"], "ambiguous")
+        self.assertEqual(report["repositories"][0]["cross_os"]["status"], "success")
+        self.assertFalse(report["repositories"][0]["cross_os"]["decision"]["cross_os"])
         self.assertTrue(report["metrics"]["cross_os"]["complete"])
-        classify.assert_called_once()
         collect.assert_called_once()
+
+    @mock.patch.object(cross_os, "collect_evidence")
+    def test_no_pinned_commit_is_included_as_support_not_demonstrated(self, collect):
+        report = {"metrics": {}, "repositories": [{"name": "o/r"}]}
+        cross_os.enrich(report)
+        collect.assert_not_called()
+        self.assertTrue(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(report["metrics"]["cross_os"]["rows"][1]["count"], 1)
+        self.assertIn("No pinned commit available", report["repositories"][0]["cross_os"]["limitations"])
 
     @mock.patch.object(cross_os, "collect_evidence", side_effect=PilotError("GitHub unavailable"))
     def test_github_errors_are_not_counted_as_ambiguous_or_non_cross_os(self, _):
@@ -249,8 +265,10 @@ class EnrichmentTests(unittest.TestCase):
             saved = json.loads(path.read_text(encoding="utf-8"))
             self.assertTrue(saved["metrics"].pop("cross_os")["complete"])
             self.assertEqual(saved["metrics"], original_metrics)
-            self.assertEqual(saved["repositories"][0]["cross_os"]["status"], "ambiguous")
-            self.assertEqual(json.loads(export.read_text())["summary"]["skipped"], 1)
+            self.assertEqual(saved["repositories"][0]["cross_os"]["status"], "success")
+            self.assertFalse(saved["repositories"][0]["cross_os"]["decision"]["cross_os"])
+            self.assertEqual(json.loads(export.read_text())["summary"]["skipped"], 0)
+            self.assertEqual(json.loads(export.read_text())["summary"]["rows"][1]["count"], 1)
 
     @mock.patch.object(cross_os, "collect_evidence", side_effect=PilotError("GitHub unavailable"))
     def test_command_saves_diagnostics_and_exits_for_api_failures(self, _):
@@ -268,7 +286,7 @@ class EnrichmentTests(unittest.TestCase):
 
 
 class PdfTests(unittest.TestCase):
-    def test_yellow_distribution_follows_windows_cards_and_uses_classifiable_denominator(self):
+    def test_yellow_distribution_follows_windows_cards_and_uses_full_denominator(self):
         report = sample_report()
         report["repositories"] = [record("o/cross"), record("o/single", "Python", assessment(False)),
                                   record("o/unclear", result={"status": "ambiguous", "sha": "abc"})]
@@ -276,14 +294,15 @@ class PdfTests(unittest.TestCase):
         self.assertEqual(html.count('<div class="card cross-os">'), 2)
         self.assertIn("background: #fff8cc", html)
         self.assertIn(".cross-os-summary table { background: #fff8cc", html)
-        self.assertIn("of 2 classifiable; 1 skipped", html)
+        self.assertIn("of 3 sampled repositories", html)
         windows = html.index("Windows applications")
         cross = html.index('<section class="cross-os-summary">')
         table = html.index("<th>Most used language</th>")
         self.assertLess(windows, cross)
         self.assertLess(cross, table)
-        self.assertIn("Distribution denominator: 2 repositories", html)
-        self.assertIn("1 of 3 sampled repositories skipped as ambiguous", html)
+        self.assertIn("Distribution denominator: all 3 sampled repositories", html)
+        self.assertIn("support not demonstrated", html)
+        self.assertNotIn("skipped as ambiguous", html)
 
     def test_api_failures_do_not_render_misleading_partial_distribution(self):
         report = sample_report()

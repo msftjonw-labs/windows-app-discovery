@@ -67,20 +67,21 @@ python -m discovery.cross_os
 
 The PDF shows two yellow boxes immediately below the Windows counts, followed by a
 yellow cross-OS/non-cross-OS table with each category's top two primary-language
-frequency ranks (including ties). Counts and percentages use only repositories with
-explicit classifying evidence. Ambiguous or undocumented repositories are skipped and
-reported separately, not silently counted as non-cross-OS.
+frequency ranks (including ties). Counts and percentages use the full sample.
+Cross-OS requires explicit multi-OS application-support evidence; all remaining
+repositories, including ambiguous, undocumented, and non-application repositories,
+count as **non-cross-OS / support not demonstrated**, not proven OS-specificity.
 
 The deterministic classifier requires a pinned documentation line explicitly stating
-multi-OS application support or an explicit one-OS-only limitation. CI runners,
+multi-OS application support. No one-OS-only statement is required for the other category. CI runners,
 frameworks, language portability, browser access, and inferred targets do not count.
 Evidence is fetched from the public GitHub API at each collected commit. Up to 100
 documents are inspected per repository, bounded by 1 MiB per file and 2 MiB total;
 vendor/generated trees and agent instructions are excluded. Binary and non-UTF-8
 evidence files are logged and skipped; API failures withhold the distribution.
 This is a low-cost static trend estimate, not runtime testing or proof that a repository
-supports only one OS. The classifiable subset may be biased if ambiguous projects differ
-systematically. Per-repository decisions and cited source lines are exported to
+supports only one OS. Narrow deterministic rules can miss valid multi-OS support;
+results need not match a broader manual review. Per-repository decisions and cited source lines are exported to
 `reports/cross-os-assessments.json`; use `--assessments-output PATH` locally.
 Older reports without assessments show "Not collected" / N/A until reviewed.
 For an Actions retry against the same cohort, set the optional `rerun_report_run_id`
