@@ -1,3 +1,4 @@
+import io
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -218,6 +219,31 @@ class SummaryTests(unittest.TestCase):
         with self.assertRaisesRegex(PilotError, "HTTP 401"):
             analysis.summarize(self.evidence, "key", "gpt-4o")
 
+    @mock.patch.object(analysis.time, "sleep")
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_quota_exhaustion_is_actionable_and_not_retried(self, urlopen, sleep):
+        for code in ("insufficient_quota", "credit_balance_exhausted"):
+            with self.subTest(code=code):
+                urlopen.reset_mock()
+                body = io.BytesIO(json.dumps({"error": {
+                    "code": code, "message": "Private provider details"}}).encode())
+                urlopen.side_effect = urllib.error.HTTPError("url", 429, "quota", {}, body)
+                with self.assertRaisesRegex(analysis.OpenAIQuotaError, code) as error:
+                    analysis.summarize(self.evidence, "key", "gpt-4o")
+                self.assertIn("Restore OpenAI API credits/quota", str(error.exception))
+                self.assertNotIn("Private provider", str(error.exception))
+                urlopen.assert_called_once()
+                sleep.assert_not_called()
+
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_malformed_provider_errors_keep_http_diagnostic(self, urlopen):
+        for body in (b"not json", b"[]", b'{"error": null}', b'{"error": {"code": []}}'):
+            with self.subTest(body=body):
+                urlopen.side_effect = urllib.error.HTTPError(
+                    "url", 401, "unauthorized", {}, io.BytesIO(body))
+                with self.assertRaisesRegex(PilotError, r"OpenAI request failed \(HTTP 401\)"):
+                    analysis.summarize(self.evidence, "key", "gpt-4o")
+
 
 class EnrichmentTests(unittest.TestCase):
     @mock.patch.object(analysis, "summarize")
@@ -245,6 +271,54 @@ class EnrichmentTests(unittest.TestCase):
         self.assertEqual(repo["analysis"]["status"], "failed")
         self.assertEqual(repo["analysis"]["error"], "GitHub unavailable")
         self.assertNotIn("problem", repo["analysis"])
+
+    @mock.patch.object(analysis, "summarize")
+    @mock.patch.object(analysis, "collect_evidence", return_value={"sources": []})
+    def test_quota_exhaustion_stops_requests_without_changing_scan_results(self, collect, summarize):
+        report = {"window": {"start": stamp(START), "end": stamp(END)},
+                  "metrics": {"windows_repositories": 3}, "repositories": [
+                      candidate(), candidate(name="o/second"),
+                      candidate(name="o/third", analysis={"status": "success", "problem": "stale"}),
+                      candidate(status="partial"), candidate(platforms=["Linux"])]}
+        summarize.side_effect = [{"problem": "Automation"},
+                                 analysis.OpenAIQuotaError("Restore OpenAI API credits/quota")]
+        with self.assertLogs("analysis", level="ERROR"):
+            analysis.enrich(report, "key", "gpt-4o")
+        self.assertEqual(collect.call_count, 2)
+        self.assertEqual(summarize.call_count, 2)
+        self.assertEqual(report["repositories"][0]["analysis"]["status"], "success")
+        for repo in report["repositories"][1:3]:
+            self.assertEqual(repo["status"], "success")
+            self.assertEqual(repo["analysis"]["status"], "failed")
+            self.assertIn("Restore OpenAI API", repo["analysis"]["error"])
+            self.assertNotIn("problem", repo["analysis"])
+        self.assertNotIn("analysis", report["repositories"][3])
+        self.assertNotIn("analysis", report["repositories"][4])
+        self.assertEqual(report["metrics"], {"windows_repositories": 3})
+
+    @mock.patch.dict("os.environ", {"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "gpt-4o"})
+    @mock.patch.object(analysis.time, "sleep")
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    @mock.patch.object(analysis, "collect_evidence", return_value={"sources": []})
+    def test_command_persists_unavailable_analysis_on_exhausted_credits(self, collect, urlopen, sleep):
+        body = io.BytesIO(b'{"error": {"code": "credit_balance_exhausted"}}')
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "quota", {}, body)
+        report = {"schema_version": 1, "window": {"start": stamp(START), "end": stamp(END)},
+                  "metrics": {"windows_repositories": 2},
+                  "repositories": [candidate(), candidate(name="o/second")]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            with mock.patch("sys.argv", ["analysis", "--report", str(path)]), self.assertLogs("analysis"):
+                analysis.main()
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["metrics"], report["metrics"])
+            self.assertTrue(all(repo["analysis"]["status"] == "failed" for repo in saved["repositories"]))
+            self.assertIn("credit_balance_exhausted", saved["repositories"][0]["analysis"]["error"])
+            self.assertFalse(path.with_suffix(".tmp").exists())
+        collect.assert_called_once()
+        urlopen.assert_called_once()
+        sleep.assert_not_called()
 
     @mock.patch.dict("os.environ", {"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "gpt-4o"})
     @mock.patch.object(analysis, "collect_evidence")

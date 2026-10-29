@@ -70,6 +70,10 @@ Only description and readme sources support motivation.
 """
 
 
+class OpenAIQuotaError(PilotError):
+    pass
+
+
 def readme(name, sha):
     result = subprocess.run(
         ["gh", "api", "--method", "GET", f"repos/{name}/readme", "-f", f"ref={sha}"],
@@ -213,6 +217,16 @@ def summarize(evidence, token, model):
                 body = json.load(response)
             break
         except urllib.error.HTTPError as error:
+            try:
+                details = json.load(error)
+            except (ValueError, OSError, TypeError):
+                details = {}
+            details = details.get("error", {}) if isinstance(details, dict) else {}
+            code = details.get("code") if isinstance(details, dict) else None
+            if code in ("insufficient_quota", "credit_balance_exhausted"):
+                raise OpenAIQuotaError(
+                    f"OpenAI request failed (HTTP {error.code}, {code}). "
+                    "Restore OpenAI API credits/quota and rerun analysis.") from error
             if error.code in (429, 500, 502, 503, 504) and attempt < 2:
                 LOG.warning("OpenAI HTTP %s; retrying", error.code)
                 time.sleep(15 * (attempt + 1))
@@ -244,12 +258,15 @@ def enrich(report, token, model):
     start, end = (parse_time(report["window"][key]) for key in ("start", "end"))
     if start >= end:
         raise PilotError("Analysis window must have start before end")
+    quota_error = None
     for repo in report["repositories"]:
         if repo["status"] != "success" or "Windows" not in repo.get("platforms", []):
             continue
         LOG.info("Analyzing problems, development status and community feedback: %s", repo["name"])
         analysis = {"model": model, "generated_at": stamp(datetime.now(timezone.utc))}
         try:
+            if quota_error:
+                raise quota_error
             evidence = collect_evidence(repo, start, end)
             analysis.update(evidence)
             analysis.update(summarize(evidence, token, model), status="success")
@@ -258,6 +275,8 @@ def enrich(report, token, model):
                                    for source in evidence["sources"]]
         except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
                 OSError, ValueError, KeyError, TypeError) as error:
+            if isinstance(error, OpenAIQuotaError):
+                quota_error = error
             LOG.error("%s: analysis failed: %s", repo["name"], error)
             analysis = {"status": "failed", "model": model, "generated_at": analysis["generated_at"],
                         "error": str(error)}

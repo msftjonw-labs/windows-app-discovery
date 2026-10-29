@@ -54,6 +54,11 @@ Actions secret and optionally an `OPENAI_MODEL` repository variable (default
 `gpt-4o`, must support structured JSON outputs). Never commit the API key.
 Missing configuration fails the step explicitly. Individual repository/API failures
 are logged and shown as unavailable analysis without changing scan results or metrics.
+OpenAI `insufficient_quota` or `credit_balance_exhausted` errors are not retried:
+remaining candidates are marked unavailable without further API requests.
+Restore credits or quota for the API project associated with `OPENAI_API_KEY`, then
+rerun analysis (or the workflow). Retrying the same workflow before restoring quota
+will not resolve these billing errors; transient rate limits are still retried.
 Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
 Use `--report PATH` to enrich another report in place.
 The PDF's **Identified Windows repositories** table contains only Windows candidates
