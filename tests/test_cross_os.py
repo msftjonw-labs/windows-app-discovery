@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from discovery import cross_os, report_pdf
+from discovery import cross_os, pilot, report_pdf, report_markdown, send_email
 from discovery.pilot import PilotError
 from tests.test_weekly import sample_report
 
@@ -183,6 +183,24 @@ class ClassificationTests(unittest.TestCase):
 
 
 class SummaryTests(unittest.TestCase):
+    def test_three_groups_are_exclusive_and_cross_os_takes_precedence_over_windows(self):
+        cross = record("o/cross")
+        windows = record("o/windows", "Python", assessment(False))
+        others = record("o/linux", "Go", assessment(False))
+        others["platforms"] = ["Linux"]
+        partial = record("o/partial", "Python", assessment(False))
+        partial["status"] = "partial"
+        result = cross_os.summary({"repositories": [cross, windows, others, partial]})
+        self.assertEqual([row["label"] for row in result["rows"]], ["Cross-OS", "Windows", "Others"])
+        self.assertEqual([row["count"] for row in result["rows"]], [1, 1, 2])
+        self.assertEqual([row["percent"] for row in result["rows"]], [25.0, 25.0, 50.0])
+        self.assertFalse(pilot.is_windows_candidate(cross))
+        self.assertTrue(pilot.is_windows_candidate(windows))
+        self.assertFalse(pilot.is_windows_candidate(partial))
+        cross["cross_os"]["sha"] = "stale"
+        self.assertTrue(pilot.is_windows_candidate(cross))
+        self.assertFalse(cross_os.summary({"repositories": [cross]})["complete"])
+
     def test_legacy_ambiguous_repositories_count_in_non_cross_os_and_full_denominator(self):
         records = [record(f"o/t{i}") for i in range(6)]
         records += [record(f"o/p{i}", "Python") for i in range(3)]
@@ -196,8 +214,8 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(result["selected"], 19)
         self.assertEqual(result["assessed"], 19)
         self.assertEqual(result["skipped"], 0)
-        self.assertEqual([row["count"] for row in result["rows"]], [12, 7])
-        self.assertEqual([row["denominator"] for row in result["rows"]], [19, 19])
+        self.assertEqual([row["count"] for row in result["rows"]], [12, 7, 0])
+        self.assertEqual([row["denominator"] for row in result["rows"]], [19, 19, 19])
         self.assertEqual(result["rows"][0]["percent"], 63.16)
         self.assertEqual(result["rows"][1]["percent"], 36.84)
         self.assertEqual(result["rows"][1]["top_languages"][0][0]["count"], 6)
@@ -222,6 +240,11 @@ class SummaryTests(unittest.TestCase):
 
 
 class EnrichmentTests(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(cross_os, "aggregate", return_value={})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": [], "limitations": []})
     def test_classifies_ambiguous_repositories_without_any_model_client(self, collect):
         report = {"metrics": {}, "repositories": [
@@ -238,7 +261,7 @@ class EnrichmentTests(unittest.TestCase):
         cross_os.enrich(report)
         collect.assert_not_called()
         self.assertTrue(report["metrics"]["cross_os"]["complete"])
-        self.assertEqual(report["metrics"]["cross_os"]["rows"][1]["count"], 1)
+        self.assertEqual(report["metrics"]["cross_os"]["rows"][2]["count"], 1)
         self.assertIn("No pinned commit available", report["repositories"][0]["cross_os"]["limitations"])
 
     @mock.patch.object(cross_os, "collect_evidence", side_effect=PilotError("GitHub unavailable"))
@@ -268,7 +291,7 @@ class EnrichmentTests(unittest.TestCase):
             self.assertEqual(saved["repositories"][0]["cross_os"]["status"], "success")
             self.assertFalse(saved["repositories"][0]["cross_os"]["decision"]["cross_os"])
             self.assertEqual(json.loads(export.read_text())["summary"]["skipped"], 0)
-            self.assertEqual(json.loads(export.read_text())["summary"]["rows"][1]["count"], 1)
+            self.assertEqual(json.loads(export.read_text())["summary"]["rows"][2]["count"], 1)
 
     @mock.patch.object(cross_os, "collect_evidence", side_effect=PilotError("GitHub unavailable"))
     def test_command_saves_diagnostics_and_exits_for_api_failures(self, _):
@@ -291,7 +314,7 @@ class PdfTests(unittest.TestCase):
         report["repositories"] = [record("o/cross"), record("o/single", "Python", assessment(False)),
                                   record("o/unclear", result={"status": "ambiguous", "sha": "abc"})]
         html = report_pdf.build_html(report)
-        self.assertEqual(html.count('<div class="card cross-os">'), 2)
+        self.assertEqual(html.count('<div class="card cross-os">'), 3)
         self.assertIn("background: #fff8cc", html)
         self.assertIn(".cross-os-summary table { background: #fff8cc", html)
         self.assertIn("of 3 sampled repositories", html)
@@ -301,8 +324,11 @@ class PdfTests(unittest.TestCase):
         self.assertLess(windows, cross)
         self.assertLess(cross, table)
         self.assertIn("Distribution denominator: all 3 sampled repositories", html)
-        self.assertIn("support not demonstrated", html)
+        self.assertIn("Groups are mutually exclusive", html)
         self.assertNotIn("skipped as ambiguous", html)
+        table = html.split("<h2>Identified Windows repositories</h2>")[1]
+        self.assertNotIn("o/cross", table)
+        self.assertIn("o/single", table)
 
     def test_api_failures_do_not_render_misleading_partial_distribution(self):
         report = sample_report()
@@ -312,6 +338,36 @@ class PdfTests(unittest.TestCase):
         self.assertIn("<strong>N/A</strong>", html)
         self.assertIn("review incomplete", html.lower())
         self.assertNotIn("<table>", html)
+
+
+class ReportIntegrationTests(unittest.TestCase):
+    def test_refreshes_windows_counts_components_reports_and_email_after_classification(self):
+        cross = record("o/cross")
+        windows = record("o/windows", "Python", assessment(False))
+        others = record("o/linux", "Go", assessment(False))
+        others["platforms"] = ["Linux"]
+        for repository in (cross, windows, others):
+            repository.update(purpose="Application", windows_scan="success", frameworks=[],
+                              components=["Windows service"])
+        report = sample_report()
+        report["repositories"] = [cross, windows, others]
+        with mock.patch.object(cross_os, "collect_evidence", side_effect=lambda r: {
+                "sources": [source()] if r["name"] == "o/cross" else [], "limitations": []}):
+            cross_os.enrich(report)
+        metrics = report["metrics"]
+        self.assertEqual(metrics["selected"], 3)
+        self.assertEqual(metrics["windows_repositories"], 1)
+        self.assertEqual(metrics["windows_applications"], 1)
+        service = next(row for row in metrics["components"] if row["label"] == "Windows service")
+        self.assertEqual((service["count"], service["denominator"]), (1, 1))
+        self.assertEqual([row["count"] for row in metrics["cross_os"]["rows"]], [1, 1, 1])
+        message = "\n".join(send_email.summary_lines(report))
+        self.assertIn("Cross-OS: 1", message)
+        self.assertIn("Windows: 1", message)
+        self.assertIn("Others: 1", message)
+        markdown = report_markdown.build_markdown(report)
+        self.assertIn("Exclusive repository OS groups", markdown)
+        self.assertIn("| Others | 1 / 3 |", markdown)
 
 
 if __name__ == "__main__":

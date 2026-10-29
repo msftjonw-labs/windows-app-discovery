@@ -13,6 +13,8 @@ from pathlib import Path
 import smtplib
 import ssl
 
+from discovery.cross_os import summary as cross_os_summary
+
 ROOT = Path(__file__).resolve().parents[1]
 SMTP_HOST, SMTP_PORT = "smtp.gmail.com", 465
 
@@ -30,6 +32,14 @@ def summary_lines(report):
     lines.append(f"Scans: {metrics['successful']} complete, {metrics['partial']} partial, {metrics['failed']} failed, "
                  f"{metrics.get('not_applicable', 0)} no eligible source.")
     lines.append(f"Windows: {metrics['windows_repositories']} candidates, {metrics['windows_applications']} applications.")
+    if "cross_os" in metrics:
+        groups = cross_os_summary(report)
+        if groups["complete"]:
+            lines.append("Exclusive repository groups: " + ", ".join(
+                f"{row['label']}: {row['count']} ({row['percent']}%)" for row in groups["rows"]) + ".")
+            lines.append("Windows excludes Cross-OS and means a detected Windows signal, not proven Windows-only support.")
+        else:
+            lines.append("Repository OS groups unavailable: cross-OS evidence review incomplete.")
     compatibility = metrics.get("windows_container_compatibility")
     if compatibility:
         counts = compatibility["counts"]

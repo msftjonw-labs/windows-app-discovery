@@ -806,6 +806,14 @@ def windows_ci_by_language(records, z):
     return rows
 
 
+def is_windows_candidate(record):
+    review = record.get("cross_os") or {}
+    cross_os = (review.get("status") == "success"
+                and review.get("sha") == record.get("sha")
+                and (review.get("decision") or {}).get("cross_os") is True)
+    return record.get("status") == "success" and "Windows" in record.get("platforms", []) and not cross_os
+
+
 def aggregate(records, confidence=None):
     z = z_score(confidence)
     for record in records:
@@ -813,7 +821,7 @@ def aggregate(records, confidence=None):
             record["primary_platform"] = primary_platform(record["platforms"])
             record["primary_framework"] = primary_framework(record["frameworks"])
     complete = [r for r in records if r["status"] == "success"]
-    windows = [r for r in complete if "Windows" in r["platforms"]]
+    windows = [r for r in complete if is_windows_candidate(r)]
     applications = [r for r in windows if r["purpose"] == "Application" and r["windows_scan"] == "success"]
     project_labels = {
         "Windows Forms": "Windows Forms app",

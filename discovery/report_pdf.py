@@ -15,6 +15,7 @@ import time
 
 from discovery.windows_container import report_rows
 from discovery.cross_os import summary as cross_os_summary
+from discovery.pilot import is_windows_candidate
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSERS = (
@@ -154,18 +155,18 @@ def cross_os_section(report):
     rows = assessment["rows"]
     cards = "".join(
         f'<div class="card cross-os"><strong>{row["count"] if complete else "N/A"}</strong>'
-        f'{text(label)} applications<small>'
+        f'{text(label)}<small>'
         f'{"of " + str(total) + " sampled repositories" if complete else "Review not complete"}</small></div>'
-        for label, row in zip(("Cross-OS", "Non-cross-OS"),
-                              rows if complete else ({}, {})))
+        for label, row in zip(("Cross-OS", "Windows", "Others"),
+                              rows if complete else ({}, {}, {})))
     parts = ['<section class="cross-os-summary">', f'<div class="cards">{cards}</div>',
-             "<h2>Cross-OS application support and primary languages</h2>"]
+             "<h2>Repository OS groups and primary languages</h2>"]
     if not complete:
         message = ("Cross-OS review not collected. Run python -m discovery.cross_os."
                    if not assessment["assessed"] and not assessment["failed"] else
                    f'Cross-OS review incomplete: {assessment["assessed"]}/{total} assessed, '
                    f'{len(assessment["failed"])} failed, {len(assessment["missing"])} not collected. '
-                   "The binary distribution is withheld; failures are not counted as non-cross-OS.")
+                   "The distribution is withheld; retrieval failures are not counted as Others.")
         parts.append(f'<p class="muted">{text(message)}</p>')
     else:
         parts.append("<table><thead><tr><th>Category</th><th>Repositories</th>"
@@ -183,8 +184,8 @@ def cross_os_section(report):
         parts.append("</tbody></table>")
         parts.append(
             f'<p class="muted">Distribution denominator: all {total} sampled repositories. '
-            'Non-cross-OS includes ambiguous, undocumented, and non-application repositories; '
-            'it means support not demonstrated, not proven OS-specificity. '
+            'Groups are mutually exclusive: Cross-OS first, then Windows candidates excluding Cross-OS, '
+            'then Others. Windows indicates a detected Windows signal, not Windows-only support. '
             'Languages use GitHub\'s primary language per repository; percentages are within each category. '
             'Ties are retained. The second column of languages shows the next distinct frequency rank.</p>')
     parts.append(f'<p class="muted">{text(assessment["method"])}</p></section>')
@@ -291,10 +292,10 @@ def build_html(report, pages_url=None):
         f"<td>{text(r.get('application_types'))}</td><td>{text(r.get('components'))}</td>"
         f'<td class="repository-analysis">{repository_analysis(r)}</td></tr>'
         for r in report["repositories"]
-        if r["status"] == "success" and "Windows" in r.get("platforms", []))
+        if is_windows_candidate(r))
     parts.append('<section class="windows-repositories"><h2>Identified Windows repositories</h2>'
                  "<p class=\"muted\">Windows candidates: complete scans with a Windows platform signal, including "
-                 "libraries/tools and multi-OS repositories. Community feedback is limited to the report window "
+                 "libraries/tools, excluding repositories classified as Cross-OS. Community feedback is limited to the report window "
                  "and the collected sample, not a live or community-wide assessment.</p>"
                  "<table class=\"repos\"><thead><tr><th>Repository</th><th>Scan</th><th>Language</th>"
                  "<th>Platform</th><th>Framework</th><th>Windows app type</th><th>Windows components</th>"

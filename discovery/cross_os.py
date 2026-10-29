@@ -11,11 +11,11 @@ import subprocess
 from urllib.parse import quote
 import urllib.error
 
-from discovery.pilot import ROOT, PilotError, fetch_source_batch, safe_path, stamp
+from discovery.pilot import ROOT, PilotError, aggregate, fetch_source_batch, is_windows_candidate, safe_path, stamp
 from discovery.rules import EXCLUDED_DIRS
 
 LOG = logging.getLogger("cross_os")
-VERSION = "cross-os-4"
+VERSION = "cross-os-5"
 MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
@@ -28,9 +28,11 @@ METHOD = (
     "Deterministic review of pinned public GitHub documentation; no OpenAI API is used. "
     "Cross-OS requires explicit documentation of application support for at least two operating systems. "
     "CI runners, languages, frameworks, browser access, and inferred portability do not qualify. "
-    "All other sampled repositories are non-cross-OS: support not demonstrated, not proven "
-    "OS-specificity or incompatibility. Both categories use the full sample denominator, including "
-    "ambiguous and undocumented repositories. Static evidence review, not cross-OS runtime testing."
+    "The remaining repositories are Windows when a complete source scan detects a Windows signal, "
+    "and Others otherwise. Cross-OS takes precedence; the three groups are mutually exclusive "
+    "and use the full sample denominator, including ambiguous and undocumented repositories. "
+    "Windows means a detected signal, not proven Windows-only support. Others means neither "
+    "cross-OS support nor a qualifying Windows signal demonstrated. Static review, not runtime testing."
 )
 SUPPORT_MARKER = re.compile(
     r"\b(?:support(?:s|ed)?|available|download(?:s)?|release(?:s|d)?|compatible|runs?\s+on)\b",
@@ -262,12 +264,14 @@ def enrich(report):
             assessment.update(status="failed", error=str(error))
         repository["cross_os"] = assessment
     report["metrics"]["cross_os"] = summary(report)
+    if report["metrics"]["cross_os"]["complete"]:
+        report["metrics"].update(aggregate(report["repositories"], report["metrics"].get("confidence_level")))
     return report
 
 
 def summary(report):
     repositories = report["repositories"]
-    groups = {True: [], False: []}
+    groups = {"Cross-OS": [], "Windows": [], "Others": []}
     failures, missing, ambiguous = [], [], []
     for repository in repositories:
         result = repository.get("cross_os")
@@ -275,26 +279,28 @@ def summary(report):
             missing.append(repository["name"])
         elif result.get("status") == "ambiguous" and result.get("sha") == repository.get("sha"):
             ambiguous.append(repository["name"])
-            groups[False].append(repository)
+            groups["Windows" if is_windows_candidate(repository) else "Others"].append(repository)
         elif result.get("status") != "success" or result.get("sha") != repository.get("sha"):
             failures.append(repository["name"])
         else:
             decision = result["decision"]
             validate_decision(decision, result["sources"])
-            groups[decision["cross_os"]].append(repository)
+            label = ("Cross-OS" if decision["cross_os"] else
+                     "Windows" if is_windows_candidate(repository) else "Others")
+            groups[label].append(repository)
     total = len(repositories)
     denominator = sum(map(len, groups.values()))
     complete = total > 0 and not failures and not missing
     rows = []
     if complete:
-        for positive, members in groups.items():
+        for label, members in groups.items():
             languages = Counter(r.get("primary_language", "Unknown") for r in members)
             ranked = sorted(languages.items(), key=lambda item: (-item[1], item[0]))
             ranks = sorted(set(languages.values()), reverse=True)[:2]
             top = [[{"language": language, "count": count, "percent": round(count / len(members) * 100, 2)}
                     for language, count in ranked if count == rank] for rank in ranks] if members else []
             rows.append({
-                "label": "Cross-OS" if positive else "Non-cross-OS",
+                "label": label,
                 "count": len(members), "denominator": denominator,
                 "percent": round(len(members) / denominator * 100, 2) if denominator else 0,
                 "top_languages": top,
@@ -311,7 +317,7 @@ def write_assessments(report, output):
         "schema_version": 1, "generated_at": report["generated_at"], "window": report["window"],
         "summary": summary(report),
         "repositories": [
-            {key: repository[key] for key in ("name", "sha", "primary_language", "cross_os")
+            {key: repository[key] for key in ("name", "sha", "status", "platforms", "primary_language", "cross_os")
              if key in repository}
             for repository in report["repositories"]
         ],

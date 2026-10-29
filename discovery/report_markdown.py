@@ -8,6 +8,7 @@ import re
 
 from discovery.report_pdf import EXCLUSIVE, ROOT, SECTIONS, number
 from discovery.windows_container import report_rows
+from discovery.cross_os import summary as cross_os_summary
 
 
 def text(value):
@@ -76,6 +77,16 @@ def build_markdown(report):
                        ("Windows candidates (subset of complete scans)", "windows_repositories"),
                        ("Windows applications (subset of complete scans)", "windows_applications")):
         lines.append(f"| {label} | {text(metrics.get(key, 0))} |")
+    if "cross_os" in metrics:
+        groups = cross_os_summary(report)
+        lines.extend(["", "## Exclusive repository OS groups", "",
+                      "| Category | Repositories | Share |", "| --- | ---: | ---: |"])
+        if groups["complete"]:
+            for row in groups["rows"]:
+                lines.append(f"| {row['label']} | {row['count']} / {row['denominator']} | {row['percent']}% |")
+        else:
+            lines.append("| Review incomplete | N/A | N/A |")
+        lines.extend(["", text(groups["method"])])
     for key, title, note in SECTIONS:
         lines.extend(["", f"## {title}", "", note, ""])
         if key in EXCLUSIVE:
