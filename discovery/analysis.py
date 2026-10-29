@@ -245,12 +245,13 @@ def structured_response(evidence, token, model, system, schema, name, max_tokens
             details = details.get("error", {}) if isinstance(details, dict) else {}
             code = details.get("code") if isinstance(details, dict) else None
             code = code if isinstance(code, str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", code) else None
-            if code != "insufficient_quota" and error.code in (429, 500, 502, 503, 504) and attempt < 2:
+            exhausted = code in ("insufficient_quota", "credit_balance_exhausted")
+            if not exhausted and error.code in (429, 500, 502, 503, 504) and attempt < 2:
                 LOG.warning("OpenAI HTTP %s; retrying", error.code)
                 time.sleep(15 * (attempt + 1))
                 continue
             detail = f", {code}" if code else ""
-            failure = OpenAIQuotaError if code == "insufficient_quota" else PilotError
+            failure = OpenAIQuotaError if exhausted else PilotError
             raise failure(f"OpenAI request failed (HTTP {error.code}{detail})") from error
     choices = body.get("choices", [])
     if not choices or choices[0].get("finish_reason") != "stop":
