@@ -87,10 +87,16 @@ Successful assessments are cached by repository, commit, review version, and mod
 under `.cache/analysis/cross-os`. Missing configuration fails explicitly; retrieval,
 API, or citation-validation failures are logged and saved, fail the review step, and
 withhold the binary distribution rather than counting failures as non-cross-OS.
+The model selects source IDs and line ranges; the collector copies the exact supporting
+quotes from those pinned lines rather than asking the model to reproduce their formatting.
 Older reports without assessments show "Not collected" / N/A until reviewed.
 The weekly run publishes per-repository decisions and their cited excerpts in
 `reports/cross-os-assessments.json`; use `--assessments-output PATH` to export these
 alongside a local report. This file records review provenance, not runtime test results.
+For an Actions retry against the same cohort, set the optional `rerun_report_run_id`
+workflow input to a previous run that retained a `weekly-report` artifact. This skips
+discovery and the existing Windows analysis, preserves the activity window and pinned
+commits, then reruns cross-OS review, rendering, and the selected email/publishing steps.
 
 The PDF's **Identified Windows repositories** table contains only Windows candidates
 (complete scans with a Windows platform signal, including libraries/tools and

@@ -20,6 +20,10 @@ on:
         description: Also deploy the interactive GitHub Pages dashboard
         type: boolean
         default: true
+      rerun_report_run_id:
+        description: Optional previous Actions run ID; reuse its weekly-report cohort instead of rediscovering
+        required: false
+        default: ""
   schedule:
     # Every Monday 09:00 Pacific time (PST in winter, PDT in summer).
     - cron: "0 9 * * 1"
@@ -27,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: repository-pilot
@@ -53,19 +58,35 @@ jobs:
           restore-keys: |
             pilot-${{ runner.os }}-${{ hashFiles('discovery/**') }}-
       - name: Install pinned Microsoft Application Inspector
+        if: ${{ !inputs.rerun_report_run_id }}
         run: |
           python -c "from discovery.pilot import install_inspector, ROOT; print(install_inspector(ROOT / '.tools' / 'inspector'))"
       - name: Inspector integration tests
+        if: ${{ !inputs.rerun_report_run_id }}
         run: |
           $env:INSPECTOR_PATH = (Get-ChildItem .tools\inspector -Filter ApplicationInspector.CLI.exe -Recurse | Select-Object -First 1).FullName
           python -m unittest tests.test_inspector -v
       - name: Discover (GH Archive random sample) and analyze
+        if: ${{ !inputs.rerun_report_run_id }}
         env:
           GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
           PILOT_LIMIT: ${{ inputs.limit || '100' }}
           PILOT_DISCOVERY: ${{ inputs.discovery || 'auto' }}
         run: python -m discovery.pilot --limit $env:PILOT_LIMIT --discovery $env:PILOT_DISCOVERY --confidence 0.95
+      - name: Restore pinned cohort from a previous run
+        if: ${{ inputs.rerun_report_run_id }}
+        uses: actions/download-artifact@v4
+        with:
+          name: weekly-report
+          path: rerun-report
+          run-id: ${{ inputs.rerun_report_run_id }}
+          github-token: ${{ github.token }}
+      - name: Reuse the collected report without stale PDF output
+        if: ${{ inputs.rerun_report_run_id }}
+        run: |
+          python -c "from pathlib import Path; import shutil; p = Path('site/data/latest.json'); p.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile('rerun-report/data/latest.json', p)"
       - name: Analyze Windows candidate purpose and community feedback
+        if: ${{ !inputs.rerun_report_run_id }}
         env:
           GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

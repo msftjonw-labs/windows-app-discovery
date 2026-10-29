@@ -27,6 +27,13 @@ def decision(positive=True):
     }
 
 
+def model_decision():
+    result = decision()
+    for citation in result["support"]:
+        citation.pop("quote")
+    return result
+
+
 def record(name="o/r", language="TypeScript", positive=True, scan_status="success"):
     return {"name": name, "sha": "abc", "status": scan_status, "primary_language": language,
             "cross_os": {"status": "success", "sha": "abc", "decision": decision(positive),
@@ -41,7 +48,10 @@ class EvidenceTests(unittest.TestCase):
             self.assertTrue(cross_os.eligible_document(PurePosixPath(path)), path)
         for path in ("vendor/lib/README.md", ".agents/skills/support/README.md",
                      "docs/install.png", "node_modules/app/package.json",
-                     "docs/upstream-workflows/desktop.yml", "src/main.py", "docs/README.md.png"):
+                     "docs/upstream-workflows/desktop.yml", "src/main.py", "docs/README.md.png",
+                     "src/runtime/__fuzz__/window_archive_groups_rebuild/corpus/boundaries",
+                     "crates/interconnect/src/__fuzz__/installation/corpus/boundary",
+                     "src/installation/binary-fixture"):
             self.assertFalse(cross_os.eligible_document(PurePosixPath(path)), path)
 
     @mock.patch.object(cross_os, "fetch_source_batch")
@@ -83,7 +93,7 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ReviewTests(unittest.TestCase):
-    @mock.patch.object(cross_os, "structured_response", return_value=decision())
+    @mock.patch.object(cross_os, "structured_response", side_effect=lambda *args: model_decision())
     def test_review_uses_strict_application_definition_and_citations(self, request):
         result = cross_os.review({"sources": sources()}, "key", "configured-model")
         self.assertTrue(result["cross_os"])
@@ -93,6 +103,33 @@ class ReviewTests(unittest.TestCase):
             self.assertIn(excluded, system)
         schema = request.call_args.args[4]
         self.assertFalse(schema["additionalProperties"])
+        self.assertNotIn("quote", schema["properties"]["support"]["items"]["properties"])
+        self.assertEqual(result["support"][0]["quote"], sources()[0]["lines"][0]["text"])
+
+    @mock.patch.object(cross_os, "structured_response", side_effect=lambda *args: model_decision())
+    def test_exact_quotes_are_copied_locally_with_markdown_unicode_and_whitespace(self, _):
+        documents = sources()
+        documents[0]["lines"][0]["text"] = "  | **Windows** | Linux | macOS \u2014 supported |  "
+        result = cross_os.review({"sources": documents}, "key", "model")
+        self.assertEqual(result["support"][0]["quote"], documents[0]["lines"][0]["text"])
+        cross_os.validate_decision(result, documents)
+
+    @mock.patch.object(cross_os, "structured_response")
+    def test_model_cannot_cite_missing_source_lines_or_add_a_fabricated_quote(self, request):
+        invalid = []
+        value = model_decision()
+        value["support"][0]["last_line"] = 6
+        invalid.append(value)
+        value = model_decision()
+        value["support"][0]["source_id"] = "invented"
+        invalid.append(value)
+        value = model_decision()
+        value["support"][0]["quote"] = "invented"
+        invalid.append(value)
+        for value in invalid:
+            request.return_value = value
+            with self.subTest(value=value), self.assertRaises(PilotError):
+                cross_os.review({"sources": sources()}, "key", "model")
 
     def test_rejects_one_os_invented_sources_quotes_and_line_ranges(self):
         invalid = []

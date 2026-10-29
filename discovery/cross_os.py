@@ -18,7 +18,7 @@ from discovery.pilot import ROOT, PilotError, fetch_source_batch, safe_path, sta
 from discovery.rules import EXCLUDED_DIRS
 
 LOG = logging.getLogger("cross_os")
-VERSION = "cross-os-1"
+VERSION = "cross-os-2"
 MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
@@ -52,7 +52,9 @@ mention untested runtime caveats in rationale. Do not claim you executed tests.
 When evidence is insufficient, cross_os=false, application="", support=[], with an explicit
 rationale explaining that multi-OS application support was not demonstrated.
 For a positive decision, name the application and provide one support record per supported OS,
-each citing a supplied source_id and an EXACT CONTIGUOUS quote from its numbered lines.
+each citing a supplied source_id and the first_line/last_line of a short contiguous range
+that explicitly supports that OS for the application. Do not reproduce source text:
+the collector copies exact quotes from the cited pinned lines, preserving their whitespace.
 Use only OS names in the schema. Cite only supplied lines, not file names or model assumptions.
 """
 
@@ -60,7 +62,8 @@ Use only OS names in the schema. Cite only supplied lines, not file names or mod
 def eligible_document(path):
     path = PurePosixPath(str(path).lower())
     excluded = (EXCLUDED_DIRS - {"docs", "doc", "documentation"}) | {
-        "external", "third-party", ".agents", ".agent", ".claude", "code-review-artifacts"}
+        "external", "third-party", ".agents", ".agent", ".claude", "code-review-artifacts",
+        "__fuzz__", "corpus"}
     if any(part in excluded for part in path.parts[:-1]) and not (
             len(path.parts) == 3 and path.parts[:2] == (".github", "workflows")):
         return False
@@ -68,6 +71,8 @@ def eligible_document(path):
                            ".csproj", ".fsproj", ".vbproj", ".kts", ".gradle", ".sh", ".ps1"}:
         return False
     name = path.name
+    if not path.suffix and not (name.startswith("readme") or name in {"install", "installation", "makefile"}):
+        return False
     return (
         name.startswith(("readme", "install"))
         or path.parts[:2] == (".github", "workflows")
@@ -167,9 +172,8 @@ def review(evidence, token, model):
                     "os": {"type": "string", "enum": list(OS_NAMES)},
                     "source_id": {"type": "string"},
                     "first_line": {"type": "integer"}, "last_line": {"type": "integer"},
-                    "quote": {"type": "string"},
                 },
-                "required": ["os", "source_id", "first_line", "last_line", "quote"],
+                "required": ["os", "source_id", "first_line", "last_line"],
             }},
         },
         "required": ["cross_os", "application", "rationale", "support"],
@@ -178,8 +182,31 @@ def review(evidence, token, model):
         return {"cross_os": False, "application": "", "support": [],
                 "rationale": "Multi-OS application support not demonstrated in the available evidence excerpts."}
     decision = structured_response(evidence, token, model, SYSTEM, schema, "cross_os_support", 3000)
+    if not isinstance(decision, dict) or not isinstance(decision.get("support"), list):
+        raise PilotError("Invalid cross-OS decision shape")
+    ids = {source["id"]: source for source in evidence["sources"]}
+    for citation in decision["support"]:
+        if not isinstance(citation, dict) or set(citation) != {"os", "source_id", "first_line", "last_line"}:
+            raise PilotError("Invalid cross-OS support citation")
+        citation["quote"] = source_quote(citation, ids)
     validate_decision(decision, evidence["sources"])
     return decision
+
+
+def source_quote(citation, ids):
+    source_id = citation["source_id"]
+    if citation["os"] not in OS_NAMES or not isinstance(source_id, str) or source_id not in ids:
+        raise PilotError("Unknown cross-OS support OS or source")
+    first, last = citation["first_line"], citation["last_line"]
+    if type(first) is not int or type(last) is not int or not 1 <= first <= last <= first + 40:
+        raise PilotError("Invalid cross-OS citation line range")
+    lines = {line["line"]: line["text"] for line in ids[source_id]["lines"]}
+    if any(index not in lines for index in range(first, last + 1)):
+        raise PilotError("Cross-OS citation references omitted lines")
+    quote = "\n".join(lines[index] for index in range(first, last + 1))
+    if not quote.strip():
+        raise PilotError("Cross-OS support citation is empty")
+    return quote
 
 
 def validate_decision(decision, sources):
@@ -196,19 +223,9 @@ def validate_decision(decision, sources):
         if not isinstance(citation, dict) or set(citation) != {
                 "os", "source_id", "first_line", "last_line", "quote"}:
             raise PilotError("Invalid cross-OS support citation")
-        system, source_id = citation["os"], citation["source_id"]
-        if system not in OS_NAMES or not isinstance(source_id, str) or source_id not in ids:
-            raise PilotError("Unknown cross-OS support OS or source")
-        first, last = citation["first_line"], citation["last_line"]
-        if type(first) is not int or type(last) is not int or not 1 <= first <= last <= first + 40:
-            raise PilotError("Invalid cross-OS citation line range")
-        lines = {line["line"]: line["text"] for line in ids[source_id]["lines"]}
-        if any(index not in lines for index in range(first, last + 1)):
-            raise PilotError("Cross-OS citation references omitted lines")
-        expected = "\n".join(lines[index] for index in range(first, last + 1))
-        if not expected.strip() or citation["quote"] != expected:
+        if citation["quote"] != source_quote(citation, ids):
             raise PilotError("Cross-OS support quote does not match pinned source")
-        systems.add(system)
+        systems.add(citation["os"])
     if decision["cross_os"]:
         if not decision["application"].strip() or len(systems) < 2:
             raise PilotError("Cross-OS application requires cited support for at least two OSes")
