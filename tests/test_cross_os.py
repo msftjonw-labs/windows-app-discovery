@@ -134,6 +134,7 @@ class ReviewTests(unittest.TestCase):
         system = request.call_args.args[3]
         for excluded in ("untrusted", "browser access", "development", "library", "archived upstream", "SAME application"):
             self.assertIn(excluded, system)
+        self.assertIn("first_line must equal last_line", system)
         schema = request.call_args.args[4]
         self.assertFalse(schema["additionalProperties"])
         self.assertNotIn("quote", schema["properties"]["support"]["items"]["properties"])
@@ -167,6 +168,7 @@ class ReviewTests(unittest.TestCase):
     @mock.patch.object(cross_os, "structured_response")
     def test_invalid_line_reference_gets_one_validated_correction(self, request):
         invalid = model_decision()
+        invalid["support"][0]["first_line"] = 6
         invalid["support"][0]["last_line"] = 6
         request.side_effect = [invalid, model_decision()]
         with self.assertLogs("cross_os", level="WARNING"):
@@ -174,6 +176,18 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(request.call_count, 2)
         self.assertIn("omitted lines", request.call_args.args[0]["validation_error"])
         cross_os.validate_decision(result, sources())
+
+    @mock.patch.object(cross_os, "github_json")
+    def test_default_branch_commit_is_encoded_and_pinned(self, github):
+        github.side_effect = [
+            {"default_branch": "release/v1"},
+            {"commit": {"sha": "abc123"}},
+        ]
+        self.assertEqual(cross_os.default_branch_commit("o/r"), "abc123")
+        self.assertEqual(
+            [call.args[0] for call in github.call_args_list],
+            ["repos/o/r", "repos/o/r/branches/release%2Fv1"],
+        )
 
     def test_rejects_one_os_invented_sources_quotes_and_line_ranges(self):
         invalid = []
@@ -256,6 +270,22 @@ class SummaryTests(unittest.TestCase):
 
 
 class EnrichmentTests(unittest.TestCase):
+    @mock.patch.object(cross_os, "default_branch_commit", return_value="newsha")
+    @mock.patch.object(cross_os, "review", return_value=decision())
+    @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": sources(), "limitations": []})
+    def test_missing_scan_sha_is_pinned_before_cross_os_review(self, collect, _, resolve_sha):
+        repository = record()
+        repository.pop("sha")
+        repository.pop("cross_os")
+        report = {"metrics": {}, "repositories": [repository]}
+        cross_os.enrich(report, "key", "model")
+        resolve_sha.assert_called_once_with("o/r")
+        collect.assert_called_once()
+        self.assertEqual(collect.call_args.args[0]["sha"], "newsha")
+        self.assertEqual(repository["sha"], "newsha")
+        self.assertEqual(repository["cross_os"]["sha"], "newsha")
+        self.assertTrue(report["metrics"]["cross_os"]["complete"])
+
     @mock.patch.object(cross_os, "review", side_effect=cross_os.OpenAIQuotaError("insufficient_quota"))
     @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": sources(), "limitations": []})
     def test_quota_exhaustion_stops_requests_and_withholds_distribution(self, collect, review):

@@ -52,8 +52,9 @@ mention untested runtime caveats in rationale. Do not claim you executed tests.
 When evidence is insufficient, cross_os=false, application="", support=[], with an explicit
 rationale explaining that multi-OS application support was not demonstrated.
 For a positive decision, name the application and provide one support record per supported OS,
-each citing a supplied source_id and the first_line/last_line of a short contiguous range
-that explicitly supports that OS for the application. Do not reproduce source text:
+each citing a supplied source_id and exactly one supplied source line
+(first_line must equal last_line) that explicitly supports that OS for the application.
+Do not reproduce source text:
 the collector copies exact quotes from the cited pinned lines, preserving their whitespace.
 Use only OS names in the schema. Cite only supplied lines, not file names or model assumptions.
 If a previous decision failed citation validation, correct its source references using the
@@ -94,6 +95,23 @@ def github_json(endpoint):
     if result.returncode:
         raise PilotError("Cross-OS evidence request failed: " + result.stderr.strip())
     return json.loads(result.stdout)
+
+
+def default_branch_commit(repository):
+    metadata = github_json(f"repos/{repository}")
+    if not isinstance(metadata, dict):
+        raise PilotError("Invalid repository metadata for cross-OS evidence review")
+    if metadata.get("private"):
+        raise PilotError("Cross-OS analysis requires a currently public repository")
+    branch = metadata.get("default_branch")
+    if not isinstance(branch, str) or not branch:
+        raise PilotError("Repository has no default branch for cross-OS evidence review")
+    result = github_json(f"repos/{repository}/branches/{quote(branch, safe='')}")
+    commit = result.get("commit") if isinstance(result, dict) else None
+    sha = commit.get("sha") if isinstance(commit, dict) else None
+    if not isinstance(sha, str) or not sha:
+        raise PilotError("Default branch has no pinned commit for cross-OS evidence review")
+    return sha
 
 
 def collect_evidence(repository):
@@ -220,7 +238,7 @@ def source_quote(citation, ids):
     if citation["os"] not in OS_NAMES or not isinstance(source_id, str) or source_id not in ids:
         raise PilotError("Unknown cross-OS support OS or source")
     first, last = citation["first_line"], citation["last_line"]
-    if type(first) is not int or type(last) is not int or not 1 <= first <= last <= first + 40:
+    if type(first) is not int or type(last) is not int or first < 1 or first != last:
         raise PilotError("Invalid cross-OS citation line range")
     lines = {line["line"]: line["text"] for line in ids[source_id]["lines"]}
     if any(index not in lines for index in range(first, last + 1)):
@@ -268,11 +286,11 @@ def cited_sources(decision, sources):
 
 def enrich(report, token, model, cache=None):
     for repository in report["repositories"]:
-        assessment = {"version": VERSION, "sha": repository.get("sha"), "model": model,
-                      "generated_at": stamp(datetime.now(timezone.utc))}
         try:
             if not repository.get("sha"):
-                raise PilotError("No pinned commit available for cross-OS evidence review")
+                repository["sha"] = default_branch_commit(repository["name"])
+            assessment = {"version": VERSION, "sha": repository["sha"], "model": model,
+                          "generated_at": stamp(datetime.now(timezone.utc))}
             saved = repository.get("cross_os", {})
             if saved.get("status") == "success" and all(
                     saved.get(key) == assessment[key] for key in ("version", "sha", "model")):
@@ -301,12 +319,16 @@ def enrich(report, token, model, cache=None):
                 cached.write_text(json.dumps(assessment, indent=2), encoding="utf-8")
         except OpenAIQuotaError as error:
             LOG.error("%s: %s; remaining cross-OS reviews deferred", repository["name"], error)
+            assessment = {"version": VERSION, "sha": repository.get("sha"), "model": model,
+                          "generated_at": stamp(datetime.now(timezone.utc))}
             assessment.update(status="failed", error=str(error))
             repository["cross_os"] = assessment
             break
         except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
                 OSError, ValueError, KeyError, TypeError) as error:
             LOG.error("%s: cross-OS review failed: %s", repository["name"], error)
+            assessment = {"version": VERSION, "sha": repository.get("sha"), "model": model,
+                          "generated_at": stamp(datetime.now(timezone.utc))}
             assessment.update(status="failed", error=str(error))
         repository["cross_os"] = assessment
     report["metrics"]["cross_os"] = summary(report)
