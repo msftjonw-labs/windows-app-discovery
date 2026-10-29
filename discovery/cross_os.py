@@ -23,6 +23,7 @@ MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_EVIDENCE_CHARS = 96000
+MAX_REQUEST_BYTES = 96000
 OS_NAMES = ("Windows", "Linux", "macOS", "Android", "iOS", "FreeBSD", "OpenBSD", "NetBSD", "ChromeOS")
 OS_PATTERN = re.compile(
     r"\b(?:windows|win32|win64|linux|ubuntu|debian|macos|mac\s+os|darwin|"
@@ -126,9 +127,10 @@ def collect_evidence(repository):
     for entry in tree["tree"]:
         if entry["type"] != "blob" or entry.get("mode") in {"120000", "160000"}:
             continue
-        path = safe_path(entry["path"])
+        path = PurePosixPath(entry["path"])
         if not eligible_document(path):
             continue
+        path = safe_path(entry["path"])
         size = entry["size"]
         if not isinstance(size, int) or size < 0:
             raise PilotError(f"Invalid evidence file size: {path}")
@@ -191,6 +193,42 @@ def collect_evidence(repository):
     return {"repository": name, "sha": sha, "sources": sources, "limitations": sorted(set(limits))}
 
 
+def bounded_request(evidence):
+    """Bound serialized input, including JSON overhead and escaped Unicode."""
+    request = {**evidence, "sources": []}
+    limitation = "Serialized evidence request bounded"
+    request["limitations"] = [*evidence.get("limitations", []), limitation]
+    size = len(json.dumps(request).encode("utf-8"))
+    if size > MAX_REQUEST_BYTES:
+        raise PilotError("Cross-OS evidence metadata exceeds request byte bound")
+    bounded = False
+    for source in evidence["sources"]:
+        document = {**source, "lines": []}
+        document_size = len(json.dumps(document).encode("utf-8")) + 2
+        if size + document_size > MAX_REQUEST_BYTES:
+            bounded = True
+            break
+        size += document_size
+        for line in source["lines"]:
+            line_size = len(json.dumps(line).encode("utf-8")) + 2
+            if size + line_size > MAX_REQUEST_BYTES:
+                bounded = True
+                break
+            document["lines"].append(line)
+            size += line_size
+        if document["lines"]:
+            request["sources"].append(document)
+        if bounded:
+            break
+    if bounded:
+        LOG.warning("%s: %s", evidence.get("repository", "Repository"), limitation)
+        if limitation not in evidence.setdefault("limitations", []):
+            evidence["limitations"].append(limitation)
+    else:
+        request["limitations"].pop()
+    return request
+
+
 def review(evidence, token, model):
     schema = {
         "type": "object", "additionalProperties": False,
@@ -212,25 +250,27 @@ def review(evidence, token, model):
     if not evidence["sources"]:
         return {"cross_os": False, "application": "", "support": [],
                 "rationale": "Multi-OS application support not demonstrated in the available evidence excerpts."}
-    request_evidence = evidence
+    request_evidence = bounded_request(evidence)
     for attempt in range(2):
+        if not request_evidence["sources"]:
+            raise PilotError("No cross-OS evidence fits the request byte bound")
         decision = structured_response(request_evidence, token, model, SYSTEM, schema, "cross_os_support", 3000)
         try:
             if not isinstance(decision, dict) or not isinstance(decision.get("support"), list):
                 raise PilotError("Invalid cross-OS decision shape")
-            ids = {source["id"]: source for source in evidence["sources"]}
+            ids = {source["id"]: source for source in request_evidence["sources"]}
             for citation in decision["support"]:
                 if not isinstance(citation, dict) or set(citation) != {"os", "source_id", "first_line", "last_line"}:
                     raise PilotError("Invalid cross-OS support citation")
                 citation["quote"] = source_quote(citation, ids)
-            validate_decision(decision, evidence["sources"])
+            validate_decision(decision, request_evidence["sources"])
             return decision
         except PilotError as error:
             if attempt:
                 raise
             LOG.warning("Cross-OS citation validation failed; requesting correction: %s", error)
-            request_evidence = {**evidence, "previous_invalid_decision": decision,
-                                "validation_error": str(error)}
+            request_evidence = bounded_request({
+                **evidence, "previous_invalid_decision": decision, "validation_error": str(error)})
 
 
 def source_quote(citation, ids):

@@ -81,7 +81,9 @@ review, not cross-OS runtime certification.
 Evidence comes from currently public repositories at the collected commit SHA.
 The reviewer receives bounded excerpts from up to 100 documentation/manifest/workflow
 files (1 MiB per file, 2 MiB total source, 96,000 excerpt characters; vendor/generated
-trees and agent instructions excluded). Limits, rationale, exact supporting quotes,
+trees and agent instructions excluded). Each serialized model input is additionally
+capped at 96,000 bytes, including JSON line metadata and Unicode escaping, with
+omitted evidence recorded as a limitation. Limits, rationale, exact supporting quotes,
 and source paths/lines are recorded per repository in `site/data/latest.json`.
 Binary and non-UTF-8 files are omitted with warnings and recorded as evidence limitations;
 their bytes are never sent to the reviewer or replaced with guessed text.
@@ -89,6 +91,9 @@ Successful assessments are cached by repository, commit, review version, and mod
 under `.cache/analysis/cross-os`. Missing configuration fails explicitly; retrieval,
 API, or citation-validation failures are logged and saved, fail the review step, and
 withhold the binary distribution rather than counting failures as non-cross-OS.
+Organization IP allow-list denials require running from an authorized runner address
+or an organization administrator updating the allow list; changing tokens does not
+bypass that restriction.
 The model selects source IDs and line ranges; the collector copies the exact supporting
 quotes from those pinned lines rather than asking the model to reproduce their formatting.
 Older reports without assessments show "Not collected" / N/A until reviewed.

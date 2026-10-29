@@ -83,6 +83,27 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(github.call_count, 1)
         fetch.assert_not_called()
 
+    @mock.patch.object(cross_os, "fetch_source_batch", return_value=[b"Supports Windows and Linux."])
+    @mock.patch.object(cross_os, "github_json")
+    def test_irrelevant_non_windows_paths_do_not_abort_evidence_collection(self, github, fetch):
+        github.side_effect = [{"private": False}, {"truncated": False, "tree": [
+            {"path": "tests/regression/fire_output_2020-01-01_00:00:00.nc", "type": "blob"},
+            {"path": "README.md", "type": "blob", "size": 26, "sha": "blob"},
+        ]}]
+        result = cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        self.assertEqual([source["path"] for source in result["sources"]], ["README.md"])
+        self.assertEqual(fetch.call_args.args[2], [(PurePosixPath("README.md"), 26, "blob")])
+
+    @mock.patch.object(cross_os, "fetch_source_batch")
+    @mock.patch.object(cross_os, "github_json")
+    def test_eligible_unsafe_paths_still_fail_before_fetch(self, github, fetch):
+        github.side_effect = [{"private": False}, {"truncated": False, "tree": [
+            {"path": "../README.md", "type": "blob", "size": 1, "sha": "blob"},
+        ]}]
+        with self.assertRaisesRegex(PilotError, "Unsafe archive path"):
+            cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        fetch.assert_not_called()
+
     @mock.patch.object(cross_os, "fetch_source_batch", return_value=[None])
     @mock.patch.object(cross_os, "github_json")
     def test_missing_blob_is_not_absence_of_os_support(self, github, _):
@@ -126,6 +147,48 @@ class EvidenceTests(unittest.TestCase):
 
 
 class ReviewTests(unittest.TestCase):
+    def test_request_bound_includes_line_metadata_unicode_and_source_metadata(self):
+        for text in ("", "\u4e2d" * 50):
+            documents = sources()
+            documents[0]["lines"] = [{"line": i, "text": text} for i in range(1, 10001)]
+            evidence = {"sources": documents, "limitations": [], "repository": "o/r"}
+            with self.subTest(text=text), self.assertLogs("cross_os", level="WARNING"):
+                result = cross_os.bounded_request(evidence)
+            self.assertLessEqual(len(json.dumps(result).encode("utf-8")), cross_os.MAX_REQUEST_BYTES)
+            self.assertGreater(len(result["sources"][0]["lines"]), 0)
+            self.assertLess(len(result["sources"][0]["lines"]), 10000)
+            self.assertEqual(result["sources"][0]["lines"][0], documents[0]["lines"][0])
+            self.assertIn("Serialized evidence request bounded", evidence["limitations"])
+        documents = [{**sources()[0], "id": f"S{i}", "path": "x" * 2000, "lines": []}
+                     for i in range(100)]
+        with self.assertLogs("cross_os", level="WARNING"):
+            result = cross_os.bounded_request({"sources": documents})
+        self.assertLessEqual(len(json.dumps(result).encode("utf-8")), cross_os.MAX_REQUEST_BYTES)
+
+    @mock.patch.object(cross_os, "structured_response")
+    def test_correction_request_is_bounded_and_keeps_citation_validation(self, request):
+        documents = sources()
+        documents[0]["lines"] += [{"line": i, "text": "\u4e2d" * 50} for i in range(6, 10006)]
+        invalid = model_decision()
+        invalid["support"][0]["source_id"] = "invented"
+        request.side_effect = [invalid, model_decision()]
+        with self.assertLogs("cross_os", level="WARNING"):
+            result = cross_os.review({"sources": documents}, "key", "model")
+        for call in request.call_args_list:
+            self.assertLessEqual(len(json.dumps(call.args[0]).encode("utf-8")), cross_os.MAX_REQUEST_BYTES)
+        self.assertIn("validation_error", request.call_args.args[0])
+        cross_os.validate_decision(result, documents)
+
+    @mock.patch.object(cross_os, "structured_response")
+    def test_citations_to_lines_omitted_from_request_are_rejected(self, request):
+        documents = sources()
+        documents[0]["lines"] += [{"line": i, "text": "\u4e2d" * 50} for i in range(6, 10006)]
+        invalid = model_decision()
+        invalid["support"][0].update(first_line=10005, last_line=10005)
+        request.side_effect = lambda *args: copy.deepcopy(invalid)
+        with self.assertLogs("cross_os", level="WARNING"), self.assertRaisesRegex(PilotError, "omitted lines"):
+            cross_os.review({"sources": documents}, "key", "model")
+
     @mock.patch.object(cross_os, "structured_response", side_effect=lambda *args: model_decision())
     def test_review_uses_strict_application_definition_and_citations(self, request):
         result = cross_os.review({"sources": sources()}, "key", "configured-model")
