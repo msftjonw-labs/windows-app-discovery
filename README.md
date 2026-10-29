@@ -48,59 +48,48 @@ $env:OPENAI_MODEL = "gpt-4o"
 python -m discovery.analysis
 ```
 
-This uses the paid OpenAI API (standard library only), not a ChatGPT subscription.
-The weekly workflow runs this step automatically: configure an `OPENAI_API_KEY`
-Actions secret and optionally an `OPENAI_MODEL` repository variable (default
-`gpt-4o`, must support structured JSON outputs). Never commit the API key.
-Missing configuration fails the step explicitly. Individual repository/API failures
+This optional analysis uses the paid OpenAI API (standard library only), not a ChatGPT
+subscription. It is disabled by default in Actions; enable the `windows_ai_analysis`
+workflow input to request it. Configure an `OPENAI_API_KEY` Actions secret and
+optionally an `OPENAI_MODEL` repository variable (default `gpt-4o`, must support
+structured JSON outputs). Never commit the API key. Individual repository/API failures
 are logged and shown as unavailable analysis without changing scan results or metrics.
 Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
 Use `--report PATH` to enrich another report in place.
 
-The weekly run also uses the same OpenAI configuration to review **cross-OS application
-support for every sampled repository**, adding API usage beyond the Windows-only analysis.
-Run it locally after collection with:
+The weekly run also checks **cross-OS application support** using GitHub's public API
+and deterministic evidence rules; this step does not use OpenAI. Run it locally after
+collection with:
 
 ```powershell
 python -m discovery.cross_os
 ```
 
 The PDF shows two yellow boxes immediately below the Windows counts, followed by a
-cross-OS/non-cross-OS distribution and each category's top two primary-language
-frequency ranks (including ties). Language percentages are within the category.
-This separate review retains the full sample, including partial/no-source scans and
-non-application repositories, rather than only the complete source scans.
-Cross-OS requires an actual application with explicit support for two or more OSes
-in pinned documentation, active application build/release targets, or functional
-multi-OS application tests. Browser access, portable frameworks/runtimes, library/SDK
-portability, development-only setup, container host OSes, CPU architectures, and
-inactive upstream targets do not qualify. **Non-cross-OS means support was not
-demonstrated**, not proven incompatibility. This is AI-assisted static evidence
-review, not cross-OS runtime certification.
+yellow cross-OS/non-cross-OS table with each category's top two primary-language
+frequency ranks (including ties). Counts and percentages use only repositories with
+explicit classifying evidence. Ambiguous or undocumented repositories are skipped and
+reported separately, not silently counted as non-cross-OS.
 
-Evidence comes from currently public repositories at the collected commit SHA.
-The reviewer receives bounded excerpts from up to 100 documentation/manifest/workflow
-files (1 MiB per file, 2 MiB total source, 96,000 excerpt characters; vendor/generated
-trees and agent instructions excluded). Limits, rationale, exact supporting quotes,
-and source paths/lines are recorded per repository in `site/data/latest.json`.
-Successful assessments are cached by repository, commit, review version, and model
-under `.cache/analysis/cross-os`. Missing configuration fails explicitly; retrieval,
-API, or citation-validation failures are logged and saved, fail the review step, and
-withhold the binary distribution rather than counting failures as non-cross-OS.
-The model selects source IDs and line ranges; the collector copies the exact supporting
-quotes from those pinned lines rather than asking the model to reproduce their formatting.
+The deterministic classifier requires a pinned documentation line explicitly stating
+multi-OS application support or an explicit one-OS-only limitation. CI runners,
+frameworks, language portability, browser access, and inferred targets do not count.
+Evidence is fetched from the public GitHub API at each collected commit. Up to 100
+documents are inspected per repository, bounded by 1 MiB per file and 2 MiB total;
+vendor/generated trees and agent instructions are excluded. API failures are reported
+separately and withhold the distribution; unsupported text encodings are skipped.
+This is a low-cost static trend estimate, not runtime testing or proof that a repository
+supports only one OS. The classifiable subset may be biased if ambiguous projects differ
+systematically. Per-repository decisions and cited source lines are exported to
+`reports/cross-os-assessments.json`; use `--assessments-output PATH` locally.
 Older reports without assessments show "Not collected" / N/A until reviewed.
-The weekly run publishes per-repository decisions and their cited excerpts in
-`reports/cross-os-assessments.json`; use `--assessments-output PATH` to export these
-alongside a local report. This file records review provenance, not runtime test results.
 For an Actions retry against the same cohort, set the optional `rerun_report_run_id`
 workflow input to a previous run that retained a `weekly-report` artifact. This skips
 discovery and the existing Windows analysis, preserves the activity window and pinned
-commits, then reruns cross-OS review, rendering, and the selected email/publishing steps.
-Successful reviews from that artifact are reused only after citation validation and an
-exact version, commit and model match; failed or stale reviews are retried.
-An explicit OpenAI quota-exhaustion response stops further review requests; diagnostics
-are saved and the distribution remains withheld until review can be completed.
+commits, then reruns GitHub evidence classification, rendering, and the selected
+email/publishing steps. Cross-OS classifications are recalculated from pinned evidence;
+the cohort itself remains unchanged. The optional Windows-candidate AI analysis is
+disabled by default for manual runs and can be enabled explicitly.
 
 The PDF's **Identified Windows repositories** table contains only Windows candidates
 (complete scans with a Windows platform signal, including libraries/tools and

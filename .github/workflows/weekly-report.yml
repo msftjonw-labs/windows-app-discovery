@@ -20,6 +20,10 @@ on:
         description: Also deploy the interactive GitHub Pages dashboard
         type: boolean
         default: true
+      windows_ai_analysis:
+        description: Use OpenAI for supplemental Windows-candidate insights
+        type: boolean
+        default: false
       rerun_report_run_id:
         description: Optional previous Actions run ID; reuse its weekly-report cohort instead of rediscovering
         required: false
@@ -86,17 +90,15 @@ jobs:
         run: |
           python -c "from pathlib import Path; import shutil; p = Path('site/data/latest.json'); p.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile('rerun-report/data/latest.json', p)"
       - name: Analyze Windows candidate purpose and community feedback
-        if: ${{ !inputs.rerun_report_run_id }}
+        if: ${{ inputs.windows_ai_analysis }}
         env:
           GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
         run: python -m discovery.analysis
-      - name: Review cross-OS application support for the full sample
+      - name: Classify explicit cross-OS support from GitHub evidence
         env:
           GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
         run: python -m discovery.cross_os --assessments-output reports/cross-os-assessments.json
       - name: Render repository report
         run: python -m discovery.report_markdown
