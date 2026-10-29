@@ -13,7 +13,7 @@ import subprocess
 from urllib.parse import quote
 import urllib.error
 
-from discovery.analysis import structured_response
+from discovery.analysis import OpenAIQuotaError, structured_response
 from discovery.pilot import ROOT, PilotError, fetch_source_batch, safe_path, stamp
 from discovery.rules import EXCLUDED_DIRS
 
@@ -56,6 +56,8 @@ each citing a supplied source_id and the first_line/last_line of a short contigu
 that explicitly supports that OS for the application. Do not reproduce source text:
 the collector copies exact quotes from the cited pinned lines, preserving their whitespace.
 Use only OS names in the schema. Cite only supplied lines, not file names or model assumptions.
+If a previous decision failed citation validation, correct its source references using the
+supplied lines. Do not change a supported positive decision to negative just to avoid citations.
 """
 
 
@@ -181,16 +183,25 @@ def review(evidence, token, model):
     if not evidence["sources"]:
         return {"cross_os": False, "application": "", "support": [],
                 "rationale": "Multi-OS application support not demonstrated in the available evidence excerpts."}
-    decision = structured_response(evidence, token, model, SYSTEM, schema, "cross_os_support", 3000)
-    if not isinstance(decision, dict) or not isinstance(decision.get("support"), list):
-        raise PilotError("Invalid cross-OS decision shape")
-    ids = {source["id"]: source for source in evidence["sources"]}
-    for citation in decision["support"]:
-        if not isinstance(citation, dict) or set(citation) != {"os", "source_id", "first_line", "last_line"}:
-            raise PilotError("Invalid cross-OS support citation")
-        citation["quote"] = source_quote(citation, ids)
-    validate_decision(decision, evidence["sources"])
-    return decision
+    request_evidence = evidence
+    for attempt in range(2):
+        decision = structured_response(request_evidence, token, model, SYSTEM, schema, "cross_os_support", 3000)
+        try:
+            if not isinstance(decision, dict) or not isinstance(decision.get("support"), list):
+                raise PilotError("Invalid cross-OS decision shape")
+            ids = {source["id"]: source for source in evidence["sources"]}
+            for citation in decision["support"]:
+                if not isinstance(citation, dict) or set(citation) != {"os", "source_id", "first_line", "last_line"}:
+                    raise PilotError("Invalid cross-OS support citation")
+                citation["quote"] = source_quote(citation, ids)
+            validate_decision(decision, evidence["sources"])
+            return decision
+        except PilotError as error:
+            if attempt:
+                raise
+            LOG.warning("Cross-OS citation validation failed; requesting correction: %s", error)
+            request_evidence = {**evidence, "previous_invalid_decision": decision,
+                                "validation_error": str(error)}
 
 
 def source_quote(citation, ids):
@@ -251,6 +262,12 @@ def enrich(report, token, model, cache=None):
         try:
             if not repository.get("sha"):
                 raise PilotError("No pinned commit available for cross-OS evidence review")
+            saved = repository.get("cross_os", {})
+            if saved.get("status") == "success" and all(
+                    saved.get(key) == assessment[key] for key in ("version", "sha", "model")):
+                validate_decision(saved["decision"], saved["sources"])
+                LOG.info("Reusing validated pinned cross-OS review: %s", repository["name"])
+                continue
             key = hashlib.sha256(json.dumps(
                 [VERSION, repository["name"], repository["sha"], model]).encode()).hexdigest()
             cached = Path(cache) / "cross-os" / f"{key}.json" if cache is not None else None
@@ -271,6 +288,11 @@ def enrich(report, token, model, cache=None):
             if cached:
                 cached.parent.mkdir(parents=True, exist_ok=True)
                 cached.write_text(json.dumps(assessment, indent=2), encoding="utf-8")
+        except OpenAIQuotaError as error:
+            LOG.error("%s: %s; remaining cross-OS reviews deferred", repository["name"], error)
+            assessment.update(status="failed", error=str(error))
+            repository["cross_os"] = assessment
+            break
         except (PilotError, urllib.error.URLError, TimeoutError, subprocess.TimeoutExpired,
                 OSError, ValueError, KeyError, TypeError) as error:
             LOG.error("%s: cross-OS review failed: %s", repository["name"], error)

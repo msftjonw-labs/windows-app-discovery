@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import subprocess
 import time
 import urllib.error
@@ -15,6 +16,12 @@ import urllib.request
 from discovery.pilot import ROOT, PilotError, graphql, human, parse_time, stamp
 
 LOG = logging.getLogger("analysis")
+
+
+class OpenAIQuotaError(PilotError):
+    pass
+
+
 ISSUE_LIMIT = 10
 COMMENT_LIMIT = 10
 README_LIMIT = 8000
@@ -231,11 +238,20 @@ def structured_response(evidence, token, model, system, schema, name, max_tokens
                 body = json.load(response)
             break
         except urllib.error.HTTPError as error:
-            if error.code in (429, 500, 502, 503, 504) and attempt < 2:
+            try:
+                details = json.loads(error.read(16384))
+            except ValueError:
+                details = {}
+            details = details.get("error", {}) if isinstance(details, dict) else {}
+            code = details.get("code") if isinstance(details, dict) else None
+            code = code if isinstance(code, str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", code) else None
+            if code != "insufficient_quota" and error.code in (429, 500, 502, 503, 504) and attempt < 2:
                 LOG.warning("OpenAI HTTP %s; retrying", error.code)
                 time.sleep(15 * (attempt + 1))
                 continue
-            raise PilotError(f"OpenAI request failed (HTTP {error.code})") from error
+            detail = f", {code}" if code else ""
+            failure = OpenAIQuotaError if code == "insufficient_quota" else PilotError
+            raise failure(f"OpenAI request failed (HTTP {error.code}{detail})") from error
     choices = body.get("choices", [])
     if not choices or choices[0].get("finish_reason") != "stop":
         raise PilotError("OpenAI returned no complete analysis")

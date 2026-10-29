@@ -131,6 +131,17 @@ class ReviewTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(PilotError):
                 cross_os.review({"sources": sources()}, "key", "model")
 
+    @mock.patch.object(cross_os, "structured_response")
+    def test_invalid_line_reference_gets_one_validated_correction(self, request):
+        invalid = model_decision()
+        invalid["support"][0]["last_line"] = 6
+        request.side_effect = [invalid, model_decision()]
+        with self.assertLogs("cross_os", level="WARNING"):
+            result = cross_os.review({"sources": sources()}, "key", "model")
+        self.assertEqual(request.call_count, 2)
+        self.assertIn("omitted lines", request.call_args.args[0]["validation_error"])
+        cross_os.validate_decision(result, sources())
+
     def test_rejects_one_os_invented_sources_quotes_and_line_ranges(self):
         invalid = []
         value = decision()
@@ -212,12 +223,55 @@ class SummaryTests(unittest.TestCase):
 
 
 class EnrichmentTests(unittest.TestCase):
+    @mock.patch.object(cross_os, "review", side_effect=cross_os.OpenAIQuotaError("insufficient_quota"))
+    @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": sources(), "limitations": []})
+    def test_quota_exhaustion_stops_requests_and_withholds_distribution(self, collect, review):
+        repositories = [record("o/first"), record("o/second")]
+        for repository in repositories:
+            repository.pop("cross_os")
+        report = {"metrics": {}, "repositories": repositories}
+        with self.assertLogs("cross_os", level="ERROR"):
+            cross_os.enrich(report, "key", "model")
+        collect.assert_called_once()
+        review.assert_called_once()
+        self.assertEqual(repositories[0]["cross_os"]["status"], "failed")
+        self.assertFalse(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(report["metrics"]["cross_os"]["rows"], [])
+        self.assertEqual(report["metrics"]["cross_os"]["missing"], ["o/second"])
+
+    @mock.patch.object(cross_os, "review", return_value=decision())
+    @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": sources(), "limitations": []})
+    def test_resumes_validated_same_version_commit_and_model_without_cache(self, collect, review):
+        report = {"metrics": {}, "repositories": [record()]}
+        cross_os.enrich(report, "key", "model")
+        original = copy.deepcopy(report["repositories"][0]["cross_os"])
+        cross_os.enrich(report, "key", "model")
+        self.assertEqual(collect.call_count, 1)
+        self.assertEqual(review.call_count, 1)
+        self.assertEqual(report["repositories"][0]["cross_os"], original)
+        report["repositories"][0]["cross_os"]["version"] = "old-version"
+        cross_os.enrich(report, "key", "model")
+        self.assertEqual(collect.call_count, 2)
+
+    @mock.patch.object(cross_os, "collect_evidence")
+    def test_tampered_prior_review_cannot_be_resumed_as_success(self, collect):
+        repository = record()
+        repository["cross_os"].update(version=cross_os.VERSION, model="model")
+        repository["cross_os"]["decision"]["support"][0]["quote"] = "invented"
+        report = {"metrics": {}, "repositories": [repository]}
+        with self.assertLogs("cross_os", level="ERROR"):
+            cross_os.enrich(report, "key", "model")
+        self.assertEqual(repository["cross_os"]["status"], "failed")
+        collect.assert_not_called()
+        self.assertFalse(report["metrics"]["cross_os"]["complete"])
+
     @mock.patch.object(cross_os, "review", return_value=decision())
     @mock.patch.object(cross_os, "collect_evidence", return_value={"sources": sources(), "limitations": []})
     def test_caches_by_commit_model_and_version(self, collect, review):
         with tempfile.TemporaryDirectory() as cache:
             report = {"metrics": {}, "repositories": [record(scan_status="partial")]}
             cross_os.enrich(report, "key", "model", cache)
+            report["repositories"][0].pop("cross_os")
             cross_os.enrich(report, "key", "model", cache)
             self.assertEqual(collect.call_count, 1)
             self.assertEqual(review.call_count, 1)

@@ -1,4 +1,5 @@
 import json
+import io
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tempfile
@@ -217,6 +218,24 @@ class SummaryTests(unittest.TestCase):
         sleep.assert_called_once()
         urlopen.side_effect = urllib.error.HTTPError("url", 401, "unauthorized", {}, None)
         with self.assertRaisesRegex(PilotError, "HTTP 401"):
+            analysis.summarize(self.evidence, "key", "gpt-4o")
+
+    @mock.patch.object(analysis.time, "sleep")
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_quota_exhaustion_is_explicit_and_not_retried(self, urlopen, sleep):
+        body = io.BytesIO(json.dumps({"error": {
+            "code": "insufficient_quota", "message": "Private provider details are not logged."}}).encode())
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "quota", {}, body)
+        with self.assertRaisesRegex(PilotError, r"HTTP 429, insufficient_quota") as error:
+            analysis.summarize(self.evidence, "key", "gpt-4o")
+        self.assertNotIn("Private provider", str(error.exception))
+        urlopen.assert_called_once()
+        sleep.assert_not_called()
+
+    @mock.patch.object(analysis.urllib.request, "urlopen")
+    def test_malformed_provider_error_body_keeps_http_diagnostic(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 400, "bad request", {}, io.BytesIO(b"not JSON"))
+        with self.assertRaisesRegex(PilotError, "HTTP 400"):
             analysis.summarize(self.evidence, "key", "gpt-4o")
 
 

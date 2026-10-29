@@ -97,6 +97,10 @@ For an Actions retry against the same cohort, set the optional `rerun_report_run
 workflow input to a previous run that retained a `weekly-report` artifact. This skips
 discovery and the existing Windows analysis, preserves the activity window and pinned
 commits, then reruns cross-OS review, rendering, and the selected email/publishing steps.
+Successful reviews from that artifact are reused only after citation validation and an
+exact version, commit and model match; failed or stale reviews are retried.
+An explicit OpenAI quota-exhaustion response stops further review requests; diagnostics
+are saved and the distribution remains withheld until review can be completed.
 
 The PDF's **Identified Windows repositories** table contains only Windows candidates
 (complete scans with a Windows platform signal, including libraries/tools and
