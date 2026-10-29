@@ -20,6 +20,7 @@ MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
 MAX_EVIDENCE_CHARS = 96000
+MAX_REQUEST_BYTES = 96000
 OS_NAMES = ("Windows", "Linux", "macOS", "Android", "iOS", "FreeBSD", "OpenBSD", "NetBSD", "ChromeOS")
 OS_PATTERN = re.compile(
     r"\b(?:windows|win32|win64|linux|ubuntu|debian|macos|mac\s+os|darwin|"
@@ -62,8 +63,6 @@ UNCERTAIN_OR_NEGATED = re.compile(
     r"\b(?:may|might|could|possibly|potentially|planned|plan to|"
     r"does not|do not|doesn't|don't|not yet|unsupported|not supported)\b", re.I,
 )
-
-
 def eligible_document(path):
     path = PurePosixPath(str(path).lower())
     excluded = (EXCLUDED_DIRS - {"docs", "doc", "documentation"}) | {
@@ -111,9 +110,12 @@ def collect_evidence(repository):
     for entry in tree["tree"]:
         if entry["type"] != "blob" or entry.get("mode") in {"120000", "160000"}:
             continue
-        path = safe_path(entry["path"])
+        if not isinstance(entry.get("path"), str):
+            raise PilotError("Invalid cross-OS evidence path")
+        path = PurePosixPath(entry["path"])
         if not eligible_document(path):
             continue
+        path = safe_path(entry["path"])
         size = entry["size"]
         if not isinstance(size, int) or size < 0:
             raise PilotError(f"Invalid evidence file size: {path}")
@@ -144,7 +146,14 @@ def collect_evidence(repository):
             try:
                 content = raw.decode("utf-8-sig")
             except UnicodeDecodeError:
-                limits.append(f"Unsupported text encoding omitted: {path}")
+                limitation = f"Non-UTF-8 evidence file omitted: {path}"
+                LOG.warning("%s: %s", name, limitation)
+                limits.append(limitation)
+                continue
+            if any(ord(char) < 32 and char not in "\t\n\r" for char in content):
+                limitation = f"Binary evidence file omitted: {path}"
+                LOG.warning("%s: %s", name, limitation)
+                limits.append(limitation)
                 continue
             lines = content.splitlines()
             wanted = set(range(min(20, len(lines))))
@@ -212,7 +221,7 @@ def source_quote(citation, ids):
     if citation["os"] not in OS_NAMES or not isinstance(source_id, str) or source_id not in ids:
         raise PilotError("Unknown cross-OS support OS or source")
     first, last = citation["first_line"], citation["last_line"]
-    if type(first) is not int or type(last) is not int or not 1 <= first <= last <= first + 40:
+    if type(first) is not int or type(last) is not int or first < 1 or first != last:
         raise PilotError("Invalid cross-OS citation line range")
     lines = {line["line"]: line["text"] for line in ids[source_id]["lines"]}
     if any(index not in lines for index in range(first, last + 1)):
@@ -253,7 +262,7 @@ def enrich(report):
                       "generated_at": stamp(datetime.now(timezone.utc))}
         try:
             if not repository.get("sha"):
-                assessment.update(status="failed", error="No pinned commit available")
+                assessment.update(status="ambiguous", reason="No pinned commit available")
                 repository["cross_os"] = assessment
                 continue
             LOG.info("Checking pinned GitHub evidence: %s", repository["name"])

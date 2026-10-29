@@ -76,8 +76,8 @@ multi-OS application support or an explicit one-OS-only limitation. CI runners,
 frameworks, language portability, browser access, and inferred targets do not count.
 Evidence is fetched from the public GitHub API at each collected commit. Up to 100
 documents are inspected per repository, bounded by 1 MiB per file and 2 MiB total;
-vendor/generated trees and agent instructions are excluded. API failures are reported
-separately and withhold the distribution; unsupported text encodings are skipped.
+vendor/generated trees and agent instructions are excluded. Binary and non-UTF-8
+evidence files are logged and skipped; API failures withhold the distribution.
 This is a low-cost static trend estimate, not runtime testing or proof that a repository
 supports only one OS. The classifiable subset may be biased if ambiguous projects differ
 systematically. Per-repository decisions and cited source lines are exported to

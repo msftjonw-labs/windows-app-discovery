@@ -82,6 +82,27 @@ class EvidenceTests(unittest.TestCase):
         github.assert_called_once()
         fetch.assert_not_called()
 
+    @mock.patch.object(cross_os, "fetch_source_batch", return_value=[b"Supports Windows and Linux."])
+    @mock.patch.object(cross_os, "github_json")
+    def test_irrelevant_non_windows_paths_do_not_abort_evidence_collection(self, github, fetch):
+        github.side_effect = [{"private": False}, {"truncated": False, "tree": [
+            {"path": "tests/regression/fire_output_2020-01-01_00:00:00.nc", "type": "blob"},
+            {"path": "README.md", "type": "blob", "size": 26, "sha": "blob"},
+        ]}]
+        result = cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        self.assertEqual([source["path"] for source in result["sources"]], ["README.md"])
+        self.assertEqual(fetch.call_args.args[2], [(PurePosixPath("README.md"), 26, "blob")])
+
+    @mock.patch.object(cross_os, "fetch_source_batch")
+    @mock.patch.object(cross_os, "github_json")
+    def test_eligible_unsafe_paths_still_fail_before_fetch(self, github, fetch):
+        github.side_effect = [{"private": False}, {"truncated": False, "tree": [
+            {"path": "../README.md", "type": "blob", "size": 1, "sha": "blob"},
+        ]}]
+        with self.assertRaisesRegex(PilotError, "Unsafe archive path"):
+            cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        fetch.assert_not_called()
+
     @mock.patch.object(cross_os, "fetch_source_batch", return_value=[None])
     @mock.patch.object(cross_os, "github_json")
     def test_missing_blob_is_not_misclassified_as_ambiguous(self, github, _):
@@ -90,15 +111,38 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(PilotError, "unavailable"):
             cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
 
-    @mock.patch.object(cross_os, "fetch_source_batch", return_value=[b"\x00\x80"])
+    @mock.patch.object(cross_os, "fetch_source_batch")
     @mock.patch.object(cross_os, "github_json")
-    def test_unsupported_text_encoding_is_reported_and_skipped(self, github, _):
+    def test_non_text_files_are_logged_and_omitted_without_losing_valid_evidence(self, github, fetch):
+        documents = [
+            ("README.md", b"\xef\xbb\xbf# Example\r\nSupports Windows and Linux.\r\n"),
+            ("docs/install.md", b"\x00\x01Linux\x00"),
+            ("docs/support.txt", b"\x00\x00\x00\x00\x00\x00\x80"),
+            ("docs/platforms.md", b"Supports macOS.\n"),
+        ]
         github.side_effect = [{"private": False}, {"truncated": False, "tree": [
-            {"path": "README.md", "type": "blob", "size": 2, "sha": "blob"}]}]
-        result = cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
-        self.assertEqual(result["sources"], [])
-        self.assertTrue(any("Unsupported text encoding" in note for note in result["limitations"]))
-
+            {"path": path, "type": "blob", "size": len(raw), "sha": f"blob{index}"}
+            for index, (path, raw) in enumerate(documents)
+        ]}]
+        contents = dict(documents)
+        fetch.side_effect = lambda name, sha, entries: [contents[str(path)] for path, _, _ in entries]
+        with self.assertLogs("cross_os", level="WARNING") as logs:
+            result = cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        self.assertEqual(len(logs.output), 2)
+        self.assertEqual(result["limitations"], [
+            "Binary evidence file omitted: docs/install.md",
+            "Non-UTF-8 evidence file omitted: docs/support.txt",
+        ])
+        self.assertEqual([source["id"] for source in result["sources"]], ["S1", "S2"])
+        self.assertEqual([source["path"] for source in result["sources"]],
+                         ["README.md", "docs/platforms.md"])
+        self.assertEqual(result["sources"][0]["lines"], [
+            {"line": 1, "text": "# Example"},
+            {"line": 2, "text": "Supports Windows and Linux."},
+        ])
+        self.assertEqual(result["sources"][1]["lines"], [
+            {"line": 1, "text": "Supports macOS."},
+        ])
 
 class ClassificationTests(unittest.TestCase):
     def test_explicit_multios_application_support_is_classified_with_exact_citation(self):
