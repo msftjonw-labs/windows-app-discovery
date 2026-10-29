@@ -14,6 +14,7 @@ import tempfile
 import time
 
 from discovery.windows_container import report_rows
+from discovery.cross_os import summary as cross_os_summary
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSERS = (
@@ -57,6 +58,10 @@ h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 13pt; margin: 18px 0 6p
 .card strong { display: block; font-size: 14pt; }
 .card.subset { background: #effaf3; border-color: #9fd8b5; border-left: 4px solid #1f8f52; }
 .card.subset strong { color: #0f6b3a; } .card small { display: block; color: #3d6b50; font-size: 7.5pt; }
+.card.cross-os { background: #fff8cc; border-color: #e6ca61; border-left: 4px solid #b88a00; }
+.card.cross-os strong { color: #765900; }
+.card.cross-os small { color: #765900; }
+.cross-os-summary { break-inside: avoid; }
 .subset-caption { margin: 2px 0 0; font-weight: 600; color: #0f6b3a; font-size: 9pt; }
 .denominator-note { margin: 2px 0; }
 table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; page-break-inside: auto; }
@@ -140,6 +145,49 @@ def repository_analysis(repository):
     return "".join(parts)
 
 
+def cross_os_section(report):
+    assessment = cross_os_summary(report)
+    complete = assessment["complete"]
+    total = assessment["selected"]
+    rows = assessment["rows"]
+    cards = "".join(
+        f'<div class="card cross-os"><strong>{row["count"] if complete else "N/A"}</strong>'
+        f'{text(label)} applications<small>'
+        f'{"of " + str(total) + " sampled repositories" if complete else "Review not complete"}</small></div>'
+        for label, row in zip(("Cross-OS", "Non-cross-OS"),
+                              rows if complete else ({}, {})))
+    parts = ['<section class="cross-os-summary">', f'<div class="cards">{cards}</div>',
+             "<h2>Cross-OS application support and primary languages</h2>"]
+    if not complete:
+        message = ("Cross-OS review not collected. Run python -m discovery.cross_os."
+                   if not assessment["assessed"] and not assessment["failed"] else
+                   f'Cross-OS review incomplete: {assessment["assessed"]}/{total} assessed, '
+                   f'{len(assessment["failed"])} failed, {len(assessment["missing"])} not collected. '
+                   "The binary distribution is withheld; failures are not counted as non-cross-OS.")
+        parts.append(f'<p class="muted">{text(message)}</p>')
+    else:
+        parts.append("<table><thead><tr><th>Category</th><th>Repositories</th>"
+                     "<th>Most used language</th><th>Second most used</th></tr></thead><tbody>")
+        for row in rows:
+            languages = []
+            for rank in row["top_languages"]:
+                languages.append("; ".join(
+                    f'{text(item["language"])}: {item["count"]} ({number(item["percent"], "%")})'
+                    for item in rank) + (" (tied)" if len(rank) > 1 else ""))
+            languages += ["N/A"] * (2 - len(languages))
+            parts.append(
+                f'<tr><td>{text(row["label"])}</td><td class="num">{row["count"]} '
+                f'({number(row["percent"], "%")})</td><td>{languages[0]}</td><td>{languages[1]}</td></tr>')
+        parts.append("</tbody></table>")
+        parts.append(
+            f'<p class="muted">All {total} sampled repositories are retained, including incomplete source scans '
+            'and non-application repositories. Languages use GitHub\'s primary language per repository; '
+            'percentages are within each category. Ties are retained. The second column of languages shows '
+            'the next distinct frequency rank.</p>')
+    parts.append(f'<p class="muted">{text(assessment["method"])}</p></section>')
+    return "".join(parts)
+
+
 def build_html(report, pages_url=None):
     metrics, coverage, window = report["metrics"], report["coverage"], report["window"]
     confidence = metrics.get("confidence_level")
@@ -147,7 +195,7 @@ def build_html(report, pages_url=None):
     if representative:
         notice = (f"Uniform random sample of {metrics['selected']} repositories drawn from "
                   f"{coverage.get('population_size', 'N/A'):,} public repositories with qualifying human activity in "
-                  f"GH Archive. Shares carry {round(confidence * 100)}% Wilson confidence intervals; worst-case margin "
+                  f"GH Archive. Source-scan shares carry {round(confidence * 100)}% Wilson confidence intervals; worst-case margin "
                   f"for complete scans is ±{number(metrics.get('margin_of_error'))} percentage points.")
     else:
         notice = ("Bounded, non-representative cohort from GitHub GraphQL search (GH Archive fallback). "
@@ -177,6 +225,7 @@ def build_html(report, pages_url=None):
         f"<p class=\"notice\">{text(notice)}</p>",
         '<div class="cards">' + "".join(f'<div class="card"><strong>{text(v)}</strong>{text(k)}</div>' for k, v in cards) + "</div>",
         f'<p class="subset-caption">Subset of the {complete} complete scans</p><div class="cards">{subset}</div>',
+        cross_os_section(report),
     ]
     if representative:
         parts.append(f"<p class=\"muted\">Seed {text(coverage.get('seed'))} · {coverage.get('hours_processed')}/"
@@ -251,7 +300,8 @@ def build_html(report, pages_url=None):
         parts.append('<p class="muted">No Windows candidates identified.</p>')
     parts.append("<p class=\"muted\">Static, source-level evidence only; detection of a pattern is not proof of runtime use, "
                  "and absence of a match is not proof of non-use. Partial and failed scans are nonresponse and are excluded "
-                 "from distributions, which can bias estimates if they differ systematically.</p></section></body></html>")
+                 "from source-scan distributions, which can bias estimates if they differ systematically. "
+                 "The separate cross-OS review retains all sampled repositories.</p></section></body></html>")
     return "".join(parts)
 
 

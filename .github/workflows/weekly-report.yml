@@ -71,6 +71,12 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
         run: python -m discovery.analysis
+      - name: Review cross-OS application support for the full sample
+        env:
+          GH_TOKEN: ${{ secrets.DISCOVERY_TOKEN || github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o' }}
+        run: python -m discovery.cross_os --assessments-output reports/cross-os-assessments.json
       - name: Render repository report
         run: python -m discovery.report_markdown
       - name: Keep repository report
@@ -128,7 +134,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg report-history/report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json report-history/report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else

@@ -133,6 +133,7 @@ class SummaryTests(unittest.TestCase):
         result = analysis.summarize(self.evidence, "test-key", "gpt-4o")
         self.assertEqual(result["problem_sources"], ["S1"])
         request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-key")
         payload = json.loads(request.data)
         self.assertEqual(request.full_url, "https://api.openai.com/v1/chat/completions")
         self.assertEqual(payload["model"], "gpt-4o")

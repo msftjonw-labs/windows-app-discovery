@@ -196,12 +196,30 @@ def summarize(evidence, token, model):
             citations["minItems"] = 1
         else:
             citations["maxItems"] = 0
+    result = structured_response(evidence, token, model, SYSTEM, schema, "repository_analysis")
+    if not isinstance(result, dict) or set(result) != set(schema["required"]):
+        raise PilotError("OpenAI analysis has an invalid shape")
+    for field in ("problem", "development", "motivation", "community"):
+        if not isinstance(result[field], str) or not result[field].strip() or len(result[field]) > 4000:
+            raise PilotError(f"OpenAI analysis has invalid {field} text")
+        ids = result[f"{field}_sources"]
+        eligible = set(allowed[field])
+        if (not isinstance(ids, list) or not all(isinstance(item, str) for item in ids)
+                or not set(ids) <= eligible):
+            raise PilotError(f"OpenAI analysis has invalid {field} citations")
+        if eligible and not ids:
+            raise PilotError(f"OpenAI analysis is missing {field} citations")
+    return result
+
+
+def structured_response(evidence, token, model, system, schema, name, max_tokens=1600):
+    """Request structured evidence analysis; callers validate task-specific semantics."""
     payload = {
-        "model": model, "temperature": 0, "max_tokens": 1600,
-        "messages": [{"role": "system", "content": SYSTEM},
+        "model": model, "temperature": 0, "max_tokens": max_tokens,
+        "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": json.dumps(evidence)}],
         "response_format": {"type": "json_schema", "json_schema": {
-            "name": "repository_analysis", "strict": True, "schema": schema}},
+            "name": name, "strict": True, "schema": schema}},
     }
     request = urllib.request.Request(
         "https://api.openai.com/v1/chat/completions",
@@ -224,20 +242,7 @@ def summarize(evidence, token, model):
     message = choices[0]["message"]
     if message.get("refusal"):
         raise PilotError("OpenAI declined the analysis")
-    result = json.loads(message["content"])
-    if not isinstance(result, dict) or set(result) != set(schema["required"]):
-        raise PilotError("OpenAI analysis has an invalid shape")
-    for field in ("problem", "development", "motivation", "community"):
-        if not isinstance(result[field], str) or not result[field].strip() or len(result[field]) > 4000:
-            raise PilotError(f"OpenAI analysis has invalid {field} text")
-        ids = result[f"{field}_sources"]
-        eligible = set(allowed[field])
-        if (not isinstance(ids, list) or not all(isinstance(item, str) for item in ids)
-                or not set(ids) <= eligible):
-            raise PilotError(f"OpenAI analysis has invalid {field} citations")
-        if eligible and not ids:
-            raise PilotError(f"OpenAI analysis is missing {field} citations")
-    return result
+    return json.loads(message["content"])
 
 
 def enrich(report, token, model):
