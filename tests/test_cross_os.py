@@ -91,6 +91,39 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(PilotError, "unavailable"):
             cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
 
+    @mock.patch.object(cross_os, "fetch_source_batch")
+    @mock.patch.object(cross_os, "github_json")
+    def test_non_text_files_are_logged_and_omitted_without_losing_valid_evidence(self, github, fetch):
+        documents = [
+            ("README.md", b"\xef\xbb\xbf# Example\r\nSupports Windows and Linux.\r\n"),
+            ("docs/install.md", b"\x00\x01Linux\x00"),
+            ("docs/support.txt", b"\x00\x00\x00\x00\x00\x00\x80"),
+            ("docs/platforms.md", b"Supports macOS.\n"),
+        ]
+        github.side_effect = [{"private": False}, {"truncated": False, "tree": [
+            {"path": path, "type": "blob", "size": len(raw), "sha": f"blob{index}"}
+            for index, (path, raw) in enumerate(documents)
+        ]}]
+        contents = dict(documents)
+        fetch.side_effect = lambda name, sha, entries: [contents[str(path)] for path, _, _ in entries]
+        with self.assertLogs("cross_os", level="WARNING") as logs:
+            result = cross_os.collect_evidence({"name": "o/r", "sha": "abc"})
+        self.assertEqual(len(logs.output), 2)
+        self.assertEqual(result["limitations"], [
+            "Binary evidence file omitted: docs/install.md",
+            "Non-UTF-8 evidence file omitted: docs/support.txt",
+        ])
+        self.assertEqual([source["id"] for source in result["sources"]], ["S1", "S2"])
+        self.assertEqual([source["path"] for source in result["sources"]],
+                         ["README.md", "docs/platforms.md"])
+        self.assertEqual(result["sources"][0]["lines"], [
+            {"line": 1, "text": "# Example"},
+            {"line": 2, "text": "Supports Windows and Linux."},
+        ])
+        self.assertEqual(result["sources"][1]["lines"], [
+            {"line": 1, "text": "Supports macOS."},
+        ])
+
 
 class ReviewTests(unittest.TestCase):
     @mock.patch.object(cross_os, "structured_response", side_effect=lambda *args: model_decision())

@@ -18,7 +18,7 @@ from discovery.pilot import ROOT, PilotError, fetch_source_batch, safe_path, sta
 from discovery.rules import EXCLUDED_DIRS
 
 LOG = logging.getLogger("cross_os")
-VERSION = "cross-os-2"
+VERSION = "cross-os-3"
 MAX_DOCUMENTS = 100
 MAX_FILE_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
@@ -138,7 +138,18 @@ def collect_evidence(repository):
         for (path, _, _), raw in zip(batch, contents):
             if raw is None:
                 raise PilotError(f"Cross-OS evidence file unavailable: {path}")
-            content = raw.decode("utf-8-sig")
+            try:
+                content = raw.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                limitation = f"Non-UTF-8 evidence file omitted: {path}"
+                LOG.warning("%s: %s", name, limitation)
+                limits.append(limitation)
+                continue
+            if any(ord(char) < 32 and char not in "\t\n\r" for char in content):
+                limitation = f"Binary evidence file omitted: {path}"
+                LOG.warning("%s: %s", name, limitation)
+                limits.append(limitation)
+                continue
             lines = content.splitlines()
             wanted = set(range(min(20, len(lines))))
             for index, line in enumerate(lines):

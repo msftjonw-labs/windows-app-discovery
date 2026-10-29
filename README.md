@@ -83,6 +83,8 @@ The reviewer receives bounded excerpts from up to 100 documentation/manifest/wor
 files (1 MiB per file, 2 MiB total source, 96,000 excerpt characters; vendor/generated
 trees and agent instructions excluded). Limits, rationale, exact supporting quotes,
 and source paths/lines are recorded per repository in `site/data/latest.json`.
+Binary and non-UTF-8 files are omitted with warnings and recorded as evidence limitations;
+their bytes are never sent to the reviewer or replaced with guessed text.
 Successful assessments are cached by repository, commit, review version, and model
 under `.cache/analysis/cross-os`. Missing configuration fails explicitly; retrieval,
 API, or citation-validation failures are logged and saved, fail the review step, and
