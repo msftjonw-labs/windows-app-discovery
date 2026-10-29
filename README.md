@@ -56,6 +56,59 @@ Missing configuration fails the step explicitly. Individual repository/API failu
 are logged and shown as unavailable analysis without changing scan results or metrics.
 Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
 Use `--report PATH` to enrich another report in place.
+
+The weekly run also uses the same OpenAI configuration to review **cross-OS application
+support for every sampled repository**, adding API usage beyond the Windows-only analysis.
+Run it locally after collection with:
+
+```powershell
+python -m discovery.cross_os
+```
+
+The PDF shows two yellow boxes immediately below the Windows counts, followed by a
+cross-OS/non-cross-OS distribution and each category's top two primary-language
+frequency ranks (including ties). Language percentages are within the category.
+This separate review retains the full sample, including partial/no-source scans and
+non-application repositories, rather than only the complete source scans.
+Cross-OS requires an actual application with explicit support for two or more OSes
+in pinned documentation, active application build/release targets, or functional
+multi-OS application tests. Browser access, portable frameworks/runtimes, library/SDK
+portability, development-only setup, container host OSes, CPU architectures, and
+inactive upstream targets do not qualify. **Non-cross-OS means support was not
+demonstrated**, not proven incompatibility. This is AI-assisted static evidence
+review, not cross-OS runtime certification.
+
+Evidence comes from currently public repositories at the collected commit SHA.
+The reviewer receives bounded excerpts from up to 100 documentation/manifest/workflow
+files (1 MiB per file, 2 MiB total source, 96,000 excerpt characters; vendor/generated
+trees and agent instructions excluded). Each serialized model input is additionally
+capped at 96,000 bytes, including JSON line metadata and Unicode escaping, with
+omitted evidence recorded as a limitation. Limits, rationale, exact supporting quotes,
+and source paths/lines are recorded per repository in `site/data/latest.json`.
+Binary and non-UTF-8 files are omitted with warnings and recorded as evidence limitations;
+their bytes are never sent to the reviewer or replaced with guessed text.
+Successful assessments are cached by repository, commit, review version, and model
+under `.cache/analysis/cross-os`. Missing configuration fails explicitly; retrieval,
+API, or citation-validation failures are logged and saved, fail the review step, and
+withhold the binary distribution rather than counting failures as non-cross-OS.
+Organization IP allow-list denials require running from an authorized runner address
+or an organization administrator updating the allow list; changing tokens does not
+bypass that restriction.
+The model selects source IDs and line ranges; the collector copies the exact supporting
+quotes from those pinned lines rather than asking the model to reproduce their formatting.
+Older reports without assessments show "Not collected" / N/A until reviewed.
+The weekly run publishes per-repository decisions and their cited excerpts in
+`reports/cross-os-assessments.json`; use `--assessments-output PATH` to export these
+alongside a local report. This file records review provenance, not runtime test results.
+For an Actions retry against the same cohort, set the optional `rerun_report_run_id`
+workflow input to a previous run that retained a `weekly-report` artifact. This skips
+discovery and the existing Windows analysis, preserves the activity window and pinned
+commits, then reruns cross-OS review, rendering, and the selected email/publishing steps.
+Successful reviews from that artifact are reused only after citation validation and an
+exact version, commit and model match; failed or stale reviews are retried.
+An explicit OpenAI quota-exhaustion response stops further review requests; diagnostics
+are saved and the distribution remains withheld until review can be completed.
+
 The PDF's **Identified Windows repositories** table contains only Windows candidates
 (complete scans with a Windows platform signal, including libraries/tools and
 multi-OS repositories), matching the Windows candidates count at the start.
