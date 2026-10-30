@@ -308,7 +308,7 @@ class PdfReportTests(unittest.TestCase):
         report["metrics"]["windows_repositories"] = 2
         html = report_pdf.build_html(report)
         self.assertIn("Windows candidates", html)
-        self.assertIn("<strong>2</strong>", html)
+        self.assertNotIn('class="card subset"', html)
         table = html.split("<h2>Identified Windows repositories</h2>")[1].split("</table>")[0]
         self.assertEqual(table.count("<tbody>"), 1)
         self.assertEqual(table.count("<tr>") - 1, report["metrics"]["windows_repositories"])
@@ -374,7 +374,7 @@ class PdfReportTests(unittest.TestCase):
         self.assertIn("5.8–18.3%", html)
         self.assertIn("1,234,567", html)
         self.assertIn("<strong>Percentages are calculated only from the 95 complete scans, excluding 4 partial", html)
-        self.assertIn("Subset of the 95 complete scans", html)
+        self.assertNotIn("Subset of the 95 complete scans", html)
         self.assertNotIn("OS targets only", html)
 
     def test_fallback_report_is_labeled_without_intervals(self):

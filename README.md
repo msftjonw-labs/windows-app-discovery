@@ -65,7 +65,7 @@ collection with:
 python -m discovery.cross_os
 ```
 
-The PDF shows three yellow boxes immediately below the Windows counts: **Cross-OS**,
+The PDF shows three yellow boxes immediately below the sample/scan summary: **Cross-OS**,
 **Windows**, and **Others**, followed by a yellow table with each group's top two
 primary-language frequency ranks (including ties). Counts and percentages use the full
 sample and groups are mutually exclusive. Cross-OS requires explicit multi-OS
@@ -73,7 +73,8 @@ application-support evidence and takes precedence over Windows. Windows contains
 complete scans with a Windows signal, excluding Cross-OS; it does not prove Windows-only
 support. All remaining repositories are Others, including unclear/no-source cases
 without a qualifying Windows signal. Windows candidate/application counts and their
-repository lists also exclude Cross-OS after the evidence review.
+repository lists also exclude Cross-OS after the evidence review. Separate Windows
+candidate and Windows application highlight boxes are not shown in the PDF.
 
 The deterministic classifier requires a pinned documentation line explicitly stating
 multi-OS application support. No one-OS-only statement is required for the Windows group. CI runners,
@@ -97,7 +98,7 @@ disabled by default for manual runs and can be enabled explicitly.
 
 The PDF's **Identified Windows repositories** table contains only Windows candidates
 (complete scans with a Windows platform signal, including libraries/tools but excluding
-repositories classified as Cross-OS), matching the Windows candidates count at the start.
+repositories classified as Cross-OS), matching the Windows group count.
 Its **Repository analysis** column shows problems solved, development status, and
 the latest collected community feedback, with source links and analysis limitations.
 This table uses landscape pages to keep the analysis and classification columns readable.

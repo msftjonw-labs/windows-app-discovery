@@ -309,7 +309,7 @@ class EnrichmentTests(unittest.TestCase):
 
 
 class PdfTests(unittest.TestCase):
-    def test_yellow_distribution_follows_windows_cards_and_uses_full_denominator(self):
+    def test_yellow_distribution_follows_sample_cards_without_windows_subset_boxes(self):
         report = sample_report()
         report["repositories"] = [record("o/cross"), record("o/single", "Python", assessment(False)),
                                   record("o/unclear", result={"status": "ambiguous", "sha": "abc"})]
@@ -318,10 +318,14 @@ class PdfTests(unittest.TestCase):
         self.assertIn("background: #fff8cc", html)
         self.assertIn(".cross-os-summary table { background: #fff8cc", html)
         self.assertIn("of 3 sampled repositories", html)
-        windows = html.index("Windows applications")
+        self.assertNotIn('class="card subset"', html)
+        self.assertNotIn("subset-caption", html)
+        self.assertNotIn(">Windows candidates<", html)
+        self.assertNotIn(">Windows applications<", html)
+        sampled = html.index("Sampled repositories")
         cross = html.index('<section class="cross-os-summary">')
         table = html.index("<th>Most used language</th>")
-        self.assertLess(windows, cross)
+        self.assertLess(sampled, cross)
         self.assertLess(cross, table)
         self.assertIn("Distribution denominator: all 3 sampled repositories", html)
         self.assertIn("Groups are mutually exclusive", html)

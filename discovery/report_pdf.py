@@ -57,15 +57,13 @@ h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 13pt; margin: 18px 0 6p
 .cards { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .card { border: 1px solid #ccd; border-radius: 4px; padding: 4px 8px; min-width: 88px; }
 .card strong { display: block; font-size: 14pt; }
-.card.subset { background: #effaf3; border-color: #9fd8b5; border-left: 4px solid #1f8f52; }
-.card.subset strong { color: #0f6b3a; } .card small { display: block; color: #3d6b50; font-size: 7.5pt; }
+.card small { display: block; color: #3d6b50; font-size: 7.5pt; }
 .card.cross-os { background: #fff8cc; border-color: #e6ca61; border-left: 4px solid #b88a00; }
 .card.cross-os strong { color: #765900; }
 .card.cross-os small { color: #765900; }
 .cross-os-summary { break-inside: avoid; }
 .cross-os-summary table { background: #fff8cc; border: 1px solid #e6ca61; }
 .cross-os-summary th { background: #f5e8a5; }
-.subset-caption { margin: 2px 0 0; font-weight: 600; color: #0f6b3a; font-size: 9pt; }
 .denominator-note { margin: 2px 0; }
 table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; page-break-inside: auto; }
 th, td { text-align: left; border-bottom: 1px solid #e3e6ea; padding: 2px 4px; vertical-align: top; }
@@ -212,10 +210,6 @@ def build_html(report, pages_url=None):
     if representative:
         cards.insert(0, ("Population (30 days)", f"{coverage.get('population_size', 0):,}"))
     complete = metrics["successful"]
-    subset = "".join(
-        f'<div class="card subset"><strong>{text(v)}</strong>{text(k)}<small>of {complete} complete scans</small></div>'
-        for k, v in (("Windows candidates", metrics["windows_repositories"]),
-                     ("Windows applications", metrics["windows_applications"])))
     denominator_note = (
         f"Percentages are calculated only from the {complete} complete scans, excluding {metrics['partial']} partial "
         f"scans, {metrics['failed']} failed scans, and {metrics.get('not_applicable', 0)} repositories with no eligible "
@@ -228,7 +222,6 @@ def build_html(report, pages_url=None):
         f" · ruleset {text(report['ruleset_version'])} · Microsoft Application Inspector {text(report['inspector_version'])}</p>",
         f"<p class=\"notice\">{text(notice)}</p>",
         '<div class="cards">' + "".join(f'<div class="card"><strong>{text(v)}</strong>{text(k)}</div>' for k, v in cards) + "</div>",
-        f'<p class="subset-caption">Subset of the {complete} complete scans</p><div class="cards">{subset}</div>',
         cross_os_section(report),
     ]
     if representative:
