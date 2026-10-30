@@ -159,7 +159,7 @@ class LanguagePlatformTests(unittest.TestCase):
         html = report_pdf.build_html(sample_report())
         self.assertIn("Primary programming languages and their target platforms", html)
         self.assertIn("Target platform distribution", html)
-        self.assertIn("Linux: 60.0%, Windows: 40.0%", html)
+        self.assertIn('Linux: 60.0%, Windows: <span class="highlight">40.0%</span>', html)
         self.assertNotIn("<h2>Target platform</h2>", html)
 
 
@@ -293,6 +293,34 @@ def sample_report(representative=True):
 
 
 class PdfReportTests(unittest.TestCase):
+    def test_platform_mix_highlights_only_windows_related_percentages(self):
+        rendered = report_pdf.platform_mix({"platforms": [
+            {"label": "Windows", "percent": 20},
+            {"label": "Multiple OS (incl. Windows)", "percent": 30},
+            {"label": "Multiple OS (no Windows)", "percent": 10},
+            {"label": "Linux", "percent": 40},
+        ]})
+        self.assertIn('Windows: <span class="highlight">20%</span>', rendered)
+        self.assertIn('Multiple OS (incl. Windows): <span class="highlight">30%</span>', rendered)
+        self.assertIn("Multiple OS (no Windows): 10%", rendered)
+        self.assertIn("Linux: 40%", rendered)
+        self.assertEqual(rendered.count('class="highlight"'), 2)
+
+    def test_windows_related_project_rows_are_highlighted_only_in_project_table(self):
+        report = sample_report()
+        labels = sorted(report_pdf.WINDOWS_PROJECT_TYPES) + ["Backend / API", "Cross-platform: Qt"]
+        rows = [dict(report["metrics"]["project_types"][0], label=label) for label in labels]
+        report["metrics"]["project_types"] = rows
+        report["metrics"]["frameworks"] = [dict(rows[0], label="PowerShell")]
+        html = report_pdf.build_html(report)
+        projects = html.split("<h2>Project application and automation types</h2>")[1].split("</table>")[0]
+        for label in report_pdf.WINDOWS_PROJECT_TYPES:
+            self.assertIn(f'<tr class="highlight"><td>{label}</td>', projects)
+        for label in ("Backend / API", "Cross-platform: Qt"):
+            self.assertIn(f"<tr><td>{label}</td>", projects)
+        frameworks = html.split("<h2>Framework evidence</h2>")[1].split("</table>")[0]
+        self.assertNotIn('class="highlight"', frameworks)
+
     def test_repository_table_matches_windows_candidates_including_multi_os_and_libraries(self):
         report = sample_report()
         report["repositories"] = [

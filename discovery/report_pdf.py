@@ -48,6 +48,10 @@ SECTIONS = (
     ("candidate_components", "Exploratory: all Windows candidates", "Includes libraries/tools; not an application metric."),
 )
 EXCLUSIVE = {"language_platforms", "frameworks"}
+WINDOWS_PROJECT_TYPES = {
+    "PowerShell", "Windows desktop app", "Windows Forms app", "WPF app",
+    "WinUI app", "UWP app", "Windows service", "Service management",
+}
 CSS = """
 @page { size: Letter; margin: 14mm 12mm; }
 @page windows-repositories { size: Letter landscape; margin: 14mm 12mm; }
@@ -58,12 +62,8 @@ h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 13pt; margin: 18px 0 6p
 .card { border: 1px solid #ccd; border-radius: 4px; padding: 4px 8px; min-width: 88px; }
 .card strong { display: block; font-size: 14pt; }
 .card small { display: block; color: #3d6b50; font-size: 7.5pt; }
-.card.cross-os { background: #fff8cc; border-color: #e6ca61; border-left: 4px solid #b88a00; }
-.card.cross-os strong { color: #765900; }
-.card.cross-os small { color: #765900; }
 .cross-os-summary { break-inside: avoid; }
-.cross-os-summary table { background: #fff8cc; border: 1px solid #e6ca61; }
-.cross-os-summary th { background: #f5e8a5; }
+.highlight { background: #fff8cc; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .denominator-note { margin: 2px 0; }
 table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; page-break-inside: auto; }
 th, td { text-align: left; border-bottom: 1px solid #e3e6ea; padding: 2px 4px; vertical-align: top; }
@@ -91,10 +91,16 @@ def number(value, suffix=""):
 
 
 def platform_mix(row):
-    return ", ".join(f"{text(item['label'])}: {number(item['percent'], '%')}" for item in row.get("platforms", []))
+    parts = []
+    for item in row.get("platforms", []):
+        percent = number(item["percent"], "%")
+        if item["label"] in {"Windows", "Multiple OS (incl. Windows)"}:
+            percent = f'<span class="highlight">{percent}</span>'
+        parts.append(f"{text(item['label'])}: {percent}")
+    return ", ".join(parts)
 
 
-def distribution_table(rows, confidence, platforms=False):
+def distribution_table(rows, confidence, platforms=False, highlighted_labels=()):
     if not rows or all(row["denominator"] == 0 for row in rows):
         return '<p class="muted">N/A — no eligible repositories.</p>'
     ci = f"{round(confidence * 100)}% CI" if confidence else None
@@ -111,7 +117,8 @@ def distribution_table(rows, confidence, platforms=False):
             if low is not None:
                 bar += f'<div class="ci" style="left:{low * 1.2:.1f}px;width:{(high - low) * 1.2:.1f}px"></div>'
         last = f"<td>{platform_mix(row)}</td>" if platforms else f'<td><div class="bar">{bar}</div></td>'
-        body.append(f"<tr><td>{text(row['label'])}</td><td class=\"num\">{row['count']}/{row['denominator']}</td>"
+        style = ' class="highlight"' if row["label"] in highlighted_labels else ""
+        body.append(f"<tr{style}><td>{text(row['label'])}</td><td class=\"num\">{row['count']}/{row['denominator']}</td>"
                     f"<td class=\"num\">{number(row['percent'], '%')}</td>{interval}{last}</tr>")
     return f"<table>{head}{''.join(body)}</table>"
 
@@ -151,13 +158,7 @@ def cross_os_section(report):
     complete = assessment["complete"]
     total = assessment["selected"]
     rows = assessment["rows"]
-    cards = "".join(
-        f'<div class="card cross-os"><strong>{row["count"] if complete else "N/A"}</strong>'
-        f'{text(label)}<small>'
-        f'{"of " + str(total) + " sampled repositories" if complete else "Review not complete"}</small></div>'
-        for label, row in zip(("Cross-OS", "Windows", "Others"),
-                              rows if complete else ({}, {}, {})))
-    parts = ['<section class="cross-os-summary">', f'<div class="cards">{cards}</div>',
+    parts = ['<section class="cross-os-summary">',
              "<h2>Repository OS groups and primary languages</h2>"]
     if not complete:
         message = ("Cross-OS review not collected. Run python -m discovery.cross_os."
@@ -176,8 +177,9 @@ def cross_os_section(report):
                     f'{text(item["language"])}: {item["count"]} ({number(item["percent"], "%")})'
                     for item in rank) + (" (tied)" if len(rank) > 1 else ""))
             languages += ["N/A"] * (2 - len(languages))
+            style = ' class="highlight"' if row["label"] in {"Cross-OS", "Windows"} else ""
             parts.append(
-                f'<tr><td>{text(row["label"])}</td><td class="num">{row["count"]} '
+                f'<tr{style}><td>{text(row["label"])}</td><td class="num">{row["count"]} '
                 f'({number(row["percent"], "%")})</td><td>{languages[0]}</td><td>{languages[1]}</td></tr>')
         parts.append("</tbody></table>")
         parts.append(
@@ -240,7 +242,8 @@ def build_html(report, pages_url=None):
             parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
         else:
             parts.append(distribution_table(metrics.get(key), confidence if representative else None,
-                                            platforms=key == "language_platforms"))
+                                            platforms=key == "language_platforms",
+                                            highlighted_labels=WINDOWS_PROJECT_TYPES if key == "project_types" else ()))
             if key == "project_types" and "project_types_unclassified" in metrics:
                 parts.append(f'<p class="muted">Classification coverage: {metrics["project_types_unclassified"]} '
                              'repositories have insufficient application-type evidence in the scanned source. '

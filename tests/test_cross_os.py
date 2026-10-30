@@ -309,15 +309,18 @@ class EnrichmentTests(unittest.TestCase):
 
 
 class PdfTests(unittest.TestCase):
-    def test_yellow_distribution_follows_sample_cards_without_windows_subset_boxes(self):
+    def test_only_cross_os_and_windows_rows_are_yellow_without_group_boxes(self):
         report = sample_report()
         report["repositories"] = [record("o/cross"), record("o/single", "Python", assessment(False)),
                                   record("o/unclear", result={"status": "ambiguous", "sha": "abc"})]
         html = report_pdf.build_html(report)
-        self.assertEqual(html.count('<div class="card cross-os">'), 3)
+        self.assertNotIn('<div class="card cross-os">', html)
         self.assertIn("background: #fff8cc", html)
-        self.assertIn(".cross-os-summary table { background: #fff8cc", html)
-        self.assertIn("of 3 sampled repositories", html)
+        self.assertNotIn(".cross-os-summary table { background:", html)
+        self.assertNotIn(".cross-os-summary th { background:", html)
+        self.assertIn('<tr class="highlight"><td>Cross-OS</td>', html)
+        self.assertIn('<tr class="highlight"><td>Windows</td>', html)
+        self.assertIn('<tr><td>Others</td>', html)
         self.assertNotIn('class="card subset"', html)
         self.assertNotIn("subset-caption", html)
         self.assertNotIn(">Windows candidates<", html)
@@ -339,7 +342,7 @@ class PdfTests(unittest.TestCase):
         report["repositories"] = [record(), record("o/fail", result={
             "status": "failed", "sha": "abc", "error": "GitHub API unavailable"})]
         html = report_pdf.cross_os_section(report)
-        self.assertIn("<strong>N/A</strong>", html)
+        self.assertNotIn('class="card', html)
         self.assertIn("review incomplete", html.lower())
         self.assertNotIn("<table>", html)
 

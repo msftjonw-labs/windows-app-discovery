@@ -65,9 +65,13 @@ collection with:
 python -m discovery.cross_os
 ```
 
-The PDF shows three yellow boxes immediately below the sample/scan summary: **Cross-OS**,
-**Windows**, and **Others**, followed by a yellow table with each group's top two
-primary-language frequency ranks (including ties). Counts and percentages use the full
+The PDF shows a **Repository OS groups and primary languages** table below the sample/scan
+summary, with each group's top two primary-language frequency ranks (including ties).
+Only the **Cross-OS** and **Windows** rows are yellow; **Others** and the table header use
+the default styling. Separate OS-group highlight boxes are not shown.
+Windows and Multiple OS (incl. Windows) percentages in the language/platform table
+are highlighted, as are Windows-related project-type rows (including PowerShell).
+Highlighting indicates relevance, not Windows-only support. Counts and percentages use the full
 sample and groups are mutually exclusive. Cross-OS requires explicit multi-OS
 application-support evidence and takes precedence over Windows. Windows contains
 complete scans with a Windows signal, excluding Cross-OS; it does not prove Windows-only
