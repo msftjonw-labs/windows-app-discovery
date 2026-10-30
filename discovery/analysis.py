@@ -7,7 +7,6 @@ import json
 import logging
 import os
 from pathlib import Path
-import re
 import subprocess
 import time
 import urllib.error
@@ -16,12 +15,6 @@ import urllib.request
 from discovery.pilot import ROOT, PilotError, graphql, human, parse_time, stamp
 
 LOG = logging.getLogger("analysis")
-
-
-class OpenAIQuotaError(PilotError):
-    pass
-
-
 ISSUE_LIMIT = 10
 COMMENT_LIMIT = 10
 README_LIMIT = 8000
@@ -203,7 +196,35 @@ def summarize(evidence, token, model):
             citations["minItems"] = 1
         else:
             citations["maxItems"] = 0
-    result = structured_response(evidence, token, model, SYSTEM, schema, "repository_analysis")
+    payload = {
+        "model": model, "temperature": 0, "max_tokens": 1600,
+        "messages": [{"role": "system", "content": SYSTEM},
+                     {"role": "user", "content": json.dumps(evidence)}],
+        "response_format": {"type": "json_schema", "json_schema": {
+            "name": "repository_analysis", "strict": True, "schema": schema}},
+    }
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                body = json.load(response)
+            break
+        except urllib.error.HTTPError as error:
+            if error.code in (429, 500, 502, 503, 504) and attempt < 2:
+                LOG.warning("OpenAI HTTP %s; retrying", error.code)
+                time.sleep(15 * (attempt + 1))
+                continue
+            raise PilotError(f"OpenAI request failed (HTTP {error.code})") from error
+    choices = body.get("choices", [])
+    if not choices or choices[0].get("finish_reason") != "stop":
+        raise PilotError("OpenAI returned no complete analysis")
+    message = choices[0]["message"]
+    if message.get("refusal"):
+        raise PilotError("OpenAI declined the analysis")
+    result = json.loads(message["content"])
     if not isinstance(result, dict) or set(result) != set(schema["required"]):
         raise PilotError("OpenAI analysis has an invalid shape")
     for field in ("problem", "development", "motivation", "community"):
@@ -217,49 +238,6 @@ def summarize(evidence, token, model):
         if eligible and not ids:
             raise PilotError(f"OpenAI analysis is missing {field} citations")
     return result
-
-
-def structured_response(evidence, token, model, system, schema, name, max_tokens=1600):
-    """Request structured evidence analysis; callers validate task-specific semantics."""
-    payload = {
-        "model": model, "temperature": 0, "max_tokens": max_tokens,
-        "messages": [{"role": "system", "content": system},
-                     {"role": "user", "content": json.dumps(evidence)}],
-        "response_format": {"type": "json_schema", "json_schema": {
-            "name": name, "strict": True, "schema": schema}},
-    }
-    request = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                body = json.load(response)
-            break
-        except urllib.error.HTTPError as error:
-            try:
-                details = json.loads(error.read(16384))
-            except ValueError:
-                details = {}
-            details = details.get("error", {}) if isinstance(details, dict) else {}
-            code = details.get("code") if isinstance(details, dict) else None
-            code = code if isinstance(code, str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,80}", code) else None
-            exhausted = code in ("insufficient_quota", "credit_balance_exhausted")
-            if not exhausted and error.code in (429, 500, 502, 503, 504) and attempt < 2:
-                LOG.warning("OpenAI HTTP %s; retrying", error.code)
-                time.sleep(15 * (attempt + 1))
-                continue
-            detail = f", {code}" if code else ""
-            failure = OpenAIQuotaError if exhausted else PilotError
-            raise failure(f"OpenAI request failed (HTTP {error.code}{detail})") from error
-    choices = body.get("choices", [])
-    if not choices or choices[0].get("finish_reason") != "stop":
-        raise PilotError("OpenAI returned no complete analysis")
-    message = choices[0]["message"]
-    if message.get("refusal"):
-        raise PilotError("OpenAI declined the analysis")
-    return json.loads(message["content"])
 
 
 def enrich(report, token, model):
