@@ -142,7 +142,9 @@ function renderRows() {
   const filter = $("filter").value.toLowerCase();
   const status = $("scan-status").value;
   const candidates = report.repositories.filter((repo) =>
-    repo.status === "success" && (repo.platforms || []).includes("Windows"));
+    repo.status === "success" && (repo.platforms || []).includes("Windows") &&
+    !(repo.cross_os?.status === "success" && repo.cross_os.sha === repo.sha &&
+      repo.cross_os.decision?.cross_os === true));
   const records = candidates.filter((repo) => {
     const text = [repo.name, ...(repo.platforms || []), ...(repo.frameworks || []),
       ...(repo.components || []), ...(repo.application_types || []),

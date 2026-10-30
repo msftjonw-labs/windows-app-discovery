@@ -48,17 +48,61 @@ $env:OPENAI_MODEL = "gpt-4o"
 python -m discovery.analysis
 ```
 
-This uses the paid OpenAI API (standard library only), not a ChatGPT subscription.
-The weekly workflow runs this step automatically: configure an `OPENAI_API_KEY`
-Actions secret and optionally an `OPENAI_MODEL` repository variable (default
-`gpt-4o`, must support structured JSON outputs). Never commit the API key.
-Missing configuration fails the step explicitly. Individual repository/API failures
+This optional analysis uses the paid OpenAI API (standard library only), not a ChatGPT
+subscription. It is disabled by default in Actions; enable the `windows_ai_analysis`
+workflow input to request it. Configure an `OPENAI_API_KEY` Actions secret and
+optionally an `OPENAI_MODEL` repository variable (default `gpt-4o`, must support
+structured JSON outputs). Never commit the API key. Individual repository/API failures
 are logged and shown as unavailable analysis without changing scan results or metrics.
 Existing reports show "Analysis not collected" until enriched; no insights are fabricated.
 Use `--report PATH` to enrich another report in place.
+
+The weekly run also checks **cross-OS application support** using GitHub's public API
+and deterministic evidence rules; this step does not use OpenAI. Run it locally after
+collection with:
+
+```powershell
+python -m discovery.cross_os
+```
+
+The PDF shows a **Repository OS groups and primary languages** table below the sample/scan
+summary, with each group's top two primary-language frequency ranks (including ties).
+Only the **Cross-OS** and **Windows** rows are yellow; **Others** and the table header use
+the default styling. Separate OS-group highlight boxes are not shown.
+Windows and Multiple OS (incl. Windows) percentages in the language/platform table
+are highlighted, as are Windows-related project-type rows (including PowerShell).
+Highlighting indicates relevance, not Windows-only support. Counts and percentages use the full
+sample and groups are mutually exclusive. Cross-OS requires explicit multi-OS
+application-support evidence and takes precedence over Windows. Windows contains
+complete scans with a Windows signal, excluding Cross-OS; it does not prove Windows-only
+support. All remaining repositories are Others, including unclear/no-source cases
+without a qualifying Windows signal. Windows candidate/application counts and their
+repository lists also exclude Cross-OS after the evidence review. Separate Windows
+candidate and Windows application highlight boxes are not shown in the PDF.
+
+The deterministic classifier requires a pinned documentation line explicitly stating
+multi-OS application support. No one-OS-only statement is required for the Windows group. CI runners,
+frameworks, language portability, browser access, and inferred targets do not count.
+Evidence is fetched from the public GitHub API at each collected commit. Up to 100
+documents are inspected per repository, bounded by 1 MiB per file and 2 MiB total;
+vendor/generated trees and agent instructions are excluded. Binary and non-UTF-8
+evidence files are logged and skipped; API failures withhold the distribution.
+This is a low-cost static trend estimate, not runtime testing or proof that a repository
+supports only one OS. Narrow deterministic rules can miss valid multi-OS support;
+results need not match a broader manual review. Per-repository decisions and cited source lines are exported to
+`reports/cross-os-assessments.json`; use `--assessments-output PATH` locally.
+Older reports without assessments show "Not collected" / N/A until reviewed.
+For an Actions retry against the same cohort, set the optional `rerun_report_run_id`
+workflow input to a previous run that retained a `weekly-report` artifact. This skips
+discovery and the existing Windows analysis, preserves the activity window and pinned
+commits, then reruns GitHub evidence classification, rendering, and the selected
+email/publishing steps. Cross-OS classifications are recalculated from pinned evidence;
+the cohort itself remains unchanged. The optional Windows-candidate AI analysis is
+disabled by default for manual runs and can be enabled explicitly.
+
 The PDF's **Identified Windows repositories** table contains only Windows candidates
-(complete scans with a Windows platform signal, including libraries/tools and
-multi-OS repositories), matching the Windows candidates count at the start.
+(complete scans with a Windows platform signal, including libraries/tools but excluding
+repositories classified as Cross-OS), matching the Windows group count.
 Its **Repository analysis** column shows problems solved, development status, and
 the latest collected community feedback, with source links and analysis limitations.
 This table uses landscape pages to keep the analysis and classification columns readable.
@@ -233,8 +277,9 @@ repositories are excluded). Each repository is assigned one category:
 | Framework evidence | Most specific framework (Windows desktop → MAUI/Avalonia/Flutter/Electron/React Native/Qt → meta-frameworks before UI libraries → backends); otherwise `No framework detected` |
 
 Percentages use largest-remainder rounding to 0.01% so each chart totals exactly
-100%. `Windows` + `Multiple OS (incl. Windows)` equals the Windows candidates
-tile. All detected signals remain in the repository table and CSV.
+100%. `Windows` + `Multiple OS (incl. Windows)` includes all Windows platform signals;
+the Windows candidates tile excludes repositories subsequently classified as Cross-OS.
+All detected signals remain in the collected repository inventory.
 
 Windows candidates are passed to **Microsoft Application Inspector**, using generated
 custom rules from the same versioned taxonomy; bundled Inspector rules are disabled

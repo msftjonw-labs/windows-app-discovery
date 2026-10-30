@@ -14,6 +14,8 @@ import tempfile
 import time
 
 from discovery.windows_container import report_rows
+from discovery.cross_os import summary as cross_os_summary
+from discovery.pilot import is_windows_candidate
 
 ROOT = Path(__file__).resolve().parents[1]
 BROWSERS = (
@@ -46,6 +48,10 @@ SECTIONS = (
     ("candidate_components", "Exploratory: all Windows candidates", "Includes libraries/tools; not an application metric."),
 )
 EXCLUSIVE = {"language_platforms", "frameworks"}
+WINDOWS_PROJECT_TYPES = {
+    "PowerShell", "Windows desktop app", "Windows Forms app", "WPF app",
+    "WinUI app", "UWP app", "Windows service", "Service management",
+}
 CSS = """
 @page { size: Letter; margin: 14mm 12mm; }
 @page windows-repositories { size: Letter landscape; margin: 14mm 12mm; }
@@ -55,9 +61,9 @@ h1 { font-size: 18pt; margin: 0 0 4px; } h2 { font-size: 13pt; margin: 18px 0 6p
 .cards { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .card { border: 1px solid #ccd; border-radius: 4px; padding: 4px 8px; min-width: 88px; }
 .card strong { display: block; font-size: 14pt; }
-.card.subset { background: #effaf3; border-color: #9fd8b5; border-left: 4px solid #1f8f52; }
-.card.subset strong { color: #0f6b3a; } .card small { display: block; color: #3d6b50; font-size: 7.5pt; }
-.subset-caption { margin: 2px 0 0; font-weight: 600; color: #0f6b3a; font-size: 9pt; }
+.card small { display: block; color: #3d6b50; font-size: 7.5pt; }
+.cross-os-summary { break-inside: avoid; }
+.highlight { background: #fff8cc; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .denominator-note { margin: 2px 0; }
 table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; page-break-inside: auto; }
 th, td { text-align: left; border-bottom: 1px solid #e3e6ea; padding: 2px 4px; vertical-align: top; }
@@ -85,10 +91,16 @@ def number(value, suffix=""):
 
 
 def platform_mix(row):
-    return ", ".join(f"{text(item['label'])}: {number(item['percent'], '%')}" for item in row.get("platforms", []))
+    parts = []
+    for item in row.get("platforms", []):
+        percent = number(item["percent"], "%")
+        if item["label"] in {"Windows", "Multiple OS (incl. Windows)"}:
+            percent = f'<span class="highlight">{percent}</span>'
+        parts.append(f"{text(item['label'])}: {percent}")
+    return ", ".join(parts)
 
 
-def distribution_table(rows, confidence, platforms=False):
+def distribution_table(rows, confidence, platforms=False, highlighted_labels=()):
     if not rows or all(row["denominator"] == 0 for row in rows):
         return '<p class="muted">N/A — no eligible repositories.</p>'
     ci = f"{round(confidence * 100)}% CI" if confidence else None
@@ -105,7 +117,8 @@ def distribution_table(rows, confidence, platforms=False):
             if low is not None:
                 bar += f'<div class="ci" style="left:{low * 1.2:.1f}px;width:{(high - low) * 1.2:.1f}px"></div>'
         last = f"<td>{platform_mix(row)}</td>" if platforms else f'<td><div class="bar">{bar}</div></td>'
-        body.append(f"<tr><td>{text(row['label'])}</td><td class=\"num\">{row['count']}/{row['denominator']}</td>"
+        style = ' class="highlight"' if row["label"] in highlighted_labels else ""
+        body.append(f"<tr{style}><td>{text(row['label'])}</td><td class=\"num\">{row['count']}/{row['denominator']}</td>"
                     f"<td class=\"num\">{number(row['percent'], '%')}</td>{interval}{last}</tr>")
     return f"<table>{head}{''.join(body)}</table>"
 
@@ -140,6 +153,45 @@ def repository_analysis(repository):
     return "".join(parts)
 
 
+def cross_os_section(report):
+    assessment = cross_os_summary(report)
+    complete = assessment["complete"]
+    total = assessment["selected"]
+    rows = assessment["rows"]
+    parts = ['<section class="cross-os-summary">',
+             "<h2>Repository OS groups and primary languages</h2>"]
+    if not complete:
+        message = ("Cross-OS review not collected. Run python -m discovery.cross_os."
+                   if not assessment["assessed"] and not assessment["failed"] else
+                   f'Cross-OS review incomplete: {assessment["assessed"]}/{total} assessed, '
+                   f'{len(assessment["failed"])} failed, {len(assessment["missing"])} not collected. '
+                   "The distribution is withheld; retrieval failures are not counted as Others.")
+        parts.append(f'<p class="muted">{text(message)}</p>')
+    else:
+        parts.append("<table><thead><tr><th>Category</th><th>Repositories</th>"
+                     "<th>Most used language</th><th>Second most used</th></tr></thead><tbody>")
+        for row in rows:
+            languages = []
+            for rank in row["top_languages"]:
+                languages.append("; ".join(
+                    f'{text(item["language"])}: {item["count"]} ({number(item["percent"], "%")})'
+                    for item in rank) + (" (tied)" if len(rank) > 1 else ""))
+            languages += ["N/A"] * (2 - len(languages))
+            style = ' class="highlight"' if row["label"] in {"Cross-OS", "Windows"} else ""
+            parts.append(
+                f'<tr{style}><td>{text(row["label"])}</td><td class="num">{row["count"]} '
+                f'({number(row["percent"], "%")})</td><td>{languages[0]}</td><td>{languages[1]}</td></tr>')
+        parts.append("</tbody></table>")
+        parts.append(
+            f'<p class="muted">Distribution denominator: all {total} sampled repositories. '
+            'Groups are mutually exclusive: Cross-OS first, then Windows candidates excluding Cross-OS, '
+            'then Others. Windows indicates a detected Windows signal, not Windows-only support. '
+            'Languages use GitHub\'s primary language per repository; percentages are within each category. '
+            'Ties are retained. The second column of languages shows the next distinct frequency rank.</p>')
+    parts.append(f'<p class="muted">{text(assessment["method"])}</p></section>')
+    return "".join(parts)
+
+
 def build_html(report, pages_url=None):
     metrics, coverage, window = report["metrics"], report["coverage"], report["window"]
     confidence = metrics.get("confidence_level")
@@ -147,7 +199,7 @@ def build_html(report, pages_url=None):
     if representative:
         notice = (f"Uniform random sample of {metrics['selected']} repositories drawn from "
                   f"{coverage.get('population_size', 'N/A'):,} public repositories with qualifying human activity in "
-                  f"GH Archive. Shares carry {round(confidence * 100)}% Wilson confidence intervals; worst-case margin "
+                  f"GH Archive. Source-scan shares carry {round(confidence * 100)}% Wilson confidence intervals; worst-case margin "
                   f"for complete scans is ±{number(metrics.get('margin_of_error'))} percentage points.")
     else:
         notice = ("Bounded, non-representative cohort from GitHub GraphQL search (GH Archive fallback). "
@@ -160,10 +212,6 @@ def build_html(report, pages_url=None):
     if representative:
         cards.insert(0, ("Population (30 days)", f"{coverage.get('population_size', 0):,}"))
     complete = metrics["successful"]
-    subset = "".join(
-        f'<div class="card subset"><strong>{text(v)}</strong>{text(k)}<small>of {complete} complete scans</small></div>'
-        for k, v in (("Windows candidates", metrics["windows_repositories"]),
-                     ("Windows applications", metrics["windows_applications"])))
     denominator_note = (
         f"Percentages are calculated only from the {complete} complete scans, excluding {metrics['partial']} partial "
         f"scans, {metrics['failed']} failed scans, and {metrics.get('not_applicable', 0)} repositories with no eligible "
@@ -176,7 +224,7 @@ def build_html(report, pages_url=None):
         f" · ruleset {text(report['ruleset_version'])} · Microsoft Application Inspector {text(report['inspector_version'])}</p>",
         f"<p class=\"notice\">{text(notice)}</p>",
         '<div class="cards">' + "".join(f'<div class="card"><strong>{text(v)}</strong>{text(k)}</div>' for k, v in cards) + "</div>",
-        f'<p class="subset-caption">Subset of the {complete} complete scans</p><div class="cards">{subset}</div>',
+        cross_os_section(report),
     ]
     if representative:
         parts.append(f"<p class=\"muted\">Seed {text(coverage.get('seed'))} · {coverage.get('hours_processed')}/"
@@ -194,7 +242,8 @@ def build_html(report, pages_url=None):
             parts.append('<p class="muted">Not collected by this report; rerun the collector to populate project findings.</p>')
         else:
             parts.append(distribution_table(metrics.get(key), confidence if representative else None,
-                                            platforms=key == "language_platforms"))
+                                            platforms=key == "language_platforms",
+                                            highlighted_labels=WINDOWS_PROJECT_TYPES if key == "project_types" else ()))
             if key == "project_types" and "project_types_unclassified" in metrics:
                 parts.append(f'<p class="muted">Classification coverage: {metrics["project_types_unclassified"]} '
                              'repositories have insufficient application-type evidence in the scanned source. '
@@ -239,10 +288,10 @@ def build_html(report, pages_url=None):
         f"<td>{text(r.get('application_types'))}</td><td>{text(r.get('components'))}</td>"
         f'<td class="repository-analysis">{repository_analysis(r)}</td></tr>'
         for r in report["repositories"]
-        if r["status"] == "success" and "Windows" in r.get("platforms", []))
+        if is_windows_candidate(r))
     parts.append('<section class="windows-repositories"><h2>Identified Windows repositories</h2>'
                  "<p class=\"muted\">Windows candidates: complete scans with a Windows platform signal, including "
-                 "libraries/tools and multi-OS repositories. Community feedback is limited to the report window "
+                 "libraries/tools, excluding repositories classified as Cross-OS. Community feedback is limited to the report window "
                  "and the collected sample, not a live or community-wide assessment.</p>"
                  "<table class=\"repos\"><thead><tr><th>Repository</th><th>Scan</th><th>Language</th>"
                  "<th>Platform</th><th>Framework</th><th>Windows app type</th><th>Windows components</th>"
@@ -251,7 +300,8 @@ def build_html(report, pages_url=None):
         parts.append('<p class="muted">No Windows candidates identified.</p>')
     parts.append("<p class=\"muted\">Static, source-level evidence only; detection of a pattern is not proof of runtime use, "
                  "and absence of a match is not proof of non-use. Partial and failed scans are nonresponse and are excluded "
-                 "from distributions, which can bias estimates if they differ systematically.</p></section></body></html>")
+                 "from source-scan distributions, which can bias estimates if they differ systematically. "
+                 "The separate cross-OS review retains all sampled repositories.</p></section></body></html>")
     return "".join(parts)
 
 

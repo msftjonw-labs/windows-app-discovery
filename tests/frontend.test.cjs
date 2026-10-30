@@ -118,6 +118,8 @@ test("repository explorer only lists complete Windows candidates and preserves f
   run(`report = ${JSON.stringify({ repositories: [
     { name: "o/windows", status: "success", platforms: ["Windows"], note: "Scan note", activity_evidence: "https://github.com/o/windows/issues/1" },
     { name: "o/mixed", status: "success", platforms: ["Linux", "Windows"], inspector_incomplete: { filesSkipped: 2 }, activity_evidence: "https://github.com/o/mixed/issues/1" },
+    { name: "o/cross", sha: "abc", status: "success", platforms: ["Linux", "Windows"],
+      cross_os: { status: "success", sha: "abc", decision: { cross_os: true } } },
     { name: "o/linux", status: "success", platforms: ["Linux"], activity_evidence: "https://github.com/o/linux/issues/1" },
     { name: "o/unknown", status: "success", activity_evidence: "https://github.com/o/unknown/issues/1" },
     { name: "o/empty", status: "not_applicable", note: "No eligible source", activity_evidence: "https://github.com/o/empty/issues/1" },
