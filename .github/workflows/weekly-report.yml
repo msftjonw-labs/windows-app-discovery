@@ -16,6 +16,10 @@ on:
         description: Email the PDF report
         type: boolean
         default: true
+      research_report:
+        description: Test the saved public-source research report instead of rerunning weekly discovery
+        type: boolean
+        default: false
       pages:
         description: Also deploy the interactive GitHub Pages dashboard
         type: boolean
@@ -43,6 +47,7 @@ concurrency:
 
 jobs:
   collect:
+    if: ${{ !inputs.research_report }}
     runs-on: windows-latest
     timeout-minutes: 300
     steps:
@@ -202,3 +207,34 @@ jobs:
           REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
           PAGES_URL: ${{ needs.deploy.outputs.page_url }}
         run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf
+
+  research:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.research_report }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Research email tests
+        run: python -m unittest tests.test_research_email -v
+      - name: Render saved research report and optionally email it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
+          SEND_EMAIL: ${{ inputs.email }}
+        run: |
+          $arguments = @("--output-dir", "research-mail")
+          if ($env:SEND_EMAIL -eq "true") { $arguments += "--send" }
+          python -m discovery.research_email @arguments
+      - name: Keep research report and audit trails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-report-email
+          path: research-mail
+          if-no-files-found: warn
+          retention-days: 90

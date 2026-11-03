@@ -22,6 +22,21 @@ charts directly in the repository—no GitHub Pages visit required. It appears a
 the first successful weekly run on the default branch with this feature enabled.
 The interactive Pages dashboard remains available as an optional companion.
 
+The [public-source cross-OS research report](reports/registry-research-2026-11-03.md)
+includes both an audit of the existing 100-project cohort and separate source-first
+discovery from registries and packaging feeds, bounded to 100 candidates per source.
+Both use the cohort's recorded 30-day evidence window. The report separates packaging
+updates and shipped source indicators from proven runtime support, with linked
+machine-readable audit trails and explicit coverage gaps. This is a one-off research
+report, not a weekly workflow step.
+
+To render/email that saved snapshot without rerunning collection, dispatch the
+weekly workflow on the desired branch with `research_report=true`, `email=true`
+and `pages=false`. This mode sends a test-labeled PDF and Markdown report plus
+both JSON audit trails to the configured report recipient, keeps them as the
+`research-report-email` artifact, and skips normal collection/publishing.
+Set `email=false` for an artifact-only rendering run.
+
 ## Run locally (Windows x64)
 
 Requirements: Python 3.11+, GitHub CLI (`gh`), and a GitHub login with public
