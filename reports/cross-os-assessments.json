@@ -1,0 +1,3246 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-03T00:35:28Z",
+  "window": {
+    "start": "2026-10-03T20:00:00Z",
+    "end": "2026-11-02T20:00:00Z"
+  },
+  "summary": {
+    "complete": true,
+    "selected": 100,
+    "assessed": 100,
+    "ambiguous": [],
+    "skipped": 0,
+    "failed": [],
+    "missing": [],
+    "rows": [
+      {
+        "label": "Cross-OS",
+        "count": 10,
+        "denominator": 100,
+        "percent": 10.0,
+        "top_languages": [
+          [
+            {
+              "language": "Go",
+              "count": 3,
+              "percent": 30.0
+            },
+            {
+              "language": "Python",
+              "count": 3,
+              "percent": 30.0
+            }
+          ],
+          [
+            {
+              "language": "C#",
+              "count": 2,
+              "percent": 20.0
+            }
+          ]
+        ]
+      },
+      {
+        "label": "Windows",
+        "count": 14,
+        "denominator": 100,
+        "percent": 14.0,
+        "top_languages": [
+          [
+            {
+              "language": "Java",
+              "count": 4,
+              "percent": 28.57
+            },
+            {
+              "language": "TypeScript",
+              "count": 4,
+              "percent": 28.57
+            }
+          ],
+          [
+            {
+              "language": "Rust",
+              "count": 2,
+              "percent": 14.29
+            }
+          ]
+        ]
+      },
+      {
+        "label": "Others",
+        "count": 76,
+        "denominator": 100,
+        "percent": 76.0,
+        "top_languages": [
+          [
+            {
+              "language": "TypeScript",
+              "count": 20,
+              "percent": 26.32
+            }
+          ],
+          [
+            {
+              "language": "Python",
+              "count": 17,
+              "percent": 22.37
+            }
+          ]
+        ]
+      }
+    ],
+    "method": "Deterministic review of pinned public GitHub documentation; no OpenAI API is used. Cross-OS requires explicit documentation of application support for at least two operating systems. CI runners, languages, frameworks, browser access, and inferred portability do not qualify. The remaining repositories are Windows when a complete source scan detects a Windows signal, and Others otherwise. Cross-OS takes precedence; the three groups are mutually exclusive and use the full sample denominator, including ambiguous and undocumented repositories. Windows means a detected signal, not proven Windows-only support. Others means neither cross-OS support nor a qualifying Windows signal demonstrated. Static review, not runtime testing."
+  },
+  "repositories": [
+    {
+      "name": "OSInside/kiwi",
+      "sha": "5fa8fea6163ff423ec8a2da1e0591ab2ac3cd344",
+      "status": "success",
+      "platforms": [
+        "Linux",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "5fa8fea6163ff423ec8a2da1e0591ab2ac3cd344",
+        "generated_at": "2026-11-03T00:35:29Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached"
+        ]
+      }
+    },
+    {
+      "name": "PenguinMod/PenguinMod-ExtensionsGallery",
+      "sha": "7fd117e9dd5c71148bf310f0e3a70e4e9e760254",
+      "status": "partial",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "7fd117e9dd5c71148bf310f0e3a70e4e9e760254",
+        "generated_at": "2026-11-03T00:35:33Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "TandemVector-Labs/.github",
+      "sha": "1eb369481755fc03269a6bc842f343a22d2f679e",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1eb369481755fc03269a6bc842f343a22d2f679e",
+        "generated_at": "2026-11-03T00:35:34Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S3",
+              "first_line": 58,
+              "last_line": 58,
+              "quote": "| **[Appearance Studio Core](https://github.com/TandemVector-Labs/AppearanceStudio-Core)** | Linux/GNOME appearance tooling, Theme Packs and transactional rollback; written by Dr. Emadoddin under the distinct **Arclenor Technologies** product identity | **v0.9.0 release candidate**, GNOME 50 live acceptance still pending; no shipped Windows version claimed |"
+            },
+            {
+              "os": "Linux",
+              "source_id": "S3",
+              "first_line": 58,
+              "last_line": 58,
+              "quote": "| **[Appearance Studio Core](https://github.com/TandemVector-Labs/AppearanceStudio-Core)** | Linux/GNOME appearance tooling, Theme Packs and transactional rollback; written by Dr. Emadoddin under the distinct **Arclenor Technologies** product identity | **v0.9.0 release candidate**, GNOME 50 live acceptance still pending; no shipped Windows version claimed |"
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S3",
+            "path": "profile/README.md",
+            "url": "https://github.com/TandemVector-Labs/.github/blob/1eb369481755fc03269a6bc842f343a22d2f679e/profile/README.md",
+            "lines": [
+              {
+                "line": 58,
+                "text": "| **[Appearance Studio Core](https://github.com/TandemVector-Labs/AppearanceStudio-Core)** | Linux/GNOME appearance tooling, Theme Packs and transactional rollback; written by Dr. Emadoddin under the distinct **Arclenor Technologies** product identity | **v0.9.0 release candidate**, GNOME 50 live acceptance still pending; no shipped Windows version claimed |"
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "anotherpanacea-eng/apodictic-tauri",
+      "sha": "c4b1e10d0773676c1ebab2a76458906e9bb1cc8e",
+      "status": "success",
+      "platforms": [
+        "Linux",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "c4b1e10d0773676c1ebab2a76458906e9bb1cc8e",
+        "generated_at": "2026-11-03T00:35:36Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 9,
+        "limitations": []
+      }
+    },
+    {
+      "name": "ai-ecoverse/slicc-agent",
+      "sha": "ab269ae4fc703de9224a1cb8947b55883a5b4014",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "ab269ae4fc703de9224a1cb8947b55883a5b4014",
+        "generated_at": "2026-11-03T00:35:37Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": [
+          "Evidence excerpt bounded: README.md"
+        ]
+      }
+    },
+    {
+      "name": "chewtoo22-rgb/SoundMesh",
+      "sha": "4888bf6e7a3a32f96284751c1414893877b14daa",
+      "status": "success",
+      "platforms": [
+        "Android",
+        "JVM (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Kotlin",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "4888bf6e7a3a32f96284751c1414893877b14daa",
+        "generated_at": "2026-11-03T00:35:39Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "vegekyd-sys/v-nightshift",
+      "sha": "7fb5d32131b52221dfedb0092f4aa2f38dc52b73",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "7fb5d32131b52221dfedb0092f4aa2f38dc52b73",
+        "generated_at": "2026-11-03T00:35:41Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "tnt007tarun/StreamCast",
+      "sha": "5ba649188167d524c0b327520fe7b47db3a00b4a",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "5ba649188167d524c0b327520fe7b47db3a00b4a",
+        "generated_at": "2026-11-03T00:35:43Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "mathildekw/mathildekw",
+      "sha": "4a27e34a8e9232eaf5ab726abc3e534801781bdf",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "HTML",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "4a27e34a8e9232eaf5ab726abc3e534801781bdf",
+        "generated_at": "2026-11-03T00:35:44Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "0ladymt/mt-pack-organizer-releases",
+      "sha": "b544dc8c652c7f2b05a242869d2021829672cf18",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Windows"
+      ],
+      "primary_language": "PowerShell",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "b544dc8c652c7f2b05a242869d2021829672cf18",
+        "generated_at": "2026-11-03T00:35:46Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "jiya-m/capstone",
+      "sha": "168ba1247df62d46ffa221966978bfe844c90d97",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "168ba1247df62d46ffa221966978bfe844c90d97",
+        "generated_at": "2026-11-03T00:35:48Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 6,
+        "limitations": []
+      }
+    },
+    {
+      "name": "iFixit/govinor",
+      "sha": "121780bda57b1bedc4d233bf0e8a9f26ad7da03c",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "121780bda57b1bedc4d233bf0e8a9f26ad7da03c",
+        "generated_at": "2026-11-03T00:35:50Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "mongodb-js/compass",
+      "sha": "668b071000e81761bc716f459dd1a09b5da978c0",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "668b071000e81761bc716f459dd1a09b5da978c0",
+        "generated_at": "2026-11-03T00:35:51Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "Evidence excerpt bounded: .evergreen/buildvariants-and-tasks.yml"
+        ]
+      }
+    },
+    {
+      "name": "felipeaugusantos/erpzetech",
+      "sha": "028767a443d02a49b4c867e14fd90c00c3c9dfe7",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "028767a443d02a49b4c867e14fd90c00c3c9dfe7",
+        "generated_at": "2026-11-03T00:35:54Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "miszyszka/Epcido-Terminal",
+      "sha": "c98bf1bb895fe0b4cb0294b99c6773c8b5bcfa09",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "c98bf1bb895fe0b4cb0294b99c6773c8b5bcfa09",
+        "generated_at": "2026-11-03T00:35:56Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 2,
+        "limitations": []
+      }
+    },
+    {
+      "name": "sandeepkumarkrprabhu/ZYRAHRM-Backend",
+      "sha": "1852a9d5c015559c8a748a0ffb309b751f0e4456",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Server / backend",
+        "Web"
+      ],
+      "primary_language": "C#",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1852a9d5c015559c8a748a0ffb309b751f0e4456",
+        "generated_at": "2026-11-03T00:35:57Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 17,
+        "limitations": []
+      }
+    },
+    {
+      "name": "sebrandon1/imagecertinfo-operator",
+      "sha": "829e87301bc1cb430e9d06aee5560e25f9f252cc",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Go",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "829e87301bc1cb430e9d06aee5560e25f9f252cc",
+        "generated_at": "2026-11-03T00:35:59Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 12,
+        "limitations": []
+      }
+    },
+    {
+      "name": "karagemop466-tech/LOLHOTSPAWN2",
+      "sha": "6ae3ed58fe86626397b2d458c913abe84d031482",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "6ae3ed58fe86626397b2d458c913abe84d031482",
+        "generated_at": "2026-11-03T00:36:00Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 9,
+        "limitations": []
+      }
+    },
+    {
+      "name": "developerz-ai/multi-ai-router",
+      "sha": "c55e6dbe7c87e3fba0d3c82e9643aabdcd095fec",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Server / backend",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "c55e6dbe7c87e3fba0d3c82e9643aabdcd095fec",
+        "generated_at": "2026-11-03T00:36:02Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 16,
+        "limitations": [
+          "Evidence excerpt bounded: docs/idea/09-deployment.md"
+        ]
+      }
+    },
+    {
+      "name": "rafs2006/optimus",
+      "sha": "bb48a1d76906166f720bd39ecb88cb4a77b4f6a4",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "bb48a1d76906166f720bd39ecb88cb4a77b4f6a4",
+        "generated_at": "2026-11-03T00:36:04Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "charmbracelet/vhs",
+      "sha": "24fa2254a9806091e6ee6a980e9f3bcfe0a9ba53",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Go",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "24fa2254a9806091e6ee6a980e9f3bcfe0a9ba53",
+        "generated_at": "2026-11-03T00:36:06Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S1",
+              "first_line": 105,
+              "last_line": 105,
+              "quote": "- [Binaries][releases] are available for Linux, macOS, and Windows"
+            },
+            {
+              "os": "Linux",
+              "source_id": "S1",
+              "first_line": 105,
+              "last_line": 105,
+              "quote": "- [Binaries][releases] are available for Linux, macOS, and Windows"
+            },
+            {
+              "os": "macOS",
+              "source_id": "S1",
+              "first_line": 105,
+              "last_line": 105,
+              "quote": "- [Binaries][releases] are available for Linux, macOS, and Windows"
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "path": "README.md",
+            "url": "https://github.com/charmbracelet/vhs/blob/24fa2254a9806091e6ee6a980e9f3bcfe0a9ba53/README.md",
+            "lines": [
+              {
+                "line": 105,
+                "text": "- [Binaries][releases] are available for Linux, macOS, and Windows"
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 9,
+        "limitations": []
+      }
+    },
+    {
+      "name": "solaranoir/pocketsat-testlab",
+      "sha": "9157fc8a701d7d6cf394f56f4a32fa5412a438cf",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "9157fc8a701d7d6cf394f56f4a32fa5412a438cf",
+        "generated_at": "2026-11-03T00:36:07Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "baekenough/oh-my-customcode",
+      "sha": "06f15d8fe1f137589427673e7a1b2e104836479e",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "06f15d8fe1f137589427673e7a1b2e104836479e",
+        "generated_at": "2026-11-03T00:36:09Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "Evidence excerpt bounded: guides/claude-code/15-version-compatibility.md",
+          "Evidence excerpt bounded: templates/guides/claude-code/15-version-compatibility.md"
+        ]
+      }
+    },
+    {
+      "name": "pingvis/Nida-Windows",
+      "sha": "544e34822f3cd682e15f287ea21722b151e60d4f",
+      "status": "success",
+      "platforms": [
+        "Linux",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows",
+        "macOS"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "544e34822f3cd682e15f287ea21722b151e60d4f",
+        "generated_at": "2026-11-03T00:36:14Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S1",
+              "first_line": 120,
+              "last_line": 120,
+              "quote": "The [Varda releases](https://github.com/im-knots/varda/releases) (`Varda-macOS-universal.dmg`, `Varda-Linux-x86_64.tar.gz`, `Varda-Windows-x64.zip`) are the original project, without Nida's conference features."
+            },
+            {
+              "os": "Linux",
+              "source_id": "S1",
+              "first_line": 120,
+              "last_line": 120,
+              "quote": "The [Varda releases](https://github.com/im-knots/varda/releases) (`Varda-macOS-universal.dmg`, `Varda-Linux-x86_64.tar.gz`, `Varda-Windows-x64.zip`) are the original project, without Nida's conference features."
+            },
+            {
+              "os": "macOS",
+              "source_id": "S1",
+              "first_line": 120,
+              "last_line": 120,
+              "quote": "The [Varda releases](https://github.com/im-knots/varda/releases) (`Varda-macOS-universal.dmg`, `Varda-Linux-x86_64.tar.gz`, `Varda-Windows-x64.zip`) are the original project, without Nida's conference features."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "path": "README.md",
+            "url": "https://github.com/pingvis/Nida-Windows/blob/544e34822f3cd682e15f287ea21722b151e60d4f/README.md",
+            "lines": [
+              {
+                "line": 120,
+                "text": "The [Varda releases](https://github.com/im-knots/varda/releases) (`Varda-macOS-universal.dmg`, `Varda-Linux-x86_64.tar.gz`, `Varda-Windows-x64.zip`) are the original project, without Nida's conference features."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 30,
+        "limitations": [
+          "Evidence excerpt bounded: README.md"
+        ]
+      }
+    },
+    {
+      "name": "robot-pesg/NavSR",
+      "sha": "fbbc17bd118c9e2510694f89e9059fea6d0a6b44",
+      "status": "success",
+      "platforms": [
+        "Unknown"
+      ],
+      "primary_language": "Unknown",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "fbbc17bd118c9e2510694f89e9059fea6d0a6b44",
+        "generated_at": "2026-11-03T00:36:16Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 1,
+        "limitations": []
+      }
+    },
+    {
+      "name": "rckearns/sitescan-frontend",
+      "sha": "1a3c6b18deb310d13433d4049b09a09220303223",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1a3c6b18deb310d13433d4049b09a09220303223",
+        "generated_at": "2026-11-03T00:36:17Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "manwar/perlweeklychallenge-club",
+      "sha": "3d1fb627ec911dac2eda6bca3bca434990c0ea9f",
+      "status": "partial",
+      "platforms": [
+        "JVM (OS unspecified)",
+        "Linux",
+        "Native code (OS unspecified)",
+        "PHP runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Perl",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "3d1fb627ec911dac2eda6bca3bca434990c0ea9f",
+        "generated_at": "2026-11-03T00:36:19Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 99,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "GitHub source tree truncated",
+          "Non-UTF-8 evidence file omitted: challenge-001/paulo-custodio/README.txt"
+        ]
+      }
+    },
+    {
+      "name": "justinhunt/moodle-repository_cloudpoodll",
+      "sha": "3aafe507867d98165af023094591c332016a5ca5",
+      "status": "success",
+      "platforms": [
+        "PHP runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "PHP",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "3aafe507867d98165af023094591c332016a5ca5",
+        "generated_at": "2026-11-03T00:36:24Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 1,
+        "limitations": []
+      }
+    },
+    {
+      "name": "houraniiiii/Renulus",
+      "sha": "2259745509e1727ec998da783f3d5e366473819f",
+      "status": "partial",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows",
+        "macOS"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "2259745509e1727ec998da783f3d5e366473819f",
+        "generated_at": "2026-11-03T00:36:26Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S33",
+              "first_line": 60,
+              "last_line": 60,
+              "quote": "> **Windows:** Windows nativo es totalmente compatible \u2014 el comando de PowerShell de arriba instala todo. Si prefieres usar WSL2, el comando de Linux tambi\u00e9n funciona all\u00ed. La instalaci\u00f3n nativa de Windows se encuentra en `%LOCALAPPDATA%\\hermes`; WSL2 instala en `~/.hermes` como en Linux."
+            },
+            {
+              "os": "Linux",
+              "source_id": "S33",
+              "first_line": 60,
+              "last_line": 60,
+              "quote": "> **Windows:** Windows nativo es totalmente compatible \u2014 el comando de PowerShell de arriba instala todo. Si prefieres usar WSL2, el comando de Linux tambi\u00e9n funciona all\u00ed. La instalaci\u00f3n nativa de Windows se encuentra en `%LOCALAPPDATA%\\hermes`; WSL2 instala en `~/.hermes` como en Linux."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S33",
+            "path": "upstream/hermes/README.es.md",
+            "url": "https://github.com/houraniiiii/Renulus/blob/2259745509e1727ec998da783f3d5e366473819f/upstream/hermes/README.es.md",
+            "lines": [
+              {
+                "line": 60,
+                "text": "> **Windows:** Windows nativo es totalmente compatible \u2014 el comando de PowerShell de arriba instala todo. Si prefieres usar WSL2, el comando de Linux tambi\u00e9n funciona all\u00ed. La instalaci\u00f3n nativa de Windows se encuentra en `%LOCALAPPDATA%\\hermes`; WSL2 instala en `~/.hermes` como en Linux."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 50,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "Evidence excerpt bounded: docs/implementation/finalise-release-disposition-20261006.md",
+          "Evidence excerpt bounded: docs/implementation/finish-requirements-20261007.md",
+          "Evidence excerpt bounded: docs/planning/opencode-v2/README.md",
+          "Evidence excerpt bounded: docs/planning/opencode-v2/tickets/20-cut-over-the-windows-client-with-a-recoverable-release.md",
+          "Evidence excerpt bounded: docs/research/2026-10-10-harness-adoption/README.md",
+          "Evidence excerpt bounded: docs/research/2026-10-10-harness-adoption/review-18-maintenance-licensing-release.md",
+          "Evidence excerpt bounded: docs/research/2026-10-10-opencode-integration/README.md",
+          "Evidence excerpt bounded: packages/backend/src/dispatch/README.md",
+          "Evidence excerpt bounded: packages/backend/src/plugins/README.md",
+          "Evidence excerpt bounded: packages/backend/src/storage/README.md",
+          "Evidence excerpt bounded: runtime/renulus/workers/README.md",
+          "Evidence excerpt bounded: upstream/hermes/apps/bootstrap-installer/package.json",
+          "Evidence excerpt bounded: upstream/hermes/apps/bootstrap-installer/tsconfig.json",
+          "Evidence excerpt bounded: upstream/hermes/apps/bootstrap-installer/tsconfig.node.json",
+          "Evidence excerpt bounded: upstream/hermes/apps/desktop/BUILDING.md",
+          "Evidence excerpt bounded: upstream/hermes/apps/desktop/README.md",
+          "Evidence excerpt bounded: upstream/hermes/apps/desktop/package.json",
+          "Evidence excerpt bounded: upstream/hermes/apps/shared/package.json",
+          "Evidence excerpt bounded: upstream/hermes/contributors/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/botmode-dm-delivery/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/botmode-dm-matrix/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/browser_use/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/codebase_navigability/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/codex_echo/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/compaction/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/core_tool_deferral/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/delegation_group_schema/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/desktop-pane-fixture/README.md",
+          "Evidence excerpt bounded: upstream/hermes/evals/desktop_mcp_oauth/README.md",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/README.md",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/ando-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/bunny_space-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/carbonvoice-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/chatto-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/fluxer-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/fmsg-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/hermes-agent-builder.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/inline-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/minecraft-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/openai-compatible.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/rocketchat-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/vector-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/vk-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/plugin-catalog/whatsapp-agent-platform.yaml",
+          "Evidence excerpt bounded: upstream/hermes/pm/pyproject.toml",
+          "Evidence excerpt bounded: upstream/hermes/providers/README.md",
+          "Evidence excerpt bounded: upstream/hermes/pyproject.toml",
+          "Evidence excerpt bounded: upstream/hermes/scripts/install.ps1",
+          "Evidence excerpt bounded: upstream/hermes/scripts/install.sh",
+          "Evidence excerpt bounded: upstream/hermes/scripts/release-content-types.json",
+          "Evidence excerpt bounded: upstream/hermes/scripts/windows-build-deps.ps1",
+          "Evidence excerpt bounded: upstream/hermes/tests-js/package.json",
+          "Evidence excerpt bounded: upstream/hermes/ui-tui/README.md",
+          "Evidence excerpt bounded: upstream/hermes/ui-tui/package.json",
+          "Evidence excerpt bounded: upstream/hermes/ui-tui/tsconfig.build.json",
+          "Evidence excerpt bounded: upstream/hermes/web/README.md",
+          "Evidence excerpt bounded: upstream/hermes/web/package.json",
+          "Evidence excerpt bounded: upstream/hermes/website/README.md",
+          "Evidence excerpt bounded: upstream/hermes/website/package.json"
+        ]
+      }
+    },
+    {
+      "name": "approoveapp/approove",
+      "sha": "380a5064f71580901ef80c4b8792250c4fd004ee",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "380a5064f71580901ef80c4b8792250c4fd004ee",
+        "generated_at": "2026-11-03T00:36:30Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "hockeybuggy/hockeybuggy.com",
+      "sha": "f67b32c6d16e7ede4dd4129f14346ad17eca388b",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "f67b32c6d16e7ede4dd4129f14346ad17eca388b",
+        "generated_at": "2026-11-03T00:36:32Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 6,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Carlos-39/multimodal_presenter",
+      "sha": "1851d0756efb30d14cdde455ce8da3b04963de76",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1851d0756efb30d14cdde455ce8da3b04963de76",
+        "generated_at": "2026-11-03T00:36:34Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Quimia-br/quimia-web-crud",
+      "sha": "b006d14e29fefb17ed8f99bbe4895376b319bd20",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "JVM (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Java",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "b006d14e29fefb17ed8f99bbe4895376b319bd20",
+        "generated_at": "2026-11-03T00:36:35Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "julienld/ha-mcp-native",
+      "sha": "1c4b4edfcce56f0afe8715261fe46eb7c4866e78",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1c4b4edfcce56f0afe8715261fe46eb7c4866e78",
+        "generated_at": "2026-11-03T00:36:37Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 57,
+        "limitations": []
+      }
+    },
+    {
+      "name": "aboodmoh724-svg/halqa-followup",
+      "sha": "12fd527cadbd0e9e8cee78aa7ef6a0d21b1dd563",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "12fd527cadbd0e9e8cee78aa7ef6a0d21b1dd563",
+        "generated_at": "2026-11-03T00:36:40Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Bambale0/banano_kling",
+      "sha": "e475bf7051be560c9961e749972b7c7ce613fa6a",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "e475bf7051be560c9961e749972b7c7ce613fa6a",
+        "generated_at": "2026-11-03T00:36:41Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 32,
+        "limitations": []
+      }
+    },
+    {
+      "name": "KrzysztofMarciniak/scjson",
+      "sha": "4f847171abc9242a340a28bde45e5dee03e49d92",
+      "status": "success",
+      "platforms": [
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "C",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "4f847171abc9242a340a28bde45e5dee03e49d92",
+        "generated_at": "2026-11-03T00:36:43Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Leonn190/PokeTactics",
+      "sha": "0d2982e8b972b4df44f5ede42e3c1a73313331d0",
+      "status": "partial",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0d2982e8b972b4df44f5ede42e3c1a73313331d0",
+        "generated_at": "2026-11-03T00:36:45Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 8,
+        "limitations": [
+          "GitHub source tree truncated"
+        ]
+      }
+    },
+    {
+      "name": "mlengse/orthos",
+      "sha": "433944c2ddbd2acffa54a0e6ad6d3f91ad315fc6",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "433944c2ddbd2acffa54a0e6ad6d3f91ad315fc6",
+        "generated_at": "2026-11-03T00:36:48Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "GeneralKnowledge/Good-Dog-Book",
+      "sha": "0165b13b9317a17d83b1676ef8eb6e719b826664",
+      "status": "success",
+      "platforms": [
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Shell",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0165b13b9317a17d83b1676ef8eb6e719b826664",
+        "generated_at": "2026-11-03T00:36:50Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 7,
+        "limitations": []
+      }
+    },
+    {
+      "name": "CharitonMedia/Tremelay",
+      "sha": "09d72168f48e23fce1bdf40cf388a4bd8131a504",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Go",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "09d72168f48e23fce1bdf40cf388a4bd8131a504",
+        "generated_at": "2026-11-03T00:36:51Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Linux",
+              "source_id": "S6",
+              "first_line": 114,
+              "last_line": 114,
+              "quote": "download-and-verify-checksum one-liner for linux/macOS."
+            },
+            {
+              "os": "macOS",
+              "source_id": "S6",
+              "first_line": 114,
+              "last_line": 114,
+              "quote": "download-and-verify-checksum one-liner for linux/macOS."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S6",
+            "path": "docs/adr/0027-release-artifacts.md",
+            "url": "https://github.com/CharitonMedia/Tremelay/blob/09d72168f48e23fce1bdf40cf388a4bd8131a504/docs/adr/0027-release-artifacts.md",
+            "lines": [
+              {
+                "line": 114,
+                "text": "download-and-verify-checksum one-liner for linux/macOS."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 18,
+        "limitations": []
+      }
+    },
+    {
+      "name": "duongcongcao-0312/duannhom5-main",
+      "sha": "915983d7c6ccaae3b139443fd39060a127b61133",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "915983d7c6ccaae3b139443fd39060a127b61133",
+        "generated_at": "2026-11-03T00:36:53Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 6,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Azure/azure-cli-extensions",
+      "sha": "d79d5bc724e7701a03ad7a74c064d06c260ad417",
+      "status": "partial",
+      "platforms": [
+        "Cloud / infrastructure",
+        "Containers / Kubernetes",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "d79d5bc724e7701a03ad7a74c064d06c260ad417",
+        "generated_at": "2026-11-03T00:36:55Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S57",
+              "first_line": 63,
+              "last_line": 63,
+              "quote": "## Platform Support (Linux and Windows Policies)"
+            },
+            {
+              "os": "Linux",
+              "source_id": "S57",
+              "first_line": 63,
+              "last_line": 63,
+              "quote": "## Platform Support (Linux and Windows Policies)"
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S57",
+            "path": "src/confcom/README.md",
+            "url": "https://github.com/Azure/azure-cli-extensions/blob/d79d5bc724e7701a03ad7a74c064d06c260ad417/src/confcom/README.md",
+            "lines": [
+              {
+                "line": 63,
+                "text": "## Platform Support (Linux and Windows Policies)"
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached"
+        ]
+      }
+    },
+    {
+      "name": "ThreeMonth03/Conjugate-Gradient-Method-library",
+      "sha": "92a1d8a02006531aea6d13db93383204806dd83c",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "92a1d8a02006531aea6d13db93383204806dd83c",
+        "generated_at": "2026-11-03T00:36:59Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 12,
+        "limitations": []
+      }
+    },
+    {
+      "name": "OpenVTC/verifiable-git-infrastructure",
+      "sha": "d64369788f56585e64339b3df7a61b548b6916f9",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "d64369788f56585e64339b3df7a61b548b6916f9",
+        "generated_at": "2026-11-03T00:37:00Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 24,
+        "limitations": []
+      }
+    },
+    {
+      "name": "ajare/vulkan-poly-pusher",
+      "sha": "3832c6f0b9cc7470f79b408c8f42e4db2ae91a87",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Windows"
+      ],
+      "primary_language": "C++",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "3832c6f0b9cc7470f79b408c8f42e4db2ae91a87",
+        "generated_at": "2026-11-03T00:37:02Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Stiftelsen-Hulen/hulen.no",
+      "sha": "dcf32653fe2752eade8dd55a89d48e903c708bba",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "dcf32653fe2752eade8dd55a89d48e903c708bba",
+        "generated_at": "2026-11-03T00:37:04Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 7,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Gloria-GK-406/DNF-JP-86-Server",
+      "sha": "35049db76c07141befc5e70c231b33516dce1f80",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "C#",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "35049db76c07141befc5e70c231b33516dce1f80",
+        "generated_at": "2026-11-03T00:37:06Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S5",
+              "first_line": 30,
+              "last_line": 30,
+              "quote": "\u4fdd\u7559\u5206\u652f\u5df2\u6709\u63d0\u4ea4\uff0c\u91c7\u7528 merge commit\uff1b\u68c0\u67e5\u901a\u8fc7\u540e\u5408\u5e76\u3002v0.2.4 \u53ea\u6307\u5411 main \u4e0a\u7684\u6700\u7ec8\u5408\u5e76\u63d0\u4ea4\uff0c\u7531 Server Release \u5de5\u4f5c\u6d41\u6784\u5efa Windows x64\uff0fLinux x64 \u81ea\u5305\u542b\u5305\u548c SHA-256 \u6587\u4ef6\u3002\u672a\u5b8c\u6210\u7684\u7236 issue \u4fdd\u6301\u5f00\u653e\uff0c\u53d1\u5e03\u4e0d\u7b49\u540c\u4e8e\u6240\u6709\u8303\u56f4\u9a8c\u6536\u3002"
+            },
+            {
+              "os": "Linux",
+              "source_id": "S5",
+              "first_line": 30,
+              "last_line": 30,
+              "quote": "\u4fdd\u7559\u5206\u652f\u5df2\u6709\u63d0\u4ea4\uff0c\u91c7\u7528 merge commit\uff1b\u68c0\u67e5\u901a\u8fc7\u540e\u5408\u5e76\u3002v0.2.4 \u53ea\u6307\u5411 main \u4e0a\u7684\u6700\u7ec8\u5408\u5e76\u63d0\u4ea4\uff0c\u7531 Server Release \u5de5\u4f5c\u6d41\u6784\u5efa Windows x64\uff0fLinux x64 \u81ea\u5305\u542b\u5305\u548c SHA-256 \u6587\u4ef6\u3002\u672a\u5b8c\u6210\u7684\u7236 issue \u4fdd\u6301\u5f00\u653e\uff0c\u53d1\u5e03\u4e0d\u7b49\u540c\u4e8e\u6240\u6709\u8303\u56f4\u9a8c\u6536\u3002"
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S5",
+            "path": "Document/Release-0.2.4-20261011.md",
+            "url": "https://github.com/Gloria-GK-406/DNF-JP-86-Server/blob/35049db76c07141befc5e70c231b33516dce1f80/Document/Release-0.2.4-20261011.md",
+            "lines": [
+              {
+                "line": 30,
+                "text": "\u4fdd\u7559\u5206\u652f\u5df2\u6709\u63d0\u4ea4\uff0c\u91c7\u7528 merge commit\uff1b\u68c0\u67e5\u901a\u8fc7\u540e\u5408\u5e76\u3002v0.2.4 \u53ea\u6307\u5411 main \u4e0a\u7684\u6700\u7ec8\u5408\u5e76\u63d0\u4ea4\uff0c\u7531 Server Release \u5de5\u4f5c\u6d41\u6784\u5efa Windows x64\uff0fLinux x64 \u81ea\u5305\u542b\u5305\u548c SHA-256 \u6587\u4ef6\u3002\u672a\u5b8c\u6210\u7684\u7236 issue \u4fdd\u6301\u5f00\u653e\uff0c\u53d1\u5e03\u4e0d\u7b49\u540c\u4e8e\u6240\u6709\u8303\u56f4\u9a8c\u6536\u3002"
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 99,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "Non-UTF-8 evidence file omitted: Document/tasks/guardian-altar/70-wire-builders.txt"
+        ]
+      }
+    },
+    {
+      "name": "PostHog/trino",
+      "sha": "3514196c4d5faf76ea507d5cd199c0693fb9d493",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "JVM (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Java",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "3514196c4d5faf76ea507d5cd199c0693fb9d493",
+        "generated_at": "2026-11-03T00:37:10Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached"
+        ]
+      }
+    },
+    {
+      "name": "xiajiajun516/dsh-config-manager",
+      "sha": "93ce2f12a30e7d07a7f2e944c6eb4df9444631e8",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "93ce2f12a30e7d07a7f2e944c6eb4df9444631e8",
+        "generated_at": "2026-11-03T00:37:14Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 14,
+        "limitations": [
+          "Evidence excerpt bounded: README.md"
+        ]
+      }
+    },
+    {
+      "name": "deepmsg/deepmsg",
+      "sha": "c2b4766dc6096ed184850e03397b379cc4447234",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Windows"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "c2b4766dc6096ed184850e03397b379cc4447234",
+        "generated_at": "2026-11-03T00:37:16Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 35,
+        "limitations": []
+      }
+    },
+    {
+      "name": "manh-vv/docb",
+      "sha": "1fd7814ebbab7a6898d7ae737968b8b08e81b1c1",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1fd7814ebbab7a6898d7ae737968b8b08e81b1c1",
+        "generated_at": "2026-11-03T00:37:17Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "ClarionLive/multiterminal",
+      "sha": "d52123de1024a42838e34149368327275e543b61",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "C#",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "d52123de1024a42838e34149368327275e543b61",
+        "generated_at": "2026-11-03T00:37:19Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 16,
+        "limitations": []
+      }
+    },
+    {
+      "name": "michael-bachmann/lineitem",
+      "sha": "8f59839df5ebd28544e61128ff2331375ffb02d7",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "8f59839df5ebd28544e61128ff2331375ffb02d7",
+        "generated_at": "2026-11-03T00:37:21Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 10,
+        "limitations": []
+      }
+    },
+    {
+      "name": "argmend/argmend",
+      "sha": "080ce201e4115a0aa3e24f15af27224604943d4f",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "080ce201e4115a0aa3e24f15af27224604943d4f",
+        "generated_at": "2026-11-03T00:37:22Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 6,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Ndegwa4943/Merstat-FrontEnd",
+      "sha": "832c20412c29c8db8eb7459be4c3b5032c6e8a2b",
+      "status": "success",
+      "platforms": [
+        "Web"
+      ],
+      "primary_language": "HTML",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "832c20412c29c8db8eb7459be4c3b5032c6e8a2b",
+        "generated_at": "2026-11-03T00:37:24Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 0,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Rufics/fpv-radio-map",
+      "sha": "b5bd45a93885419110fa71625c4bf11014ef07db",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "C++",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "b5bd45a93885419110fa71625c4bf11014ef07db",
+        "generated_at": "2026-11-03T00:37:25Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 42,
+        "limitations": []
+      }
+    },
+    {
+      "name": "HHS/simpler-grants-gov",
+      "sha": "e1649d65744b9c6fc70ae43d81bb103098cd9b73",
+      "status": "success",
+      "platforms": [
+        "Cloud / infrastructure",
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "e1649d65744b9c6fc70ae43d81bb103098cd9b73",
+        "generated_at": "2026-11-03T00:37:28Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 100,
+        "limitations": [
+          "Document count or source byte bound reached"
+        ]
+      }
+    },
+    {
+      "name": "robert-koch-institut/mex-backend",
+      "sha": "6e1b35ef372cd199cd39d88ddac4a13cd4b73813",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "6e1b35ef372cd199cd39d88ddac4a13cd4b73813",
+        "generated_at": "2026-11-03T00:37:31Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 14,
+        "limitations": []
+      }
+    },
+    {
+      "name": "EFForg/privacybadger-website",
+      "sha": "361386eb48a05b7bf06b3fa4ed4ddb1739406293",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "SCSS",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "361386eb48a05b7bf06b3fa4ed4ddb1739406293",
+        "generated_at": "2026-11-03T00:37:33Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 50,
+        "limitations": []
+      }
+    },
+    {
+      "name": "DanielAmah/ai-dev-quiz-app",
+      "sha": "14f1f9e44178a06241656a4f7d60a49cbf650954",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "14f1f9e44178a06241656a4f7d60a49cbf650954",
+        "generated_at": "2026-11-03T00:37:35Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Project-Colony/Xion",
+      "sha": "8a0372157733be63082a9b27da0c6ccc6a401d5e",
+      "status": "success",
+      "platforms": [
+        "Linux",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Windows"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "8a0372157733be63082a9b27da0c6ccc6a401d5e",
+        "generated_at": "2026-11-03T00:37:36Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 10,
+        "limitations": []
+      }
+    },
+    {
+      "name": "deankim77/jsolution-ai-plm-postgres",
+      "sha": "8b394be7e0e71f490275dc1a4f3847ac7d8bd886",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "8b394be7e0e71f490275dc1a4f3847ac7d8bd886",
+        "generated_at": "2026-11-03T00:37:38Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "johnhenry/workflows",
+      "sha": "70a57a8dbd610bed3d06b2321f49ec737333fd2a",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "70a57a8dbd610bed3d06b2321f49ec737333fd2a",
+        "generated_at": "2026-11-03T00:37:40Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 9,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Calhooon/bsv-overlay-cloudflare",
+      "sha": "0013d282aeedb1df39393b4ddb8652d8e2b0e353",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "WebAssembly"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0013d282aeedb1df39393b4ddb8652d8e2b0e353",
+        "generated_at": "2026-11-03T00:37:42Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 24,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Austin-Ellefson/Wargame",
+      "sha": "d4a047c0d1ef2e744ebb0086327fba370829d91a",
+      "status": "not_applicable",
+      "platforms": [
+        "Unknown"
+      ],
+      "primary_language": "Unknown",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "d4a047c0d1ef2e744ebb0086327fba370829d91a",
+        "generated_at": "2026-11-03T00:37:43Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 1,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Statsify/statsify",
+      "sha": "cae6799eaa8f2fe96818dff9db2b085ad166eb16",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Server / backend",
+        "Web",
+        "WebAssembly",
+        "Windows"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "cae6799eaa8f2fe96818dff9db2b085ad166eb16",
+        "generated_at": "2026-11-03T00:37:45Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 25,
+        "limitations": []
+      }
+    },
+    {
+      "name": "amitmohapatra/agent-memory-service",
+      "sha": "a6b0cf216280361b2ea58b21cad1ab2a4d1a6bd2",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "a6b0cf216280361b2ea58b21cad1ab2a4d1a6bd2",
+        "generated_at": "2026-11-03T00:37:47Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 22,
+        "limitations": []
+      }
+    },
+    {
+      "name": "guruoshan/Paid-Due",
+      "sha": "a75d04c76511ab881888d83b9004985ca598cb25",
+      "status": "success",
+      "platforms": [
+        "Android",
+        "JVM (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Kotlin",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "a75d04c76511ab881888d83b9004985ca598cb25",
+        "generated_at": "2026-11-03T00:37:48Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 24,
+        "limitations": [
+          "Evidence excerpt bounded: BOARDLOCK/BACKEND_COMPATIBILITY_AUDIT_2026-10-09.md"
+        ]
+      }
+    },
+    {
+      "name": "TurnGui/catchlog-api",
+      "sha": "f4513f94ddd8022c74f0d021bf40c1ee7691619a",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Containers / Kubernetes",
+        "Server / backend",
+        "Web"
+      ],
+      "primary_language": "C#",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "f4513f94ddd8022c74f0d021bf40c1ee7691619a",
+        "generated_at": "2026-11-03T00:37:50Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "PennyLaneAI/demos",
+      "status": "failed",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": null,
+        "generated_at": "2026-11-03T00:37:52Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 0,
+        "limitations": [
+          "No pinned commit available"
+        ]
+      }
+    },
+    {
+      "name": "xex-ken-xex/ai-gm-bridge",
+      "sha": "370e63004fec813044fbc836c27e2178d0c3fee6",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "370e63004fec813044fbc836c27e2178d0c3fee6",
+        "generated_at": "2026-11-03T00:37:52Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 14,
+        "limitations": []
+      }
+    },
+    {
+      "name": "flytiger-eco/TransformerEngine-for-sail",
+      "sha": "1353b565d4a09e03050cb47ea6cd92d1082677d5",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1353b565d4a09e03050cb47ea6cd92d1082677d5",
+        "generated_at": "2026-11-03T00:37:54Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 33,
+        "limitations": []
+      }
+    },
+    {
+      "name": "culturesofknowledge/site-front-2",
+      "sha": "0f6823d93b06fa2b13b176a28f401b64b2840257",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0f6823d93b06fa2b13b176a28f401b64b2840257",
+        "generated_at": "2026-11-03T00:37:55Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "anthropics/prompt-eng-interactive-tutorial",
+      "sha": "0d277542e927652da25b0014c9b346723af55881",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)"
+      ],
+      "primary_language": "Jupyter Notebook",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0d277542e927652da25b0014c9b346723af55881",
+        "generated_at": "2026-11-03T00:37:57Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "richardpowellus/invisible_playwright_mcp",
+      "sha": "0df2a15e59f9d1d6dc56adc9f29cace1cbd4650e",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "0df2a15e59f9d1d6dc56adc9f29cace1cbd4650e",
+        "generated_at": "2026-11-03T00:37:59Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 12,
+        "limitations": []
+      }
+    },
+    {
+      "name": "misospace/pr-reviewer-action",
+      "sha": "beaba296e4443519cc3cfea08e716e0e54f0725a",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "beaba296e4443519cc3cfea08e716e0e54f0725a",
+        "generated_at": "2026-11-03T00:38:00Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 32,
+        "limitations": []
+      }
+    },
+    {
+      "name": "ejb1123/teleport",
+      "sha": "5f94eab9b86a65c82e2530c7eadabc79bf260a02",
+      "status": "success",
+      "platforms": [
+        "Linux",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "WebAssembly"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "5f94eab9b86a65c82e2530c7eadabc79bf260a02",
+        "generated_at": "2026-11-03T00:38:02Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 15,
+        "limitations": [
+          "Evidence excerpt bounded: README.md"
+        ]
+      }
+    },
+    {
+      "name": "protoLabsAI/protobanana-plugin",
+      "sha": "8ad1c93d55f7e1ec900646b186f3ac4bbe793c2b",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Web"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "8ad1c93d55f7e1ec900646b186f3ac4bbe793c2b",
+        "generated_at": "2026-11-03T00:38:04Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "pontago/otenki-live",
+      "sha": "52ec8757a2f5db9051bd443dc638c0bf2922a73d",
+      "status": "success",
+      "platforms": [
+        "Cloud / infrastructure",
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "52ec8757a2f5db9051bd443dc638c0bf2922a73d",
+        "generated_at": "2026-11-03T00:38:06Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 7,
+        "limitations": []
+      }
+    },
+    {
+      "name": "eepstein201/jev-mcp",
+      "sha": "8e557629fef6bbac2914b264f733aa23e4a361d5",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "8e557629fef6bbac2914b264f733aa23e4a361d5",
+        "generated_at": "2026-11-03T00:38:07Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "MichaelUserBro/SeaBattle",
+      "sha": "41b69266607a57da5c05789155886678b12da8cf",
+      "status": "partial",
+      "platforms": [
+        "Unknown"
+      ],
+      "primary_language": "C++",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "41b69266607a57da5c05789155886678b12da8cf",
+        "generated_at": "2026-11-03T00:38:09Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 0,
+        "limitations": []
+      }
+    },
+    {
+      "name": "twhitelow1/anthony-insurance-services-forms",
+      "sha": "81ec45eb6baae1c798b989fab339d8e25abf6f60",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "81ec45eb6baae1c798b989fab339d8e25abf6f60",
+        "generated_at": "2026-11-03T00:38:10Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "stavroskasidis/codalus-ide",
+      "sha": "9186cfb4c95625fb2fb71cd305a95055cb70a03f",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Android",
+        "Linux",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows",
+        "iOS",
+        "macOS"
+      ],
+      "primary_language": "C#",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "9186cfb4c95625fb2fb71cd305a95055cb70a03f",
+        "generated_at": "2026-11-03T00:38:12Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S8",
+              "first_line": 30,
+              "last_line": 30,
+              "quote": "**`release.yml`** (manual) runs the script on Windows, macOS and Linux and uploads the packages as artifacts. Publishing a GitHub release from them is a manual step in the release checklist."
+            },
+            {
+              "os": "Linux",
+              "source_id": "S8",
+              "first_line": 30,
+              "last_line": 30,
+              "quote": "**`release.yml`** (manual) runs the script on Windows, macOS and Linux and uploads the packages as artifacts. Publishing a GitHub release from them is a manual step in the release checklist."
+            },
+            {
+              "os": "macOS",
+              "source_id": "S8",
+              "first_line": 30,
+              "last_line": 30,
+              "quote": "**`release.yml`** (manual) runs the script on Windows, macOS and Linux and uploads the packages as artifacts. Publishing a GitHub release from them is a manual step in the release checklist."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S8",
+            "path": "docs/adr/0009-packaging-and-release.md",
+            "url": "https://github.com/stavroskasidis/codalus-ide/blob/9186cfb4c95625fb2fb71cd305a95055cb70a03f/docs/adr/0009-packaging-and-release.md",
+            "lines": [
+              {
+                "line": 30,
+                "text": "**`release.yml`** (manual) runs the script on Windows, macOS and Linux and uploads the packages as artifacts. Publishing a GitHub release from them is a manual step in the release checklist."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 48,
+        "limitations": [
+          "Evidence excerpt bounded: .github/workflows/compat.yml",
+          "Evidence excerpt bounded: .github/workflows/pages.yml",
+          "Evidence excerpt bounded: .github/workflows/pipeline.yml",
+          "Evidence excerpt bounded: benchmarks/README.md",
+          "Evidence excerpt bounded: docs/adr/0028-release-cycle-and-installers.md",
+          "Evidence excerpt bounded: docs/adr/0075-net-framework-projects-and-builds.md",
+          "Evidence excerpt bounded: docs/benchmarks/net11-release-gate.md",
+          "Evidence excerpt bounded: docs/user-guide/getting-started.md",
+          "Evidence excerpt bounded: eng/packaging/winget/Codalus.Codalus.installer.yaml",
+          "Evidence excerpt bounded: src/Codalus.Plugins.Testing/README.md",
+          "Evidence excerpt bounded: src/Codalus.Previewer.Agent/Codalus.Previewer.Agent.csproj",
+          "Evidence excerpt bounded: src/Codalus.Previewer.Wpf/Codalus.Previewer.Wpf.csproj",
+          "Evidence excerpt bounded: src/Codalus.Projects.Host/Codalus.Projects.Host.csproj",
+          "Evidence excerpt bounded: src/Codalus.Projects.Protocol/Codalus.Projects.Protocol.csproj",
+          "Evidence excerpt bounded: src/Codalus.Remote.Protocol/Codalus.Remote.Protocol.csproj",
+          "Evidence excerpt bounded: src/Codalus.Remote.Server/Codalus.Remote.Server.csproj",
+          "Evidence excerpt bounded: src/Codalus.Rpc/Codalus.Rpc.csproj",
+          "Evidence excerpt bounded: src/Codalus.Shell/Codalus.Shell.csproj",
+          "Evidence excerpt bounded: src/Codalus.Shell/WebServers/package.json",
+          "Evidence excerpt bounded: src/Codalus.Templates/Codalus.Templates.csproj",
+          "Evidence excerpt bounded: src/Codalus.Templates/README.md",
+          "Evidence excerpt bounded: src/Codalus.Templates/content/CodalusPlugin/README.md",
+          "Evidence excerpt bounded: src/Codalus.Templates/content/CodalusPlugin/src/MyPlugin/MyPlugin.csproj",
+          "Evidence excerpt bounded: src/Codalus.Terminal/Codalus.Terminal.csproj",
+          "Evidence excerpt bounded: src/Codalus.TextTemplating.Host/Codalus.TextTemplating.Host.csproj",
+          "Evidence excerpt bounded: src/Codalus.TextTemplating.Protocol/Codalus.TextTemplating.Protocol.csproj",
+          "Evidence excerpt bounded: src/Codalus.WinForms.Designer/Codalus.WinForms.Designer.csproj",
+          "Evidence excerpt bounded: src/Codalus.Workbench/Codalus.Workbench.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.Anthropic/Codalus.Plugins.Anthropic.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.AzureDevOps/Codalus.Plugins.AzureDevOps.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.DotNetTest/Codalus.Plugins.DotNetTest.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.GitHub/Codalus.Plugins.GitHub.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.GitLab/Codalus.Plugins.GitLab.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.Hosting/Codalus.Plugins.Hosting.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.LanguageModels/Codalus.Plugins.LanguageModels.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.OpenAI/Codalus.Plugins.OpenAI.csproj",
+          "Evidence excerpt bounded: src/Plugins/Codalus.Plugins.Welcome/Codalus.Plugins.Welcome.csproj",
+          "Evidence excerpt bounded: website/wwwroot/install-arch.sh"
+        ]
+      }
+    },
+    {
+      "name": "anza-xyz/xtask",
+      "sha": "1425d9abd963981aecc082a6c90d5be2f2524606",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1425d9abd963981aecc082a6c90d5be2f2524606",
+        "generated_at": "2026-11-03T00:38:14Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "percona/percona-server",
+      "sha": "727a975feefe7bcdd796d03e87d0801d5f11f8ca",
+      "status": "partial",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "C++",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "727a975feefe7bcdd796d03e87d0801d5f11f8ca",
+        "generated_at": "2026-11-03T00:38:16Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 72,
+        "limitations": [
+          "Document count or source byte bound reached",
+          "Evidence excerpt bounded: CMakeLists.txt",
+          "Evidence excerpt bounded: azure-pipelines.yml",
+          "Evidence excerpt bounded: extra/lz4/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/opensslpp/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/protobuf/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/tirpc/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/unordered_dense/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/xxhash/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/zlib/CMakeLists.txt",
+          "Evidence excerpt bounded: extra/zstd/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/authentication_kerberos/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/authentication_ldap/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/authentication_oci_client/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/authentication_openid_connect_client/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/authentication_win/CMakeLists.txt",
+          "Evidence excerpt bounded: libmysql/fido_client/CMakeLists.txt",
+          "Evidence excerpt bounded: libs/mysql/CMakeLists.txt",
+          "Evidence excerpt bounded: libs/mysql/readme.md",
+          "Evidence excerpt bounded: mysql-test/collections/README",
+          "Evidence excerpt bounded: mysql-test/include/README",
+          "Evidence excerpt bounded: mysql-test/std_data/README_tablespace_portable_linux.txt",
+          "Evidence excerpt bounded: packaging/WiX/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/deb-in/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/deb-in/README",
+          "Evidence excerpt bounded: packaging/rpm-common/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/rpm-docker/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/rpm-fedora/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/rpm-oel/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/rpm-sles/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/solaris/CMakeLists.txt",
+          "Evidence excerpt bounded: packaging/solaris/postinstall-solaris.sh",
+          "Evidence excerpt bounded: plugin/audit_log/CMakeLists.txt"
+        ]
+      }
+    },
+    {
+      "name": "BestTeam-MosipDecode/face-liveness-pad",
+      "sha": "cf3c8fe7e389dc55a0b96d69381077dc053f2fec",
+      "status": "success",
+      "platforms": [
+        "JVM (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Windows"
+      ],
+      "primary_language": "Java",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "cf3c8fe7e389dc55a0b96d69381077dc053f2fec",
+        "generated_at": "2026-11-03T00:38:23Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 10,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Mitchk1995/dragonbound",
+      "sha": "ac56e696f2a34f00263d8c6efebccc0a48b5ca9b",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "ac56e696f2a34f00263d8c6efebccc0a48b5ca9b",
+        "generated_at": "2026-11-03T00:38:25Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "zksecurity/wasmati",
+      "sha": "71b4c2938b892b13b441458cbeac3b32305a1a22",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "71b4c2938b892b13b441458cbeac3b32305a1a22",
+        "generated_at": "2026-11-03T00:38:26Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 4,
+        "limitations": []
+      }
+    },
+    {
+      "name": "RestartDK/dotfiles",
+      "sha": "547ed60be4242d6882934b46268eaaa0dc9680e0",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "TypeScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "547ed60be4242d6882934b46268eaaa0dc9680e0",
+        "generated_at": "2026-11-03T00:38:28Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 27,
+        "limitations": []
+      }
+    },
+    {
+      "name": "eom-tae-in/ticket-on",
+      "sha": "74f9c5e65bc95830f51a525e6b5237b278b715e9",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "JVM (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Java",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "74f9c5e65bc95830f51a525e6b5237b278b715e9",
+        "generated_at": "2026-11-03T00:38:30Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 20,
+        "limitations": []
+      }
+    },
+    {
+      "name": "nextcloud/logreader",
+      "sha": "d878c17060190881209c4c2813534f693dd2c984",
+      "status": "partial",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "PHP runtime (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "d878c17060190881209c4c2813534f693dd2c984",
+        "generated_at": "2026-11-03T00:38:32Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 22,
+        "limitations": []
+      }
+    },
+    {
+      "name": "farhananwarghumman/TippSend",
+      "sha": "f94b2823df02f324afc2988dc706a69c2e894ce7",
+      "status": "success",
+      "platforms": [
+        ".NET runtime (OS unspecified)",
+        "Containers / Kubernetes",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Server / backend",
+        "Web"
+      ],
+      "primary_language": "HTML",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "f94b2823df02f324afc2988dc706a69c2e894ce7",
+        "generated_at": "2026-11-03T00:38:34Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 3,
+        "limitations": []
+      }
+    },
+    {
+      "name": "rootscripts/riff",
+      "sha": "860b3276b74b3904ec6d3dcbdf3e12209022c18b",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "860b3276b74b3904ec6d3dcbdf3e12209022c18b",
+        "generated_at": "2026-11-03T00:38:36Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S1",
+              "first_line": 129,
+              "last_line": 129,
+              "quote": "Standard releases include all necessary dependencies (bundled yt-dlp and ffmpeg binaries). No secondary runtime configuration is required on Windows or Linux."
+            },
+            {
+              "os": "Linux",
+              "source_id": "S1",
+              "first_line": 129,
+              "last_line": 129,
+              "quote": "Standard releases include all necessary dependencies (bundled yt-dlp and ffmpeg binaries). No secondary runtime configuration is required on Windows or Linux."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S1",
+            "path": "README.md",
+            "url": "https://github.com/rootscripts/riff/blob/860b3276b74b3904ec6d3dcbdf3e12209022c18b/README.md",
+            "lines": [
+              {
+                "line": 129,
+                "text": "Standard releases include all necessary dependencies (bundled yt-dlp and ffmpeg binaries). No secondary runtime configuration is required on Windows or Linux."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 5,
+        "limitations": []
+      }
+    },
+    {
+      "name": "thiagodmont/greeg",
+      "sha": "1fdf5c5e4a92a7e3e0ea639a5397183e1df582b3",
+      "status": "success",
+      "platforms": [
+        "Native code (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Server / backend",
+        "Shell / automation (OS unspecified)",
+        "WebAssembly"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1fdf5c5e4a92a7e3e0ea639a5397183e1df582b3",
+        "generated_at": "2026-11-03T00:38:38Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 27,
+        "limitations": []
+      }
+    },
+    {
+      "name": "Prekzursil/fractal-darkroom",
+      "sha": "43971b2ffed9665e8cb8dc33a8106f4d00409778",
+      "status": "success",
+      "platforms": [
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Python",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "43971b2ffed9665e8cb8dc33a8106f4d00409778",
+        "generated_at": "2026-11-03T00:38:40Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 7,
+        "limitations": []
+      }
+    },
+    {
+      "name": "konstelasi/StarDustDocs",
+      "sha": "1bdaf3b069c8e8b4b532d6fa75813eddeab82dcf",
+      "status": "success",
+      "platforms": [
+        "Node.js tooling/runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "1bdaf3b069c8e8b4b532d6fa75813eddeab82dcf",
+        "generated_at": "2026-11-03T00:38:41Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 13,
+        "limitations": []
+      }
+    },
+    {
+      "name": "runkids/skillshare",
+      "sha": "b35793e79f89d606e6c505946bedb4b7952c3449",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Native code (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web",
+        "Windows"
+      ],
+      "primary_language": "Go",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "b35793e79f89d606e6c505946bedb4b7952c3449",
+        "generated_at": "2026-11-03T00:38:43Z",
+        "status": "success",
+        "decision": {
+          "cross_os": true,
+          "application": "Repository application",
+          "rationale": "A repository application document explicitly lists support for multiple operating systems.",
+          "support": [
+            {
+              "os": "Windows",
+              "source_id": "S15",
+              "first_line": 10,
+              "last_line": 10,
+              "quote": "- Bash is fine for personal Unix-only scripts, but it is not a good default reference for Windows/macOS/Linux support."
+            },
+            {
+              "os": "Linux",
+              "source_id": "S15",
+              "first_line": 10,
+              "last_line": 10,
+              "quote": "- Bash is fine for personal Unix-only scripts, but it is not a good default reference for Windows/macOS/Linux support."
+            },
+            {
+              "os": "macOS",
+              "source_id": "S15",
+              "first_line": 10,
+              "last_line": 10,
+              "quote": "- Bash is fine for personal Unix-only scripts, but it is not a good default reference for Windows/macOS/Linux support."
+            }
+          ]
+        },
+        "sources": [
+          {
+            "id": "S15",
+            "path": "extensions/README.md",
+            "url": "https://github.com/runkids/skillshare/blob/b35793e79f89d606e6c505946bedb4b7952c3449/extensions/README.md",
+            "lines": [
+              {
+                "line": 10,
+                "text": "- Bash is fine for personal Unix-only scripts, but it is not a good default reference for Windows/macOS/Linux support."
+              }
+            ]
+          }
+        ],
+        "documents_reviewed": 80,
+        "limitations": [
+          "Evidence excerpt bounded: .github/workflows/test.yaml",
+          "Evidence excerpt bounded: .github/workflows/website-pages.yml"
+        ]
+      }
+    },
+    {
+      "name": "basher83/tailnet-microservices",
+      "sha": "21a80eec18610f15134baae757a2fcfc87f1859d",
+      "status": "success",
+      "platforms": [
+        "Containers / Kubernetes",
+        "Linux",
+        "Native code (OS unspecified)",
+        "Shell / automation (OS unspecified)"
+      ],
+      "primary_language": "Rust",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "21a80eec18610f15134baae757a2fcfc87f1859d",
+        "generated_at": "2026-11-03T00:38:46Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 16,
+        "limitations": []
+      }
+    },
+    {
+      "name": "faizal97/realm-of-loner",
+      "sha": "ed3fde7238f8745e09310305965b3a28042d6525",
+      "status": "success",
+      "platforms": [
+        "Android",
+        "JVM (OS unspecified)",
+        "Node.js tooling/runtime (OS unspecified)",
+        "Python runtime (OS unspecified)",
+        "Shell / automation (OS unspecified)",
+        "Web"
+      ],
+      "primary_language": "JavaScript",
+      "cross_os": {
+        "version": "cross-os-5",
+        "sha": "ed3fde7238f8745e09310305965b3a28042d6525",
+        "generated_at": "2026-11-03T00:38:48Z",
+        "status": "success",
+        "decision": {
+          "cross_os": false,
+          "application": "",
+          "support": [],
+          "rationale": "Explicit multi-OS application support not demonstrated in the reviewed evidence."
+        },
+        "sources": [],
+        "documents_reviewed": 9,
+        "limitations": []
+      }
+    }
+  ]
+}
