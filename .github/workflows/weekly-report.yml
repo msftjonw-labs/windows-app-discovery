@@ -245,6 +245,14 @@ jobs:
           python-version: "3.11"
       - name: Research email tests
         run: python -m unittest tests.test_research_email tests.test_weekly.EmailTests -v
+      - name: Restore successful weekly snapshot for a two-PDF email test
+        if: ${{ inputs.rerun_report_run_id }}
+        uses: actions/download-artifact@v4
+        with:
+          name: weekly-report
+          path: research-weekly
+          run-id: ${{ inputs.rerun_report_run_id }}
+          github-token: ${{ github.token }}
       - name: Render saved research report and optionally email it
         env:
           GH_TOKEN: ${{ github.token }}
@@ -252,10 +260,18 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
           SEND_EMAIL: ${{ inputs.email }}
+          WEEKLY_SNAPSHOT_RUN: ${{ inputs.rerun_report_run_id }}
         run: |
           $arguments = @("--output-dir", "research-mail", "--archive-dir", "research-history")
-          if ($env:SEND_EMAIL -eq "true") { $arguments += "--send" }
+          if ($env:SEND_EMAIL -eq "true" -and !$env:WEEKLY_SNAPSHOT_RUN) { $arguments += "--send" }
           python -m discovery.research_email @arguments
+      - name: Send weekly and research snapshot PDFs together
+        if: ${{ inputs.email && inputs.rerun_report_run_id }}
+        env:
+          GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
+        run: python -m discovery.send_email --report research-weekly/data/latest.json --pdf research-weekly/report.pdf --research-pdf research-mail/registry-research-2026-11-03.pdf
       - name: Keep research report and audit trails
         if: always()
         uses: actions/upload-artifact@v4

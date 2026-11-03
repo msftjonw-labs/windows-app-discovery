@@ -40,6 +40,10 @@ keeps the JSON audit trails separately in the run artifact, and emails only the
 PDF and concise Markdown report to the configured recipient. It keeps all files as the
 `research-report-email` artifact, and skips normal collection/publishing.
 Set `email=false` for an artifact-only rendering run.
+To test the two-PDF weekly email without fresh collection or evidence review,
+also set `rerun_report_run_id` to a successful run retaining a `weekly-report`
+artifact. In research mode this sends that saved weekly PDF together with the
+saved research report, rather than a research-only email.
 
 ## Run locally (Windows x64)
 
