@@ -33,7 +33,8 @@ report, not a weekly workflow step.
 To render/email that saved snapshot without rerunning collection, dispatch the
 weekly workflow on the desired branch with `research_report=true`, `email=true`
 and `pages=false`. This mode sends a test-labeled PDF and Markdown report plus
-both JSON audit trails to the configured report recipient, keeps them as the
+keeps the JSON audit trails separately in the run artifact, and emails only the
+PDF and concise Markdown report to the configured recipient. It keeps all files as the
 `research-report-email` artifact, and skips normal collection/publishing.
 Set `email=false` for an artifact-only rendering run.
 

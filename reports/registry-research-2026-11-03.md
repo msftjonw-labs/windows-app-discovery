@@ -4,12 +4,7 @@ Collected (UTC): 2026-11-03T21:16:04.767045+00:00
 Evidence window (UTC): **2026-10-03T20:00:00Z <= timestamp < 2026-11-02T20:00:00Z**  
 Population: the same 100 repositories in [the existing discovery assessments](cross-os-assessments.json).
 
-This report has two separate scopes: the original cohort audit below, followed by
-[independent discovery from each source](#independent-discovery-from-each-source).
-The independent section is not restricted to those 100 repositories and has its own
-candidate counts, findings and audit evidence.
-
-## Cohort audit findings
+## Findings
 
 **Two projects have verified recent macOS/Linux Homebrew bottle updates. One additional project published Rust source containing explicit Windows/macOS/Linux branches.** These are different evidence tiers: packaging activity and shipped source indicators, not proof of successful cross-OS development or runtime compatibility.
 
@@ -206,212 +201,20 @@ The table below distinguishes queried-but-unconfirmed entries from entries witho
 | xiajiajun516/dsh-config-manager | Matched registry identity and recent versions |
 | zksecurity/wasmati | Matched registry identity and recent versions |
 
-## Independent discovery from each source
+## Independent discovery results
 
-Appended (UTC): 2026-11-03T21:47:07.484409+00:00. This is **source-first discovery**, not additional scanning of the 100-project cohort. No cohort repository names, languages or manifests were used as discovery inputs. Repository URLs are optional descriptive metadata, not an eligibility requirement.
+The table summarizes bounded, source-first discovery for the same 30-day window above. These searches were not seeded from the existing 100-project cohort. Counts are source-specific packages, formulae, or sampled candidates, not a deduplicated count of projects. “Unavailable” and “inconclusive” do not mean no cross-OS activity.
 
-The evidence window remains **2026-10-03T20:00:00Z <= timestamp < 2026-11-02T20:00:00Z**. The bound is at most 100 root candidates per source, not 100 positive projects. Historical feeds were used where available; current-feed/search seeds are explicitly identified below. Dependencies and version-history lookups enrich those root candidates rather than enlarge the root sample.
-
-OS checks in this audit cover Windows, macOS and Linux. Android, iOS and other
-operating systems were not systematically classified.
-
-**Results:** one npm package has dated multi-OS optional-package metadata; seven PyPI packages have in-window wheels for multiple OS families; 17 Rust packages have textual multi-OS source indicators (14 distinct declared GitHub repositories); and 36 Homebrew formulae have in-window macOS/Linux bottle-checksum updates. These evidence tiers must not be added together as a unique-project count or interpreted as verified runtime support.
-
-### Independent source coverage
-
-| Source | Root candidates | Positive package/formula IDs | Evidence / outcome |
+| Source | Candidates inspected | Multi-OS evidence found | High-level result |
 | --- | ---: | ---: | --- |
-| npm | 100 | 1 | Dated platform optional-package metadata; relevance-ranked cross-platform search, not a random sample |
-| PyPI | 95 | 7 | Multi-OS wheel metadata; current RSS seeds, historical file-upload dates |
-| NuGet | 100 | 0 | No multi-OS RID asset evidence in this catalog slice; not proof of no cross-OS packages |
-| crates.io | 100 | 17 | Textual source indicators only; not build/runtime validation |
-| Maven Central | 0 | 0 | Search returned no in-window entries; index freshness concern, not zero ecosystem activity |
-| Homebrew | 100 | 36 | 41 qualifying commit events across 36 distinct formula paths; packaging metadata, not upstream coding |
-| winget | 0 | Not assessed | Unavailable: organization SAML enforcement (HTTP 403) |
-| OSV | 0 | Not assessed | Unavailable: bulk-index access failed; advisory context only |
-| NVD | 0 | Not assessed | Unavailable: DNS failure; advisory context only |
+| npm | 100 | 1 package | Dated optional platform packages for Windows, macOS, and Linux |
+| PyPI | 95 | 7 packages | In-window wheels tagged for at least two OS families |
+| NuGet | 100 | 0 | No multi-OS runtime-identifier assets in this bounded sample |
+| crates.io | 100 | 17 crates | Published source contains explicit OS-specific branches; 14 distinct declared repository URLs, not build verification |
+| Maven Central | 0 | Inconclusive | Search index returned no in-window entries; its freshness check was stale |
+| Homebrew | 100 commits | 36 formulae | In-window bottle updates added macOS and Linux checksums |
+| winget | Unavailable | Not assessed | Public API access blocked by organization SAML enforcement |
+| OSV | Unavailable | Not assessed | Source access unavailable; advisories indicate security context, not development activity |
+| NVD | Unavailable | Not assessed | Source access unavailable; advisories indicate security context, not development activity |
 
-No confidence intervals, ecosystem prevalence percentages or combined cohort denominator are appropriate. Candidate units differ (packages, versions and commits), current feeds favor projects active at collection time, and multiple packages can belong to one upstream project.
-
-### Independent discovery: npm
-
-Discovery endpoint: [npm feed/search](https://registry.npmjs.org/-/v1/search?text=cross-platform&size=100).
-
-**Selection:** First 100 relevance-ranked results for cross-platform; theme-biased, not chronological or representative.
-
-**Limits:** Replication feed DNS failed. Inspect all in-window root versions; at most 20 optional dependencies per version, exact versions only. Dependencies are not asserted to be the root project's own code. Metadata only; binaries not downloaded.
-
-The npm replication-feed host failed DNS resolution, so discovery used the first 100 relevance-ranked `cross-platform` search results. 32 root packages had in-window version publications. This intentionally theme-biased search can overrepresent advertised portability and misses packages with no matching search terms.
-
-| Package | Root version | Root publication (UTC) | Dated dependency targets | Evidence |
-| --- | --- | --- | --- | --- |
-| `@crowecawcaw/xa11y` | 0.15.4 | 2026-10-24T13:00:12.350Z | Linux, Windows, macOS | [Root metadata](https://registry.npmjs.org/%40crowecawcaw%2Fxa11y) |
-
-`@crowecawcaw/xa11y` versions 0.15.3 and 0.15.4 reference exact-version optional packages whose metadata declares macOS, Linux and Windows targets and whose publication timestamps also fall in the window. Individual dependency timestamps and tarball URLs are in the audit file. This proves a declared multi-OS package arrangement, not that those tarballs contain working binaries or that all dependency code is authored by the root project.
-
-### Independent discovery: PyPI
-
-Discovery endpoint: [PyPI feed/search](https://pypi.org/rss/updates.xml).
-
-**Selection:** Up to 100 items from the current recent-updates RSS feed, deduplicated by project; inspect those projects' historical in-window files.
-
-**Limits:** RSS is a short current feed, not an archive of the window; projects absent from today's feed are missed. Wheel metadata inspected; archives not executed.
-
-The current RSS snapshot supplied 100 events and 95 distinct project candidates; 74 had file uploads inside the historical window. The feed itself is not a complete history of the window. Positive rows require non-yanked OS-tagged wheels for the same version, each uploaded within the window; `*-none-any.whl` does not qualify.
-
-| Package | Latest qualifying version | Latest in-window file upload (UTC) | OS families | Evidence |
-| --- | --- | --- | --- | --- |
-| `fs-assets` | 0.2.2 | 2026-11-02T19:11:06.279983Z | Linux, Windows, macOS | [Version files](https://pypi.org/pypi/fs-assets/0.2.2/json) |
-| `geode-common` | 33.27.1 | 2026-10-31T00:40:32.021732Z | Linux, Windows | [Version files](https://pypi.org/pypi/geode-common/33.27.1/json) |
-| `luminamoon` | 1.0.8.post1 | 2026-10-29T21:06:28.376266Z | Linux, Windows, macOS | [Version files](https://pypi.org/pypi/luminamoon/1.0.8.post1/json) |
-| `managed-deepagents` | 0.10.2.dev2 | 2026-11-02T17:56:16.438973Z | Linux, Windows, macOS | [Version files](https://pypi.org/pypi/managed-deepagents/0.10.2.dev2/json) |
-| `pqbench` | 0.0.10 | 2026-11-01T09:57:44.045763Z | Linux, macOS | [Version files](https://pypi.org/pypi/pqbench/0.0.10/json) |
-| `pyblanket` | 0.2.0 | 2026-10-28T20:40:17.377805Z | Linux, macOS | [Version files](https://pypi.org/pypi/pyblanket/0.2.0/json) |
-| `pynesys-pynecore` | 6.12.0 | 2026-10-30T15:36:44.613195Z | Linux, Windows, macOS | [Version files](https://pypi.org/pypi/pynesys-pynecore/6.12.0/json) |
-
-Wheel filenames, OS tags, per-file timestamps, hashes, yanked flags and download URLs are recorded. These establish platform-specific distribution declarations; installation and runtime behavior were not tested. Prerelease/dev versions are included.
-
-### Independent discovery: NuGet
-
-Discovery endpoint: [NuGet feed/search](https://api.nuget.org/v3/catalog0/index.json).
-
-**Selection:** 100 distinct in-window package/version catalog events, newest first, from up to five pages, including the boundary-straddling page.
-
-**Limits:** Catalog commit dates select candidates; actual publication dates select evidence. Edit events can describe old publications. Version events are not 100 distinct projects. Catalog entry filenames are inspected, not installed.
-
-The selected catalog page supplied 100 distinct package/version events and 100 distinct package IDs; 94 had actual publication timestamps inside the window. Catalog commit timestamps select candidates; actual `published` timestamps determine in-window releases. Catalog detail `packageEntries[].fullName` fields were inspected for real `runtimes/win*`, `runtimes/linux-*` and `runtimes/osx-*` assets, excluding `_._` placeholders. No candidate had qualifying assets for two families.
-
-This does not inspect related packages or platform-specific TFMs, so packages using those distribution patterns can be missed. Catalog detail URLs and exact version IDs are preserved in the evidence file; generic .NET TFMs are not counted as multi-OS proof.
-
-### Independent discovery: crates.io
-
-Discovery endpoint: [crates.io feed/search](https://crates.io/api/v1/crates?sort=recent-updates&per_page=100&page=1).
-
-**Selection:** 100 crates from the current recently-updated feed; inspect their historical in-window versions.
-
-**Limits:** Current feed is not a historical census. Latest non-yanked in-window source archive per candidate inspected; positive textual cfg indicators are not build/runtime proof. 12 MB archive, 1 MB/file, 5 MB total source bounds.
-
-100 independent candidates came from `sort=recent-updates`; 79 had non-yanked versions inside the historical window. For each of those, the newest eligible archive was downloaded and its SHA-256 checked against registry metadata. No project code was executed. The positive rows below are **textual source indicators**, not confirmed cross-OS applications.
-
-| Crate | Version | Publication (UTC) | OS mentions | One cited source location per OS | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| `aither-agent` | 0.11.0 | 2026-10-29T08:25:38.377568Z | Linux, Windows, macOS | Linux: `aither-agent-0.11.0/src/terminal_agent.rs:1139`; Windows: `aither-agent-0.11.0/src/terminal_agent.rs:360`; macOS: `aither-agent-0.11.0/src/terminal_agent.rs:585` | [Archive](https://static.crates.io/crates/aither-agent/aither-agent-0.11.0.crate) |
-| `aither-sandbox` | 0.11.0 | 2026-10-29T08:24:31.210660Z | Linux, Windows, macOS | Linux: `aither-sandbox-0.11.0/src/jobserver.rs:35`; Windows: `aither-sandbox-0.11.0/src/bollard_exec.rs:475`; macOS: `aither-sandbox-0.11.0/src/stdin_watch.rs:597` | [Archive](https://static.crates.io/crates/aither-sandbox/aither-sandbox-0.11.0.crate) |
-| `claude-history` | 0.1.81 | 2026-10-27T22:54:46.885372Z | Linux, macOS | Linux: `claude-history-0.1.81/src/daemon/power.rs:30`; macOS: `claude-history-0.1.81/src/bench.rs:137` | [Archive](https://static.crates.io/crates/claude-history/claude-history-0.1.81.crate) |
-| `decapod` | 0.121.2 | 2026-11-01T06:36:36.292136Z | Linux, Windows, macOS | Linux: `decapod-0.121.2/src/decapod/core/bounded_process/signal.rs:222`; Windows: `decapod-0.121.2/src/decapod/core/dactyl.rs:220`; macOS: `decapod-0.121.2/assets/tools/vega_infer.rs:1234` | [Archive](https://static.crates.io/crates/decapod/decapod-0.121.2.crate) |
-| `hotpath` | 0.30.3 | 2026-10-31T10:07:05.570606Z | Linux, Windows, macOS | Linux: `hotpath-0.30.3/Cargo.toml:760`; Windows: `hotpath-0.30.3/src/lib_on/threads/collector_windows.rs:322`; macOS: `hotpath-0.30.3/src/instant.rs:4` | [Archive](https://static.crates.io/crates/hotpath/hotpath-0.30.3.crate) |
-| `hotpath-meta` | 0.30.3 | 2026-10-31T10:06:51.386385Z | Linux, Windows, macOS | Linux: `hotpath-meta-0.30.3/Cargo.toml:328`; Windows: `hotpath-meta-0.30.3/src/lib_on/threads/collector_windows.rs:322`; macOS: `hotpath-meta-0.30.3/src/instant.rs:4` | [Archive](https://static.crates.io/crates/hotpath-meta/hotpath-meta-0.30.3.crate) |
-| `mitts` | 0.3.18 | 2026-11-02T18:20:20.211033Z | Linux, Windows, macOS | Linux: `mitts-0.3.18/src/adapter/rust/build_script_keys.rs:255`; Windows: `mitts-0.3.18/src/cli/coverage_tools.rs:66`; macOS: `mitts-0.3.18/src/adapter/rust/build_script_keys.rs:251` | [Archive](https://static.crates.io/crates/mitts/mitts-0.3.18.crate) |
-| `n11-deadbolt` | 2.0.0 | 2026-10-12T23:53:44.574511Z | Linux, Windows, macOS | Linux: `n11-deadbolt-2.0.0/src/private_state.rs:240`; Windows: `n11-deadbolt-2.0.0/src/private_state.rs:166`; macOS: `n11-deadbolt-2.0.0/src/private_state.rs:200` | [Archive](https://static.crates.io/crates/n11-deadbolt/n11-deadbolt-2.0.0.crate) |
-| `oneharness-core` | 0.29.1 | 2026-10-23T01:43:13.907712Z | Linux, Windows, macOS | Linux: `oneharness-core-0.29.1/src/io/app_server.rs:909`; Windows: `oneharness-core-0.29.1/src/io/cancel.rs:168`; macOS: `oneharness-core-0.29.1/src/domain/control.rs:1120` | [Archive](https://static.crates.io/crates/oneharness-core/oneharness-core-0.29.1.crate) |
-| `onepipeline` | 0.98.2 | 2026-11-02T12:45:39.221559Z | Linux, Windows | Linux: `onepipeline-0.98.2/src/driver.rs:3976`; Windows: `onepipeline-0.98.2/src/driver.rs:5473` | [Archive](https://static.crates.io/crates/onepipeline/onepipeline-0.98.2.crate) |
-| `rete-cli` | 0.5.0 | 2026-11-02T13:45:55.403385Z | Linux, Windows | Linux: `rete-cli-0.5.0/src/commands/range_source.rs:517`; Windows: `rete-cli-0.5.0/src/commands/range_source.rs:424` | [Archive](https://static.crates.io/crates/rete-cli/rete-cli-0.5.0.crate) |
-| `rete-core` | 0.5.0 | 2026-11-02T13:44:10.331823Z | Linux, Windows | Linux: `rete-core-0.5.0/src/sysmem.rs:262`; Windows: `rete-core-0.5.0/src/extbuild_v06.rs:138` | [Archive](https://static.crates.io/crates/rete-core/rete-core-0.5.0.crate) |
-| `rightkit-fs` | 0.4.9 | 2026-11-01T12:33:59.966771Z | Linux, Windows, macOS | Linux: `rightkit-fs-0.4.9/src/atomic.rs:695`; Windows: `rightkit-fs-0.4.9/src/app_dirs.rs:513`; macOS: `rightkit-fs-0.4.9/src/acl.rs:51` | [Archive](https://static.crates.io/crates/rightkit-fs/rightkit-fs-0.4.9.crate) |
-| `songrec` | 0.8.0 | 2026-10-27T11:09:36.150601Z | Linux, Windows | Linux: `songrec-0.8.0/Cargo.toml:230`; Windows: `songrec-0.8.0/src/gui/main_window.rs:40` | [Archive](https://static.crates.io/crates/songrec/songrec-0.8.0.crate) |
-| `text-typeset` | 3.0.0 | 2026-10-29T10:17:15.248262Z | Windows, macOS | Windows: `text-typeset-3.0.0/src/font/script_fallback.rs:110`; macOS: `text-typeset-3.0.0/src/font/script_fallback.rs:112` | [Archive](https://static.crates.io/crates/text-typeset/text-typeset-3.0.0.crate) |
-| `vivida` | 0.2.5 | 2026-10-20T20:13:09.653073Z | Linux, Windows, macOS | Linux: `vivida-0.2.5/src/chrome.rs:38`; Windows: `vivida-0.2.5/build.rs:1`; macOS: `vivida-0.2.5/Cargo.toml:82` | [Archive](https://static.crates.io/crates/vivida/vivida-0.2.5.crate) |
-| `vvmux` | 0.5.5 | 2026-10-20T20:49:34.944580Z | Linux, Windows, macOS | Linux: `vvmux-0.5.5/src/agent.rs:2034`; Windows: `vvmux-0.5.5/src/agent.rs:91`; macOS: `vvmux-0.5.5/src/agent.rs:84` | [Archive](https://static.crates.io/crates/vvmux/vvmux-0.5.5.crate) |
-
-Multiple crates can share an upstream: `rete-cli`/`rete-core`, `hotpath`/`hotpath-meta`, and `aither-agent`/`aither-sandbox` each share a declared repository. Thus 17 package matches map to 14 distinct declared GitHub repositories, without verifying ownership or successful builds. Source matches can occur in inline tests, diagnostic names or unbuilt branches. Simple negated cfg lines and comment-only lines were excluded; this is not semantic Rust analysis.
-
-### Independent discovery: Maven Central
-
-Discovery endpoint: [Maven Central feed/search](https://search.maven.org/solrsearch/select?q=timestamp%3A%5B1791057600000+TO+1793649599999%5D&core=gav&rows=100&wt=json).
-
-**Selection:** Up to 100 indexed artifact versions whose index timestamps fall in the window; server ranking retained.
-
-**Limits:** Index timestamps are not guaranteed publication dates. No returned artifacts means no classifier evidence; not proof of no Central publications.
-
-The version-index query restricted `timestamp` to the exact window and returned zero entries. A [separate unfiltered freshness probe](https://search.maven.org/solrsearch/select?q=%2A%3A%2A&core=gav&rows=1&wt=json) returned an artifact indexed at **2026-06-10T12:52:21+00:00**, well before this window. This is a warning about the accessible search index, not proof that Central had no recent releases. The alternative Central browse API host also failed DNS resolution.
-
-No artifacts or classifiers were available to inspect from this time-filtered result, so independent Maven cross-OS discovery remains **inconclusive**.
-
-### Independent discovery: Homebrew
-
-Discovery endpoints: [official catalog commit feed 1](https://api.github.com/repos/Homebrew/homebrew-core/commits?path=Formula&since=2026-10-03T20%3A00%3A00Z&until=2026-11-02T20%3A00%3A00Z&per_page=50); [official catalog commit feed 2](https://api.github.com/repos/Homebrew/homebrew-cask/commits?path=Casks&since=2026-10-03T20%3A00%3A00Z&until=2026-11-02T20%3A00%3A00Z&per_page=50).
-
-**Selection:** 50 newest in-window commits each from official core and cask paths; one alphabetical eligible file per commit.
-
-**Limits:** 100 commit candidates, not 100 distinct products. Multi-file commits inspect only the first eligible file. Only added macOS/Linux bottle checksum lines qualify. JSON API DNS failed; catalogs are external packaging evidence hosted on GitHub.
-
-The two independent commit feeds supplied 100 commit candidates, covering 73 distinct inspected formula/cask paths. 41 commits added both macOS and Linux bottle checksums, covering 36 formula paths. Repeated commits for the same formula are deduplicated below, retaining the newest qualifying event. Cask-only macOS activity does not establish cross-OS support.
-
-| Formula | Latest qualifying packaging commit (UTC) | OS families | Evidence |
-| --- | --- | --- | --- |
-| `Formula/a/air.rb` | 2026-11-02T18:48:48Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/1dc10eaaddfcec795c2402f5bec05f85da04d2e2); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/1dc10eaaddfcec795c2402f5bec05f85da04d2e2/Formula/a/air.rb) |
-| `Formula/a/aube.rb` | 2026-11-02T18:49:28Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/a32deb7c4d91e273daef73ed98a65933f43a1bb7); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/a32deb7c4d91e273daef73ed98a65933f43a1bb7/Formula/a/aube.rb) |
-| `Formula/a/auditbeat.rb` | 2026-11-02T18:51:24Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/4fff8f4182de245e9dcc087bce94fc88aac97d14); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/4fff8f4182de245e9dcc087bce94fc88aac97d14/Formula/a/auditbeat.rb) |
-| `Formula/b/bazel-diff.rb` | 2026-11-02T18:48:57Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/44b2b0805abe5574033aa8b86b684ac55ab7da3c); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/44b2b0805abe5574033aa8b86b684ac55ab7da3c/Formula/b/bazel-diff.rb) |
-| `Formula/b/bitrise.rb` | 2026-11-02T18:49:34Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/ed6a684647b37017c47530e1a36c2d6344b7cd9a); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/ed6a684647b37017c47530e1a36c2d6344b7cd9a/Formula/b/bitrise.rb) |
-| `Formula/b/bump-my-version.rb` | 2026-11-02T18:48:28Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/5962a839a5187899fea67095a1bb442099e8e3ab); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/5962a839a5187899fea67095a1bb442099e8e3ab/Formula/b/bump-my-version.rb) |
-| `Formula/d/docker-agent.rb` | 2026-11-02T18:48:31Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/0f2fa504582f1e7f8d16cd21d44202a2560adf35); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/0f2fa504582f1e7f8d16cd21d44202a2560adf35/Formula/d/docker-agent.rb) |
-| `Formula/d/dua-cli.rb` | 2026-11-02T19:59:22Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/4765edd4b1bc894c062696b914a0f11c6242f5dc); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/4765edd4b1bc894c062696b914a0f11c6242f5dc/Formula/d/dua-cli.rb) |
-| `Formula/e/elio.rb` | 2026-11-02T19:58:58Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/30712f86c68eec56b06a15b25e80d103125755a2); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/30712f86c68eec56b06a15b25e80d103125755a2/Formula/e/elio.rb) |
-| `Formula/e/expat.rb` | 2026-11-02T18:50:31Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/f8d3c2f3bcadff5891deaa3e87f7fe2eb3def61e); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/f8d3c2f3bcadff5891deaa3e87f7fe2eb3def61e/Formula/e/expat.rb) |
-| `Formula/f/flowrs.rb` | 2026-11-02T18:48:29Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/9983ae53cf1d1826ffdb207af66bd453efe4263f); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/9983ae53cf1d1826ffdb207af66bd453efe4263f/Formula/f/flowrs.rb) |
-| `Formula/i/imgproxy.rb` | 2026-11-02T18:49:07Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/21270dff5b62fb22d9ac8a1eb82fed0273f177ec); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/21270dff5b62fb22d9ac8a1eb82fed0273f177ec/Formula/i/imgproxy.rb) |
-| `Formula/i/infisical.rb` | 2026-11-02T18:48:25Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/6265fa8cbd9b7b7e43de5282a1b31d6420fea458); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/6265fa8cbd9b7b7e43de5282a1b31d6420fea458/Formula/i/infisical.rb) |
-| `Formula/k/krakend.rb` | 2026-11-02T18:48:43Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/9b102af43f0b00f6b7b34821d1b9df2235c00ba5); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/9b102af43f0b00f6b7b34821d1b9df2235c00ba5/Formula/k/krakend.rb) |
-| `Formula/l/ldcli.rb` | 2026-11-02T18:48:39Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/90dd990639b6c2a7b93806c7394649f0b5911b0e); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/90dd990639b6c2a7b93806c7394649f0b5911b0e/Formula/l/ldcli.rb) |
-| `Formula/l/lexicon.rb` | 2026-11-02T18:49:12Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/61d69a48d9cdd90a49164c881c83923ff38b34c7); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/61d69a48d9cdd90a49164c881c83923ff38b34c7/Formula/l/lexicon.rb) |
-| `Formula/lib/libnghttp2.rb` | 2026-11-02T19:26:10Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/36ab4d6eeda6468e049c392757629ab3474a9dbd); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/36ab4d6eeda6468e049c392757629ab3474a9dbd/Formula/lib/libnghttp2.rb) |
-| `Formula/lib/libnghttp3.rb` | 2026-11-02T19:58:59Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/6b046f08cbb5cd8da2c1a8ee72d607a239e1a8c2); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/6b046f08cbb5cd8da2c1a8ee72d607a239e1a8c2/Formula/lib/libnghttp3.rb) |
-| `Formula/lib/libvirt-python.rb` | 2026-11-02T19:58:44Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/dc85bbb353b8fd5cb0dee7a2df533224b926a269); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/dc85bbb353b8fd5cb0dee7a2df533224b926a269/Formula/lib/libvirt-python.rb) |
-| `Formula/n/nak.rb` | 2026-11-02T18:52:33Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/92ab8214ecebee57dbe63eec69afccc87f936e17); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/92ab8214ecebee57dbe63eec69afccc87f936e17/Formula/n/nak.rb) |
-| `Formula/n/nghttp2.rb` | 2026-11-02T19:19:24Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/add0f3116959df9d8d1e56ba10ddb7e1326590fb); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/add0f3116959df9d8d1e56ba10ddb7e1326590fb/Formula/n/nghttp2.rb) |
-| `Formula/n/ntfy.rb` | 2026-11-02T19:51:48Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/796855ff19e4b42ee7d0fdcb005214e2ddcc6d80); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/796855ff19e4b42ee7d0fdcb005214e2ddcc6d80/Formula/n/ntfy.rb) |
-| `Formula/o/open-code-review.rb` | 2026-11-02T18:48:32Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/c67818f08bddc7d3a28f3e9cd3fd3128e6b7fccd); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/c67818f08bddc7d3a28f3e9cd3fd3128e6b7fccd/Formula/o/open-code-review.rb) |
-| `Formula/o/opencode.rb` | 2026-11-02T19:27:41Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/55dd4aa68d52d30f5bd8a2a79624203871ce01b2); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/55dd4aa68d52d30f5bd8a2a79624203871ce01b2/Formula/o/opencode.rb) |
-| `Formula/p/pipenv.rb` | 2026-11-02T18:48:45Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/706b50a1b6d59b9c11fe0cf4138da6394ca7a227); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/706b50a1b6d59b9c11fe0cf4138da6394ca7a227/Formula/p/pipenv.rb) |
-| `Formula/q/qdl.rb` | 2026-11-02T19:04:24Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/3e9f9684d544039f23bb8a53dbdf6d7726859ca3); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/3e9f9684d544039f23bb8a53dbdf6d7726859ca3/Formula/q/qdl.rb) |
-| `Formula/q/qobine-tui.rb` | 2026-11-02T18:50:43Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/0f582b5045e1b2963b7bb3944e82b8c2239d57da); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/0f582b5045e1b2963b7bb3944e82b8c2239d57da/Formula/q/qobine-tui.rb) |
-| `Formula/q/qobine-web.rb` | 2026-11-02T18:49:57Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/92c9fe789388a98ecab99989ecafd43c8150a074); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/92c9fe789388a98ecab99989ecafd43c8150a074/Formula/q/qobine-web.rb) |
-| `Formula/r/rulesync.rb` | 2026-11-02T18:48:38Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/350e10cb340b2a496cac9b414840a2733caf6863); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/350e10cb340b2a496cac9b414840a2733caf6863/Formula/r/rulesync.rb) |
-| `Formula/s/schemathesis.rb` | 2026-11-02T18:48:25Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/679281d9fb58d2dc40828d9db57dc3bb55d80f0d); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/679281d9fb58d2dc40828d9db57dc3bb55d80f0d/Formula/s/schemathesis.rb) |
-| `Formula/s/specify.rb` | 2026-11-02T18:50:28Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/f24a732cdcf4a61263fb4261600fe93c1107f397); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/f24a732cdcf4a61263fb4261600fe93c1107f397/Formula/s/specify.rb) |
-| `Formula/s/syft.rb` | 2026-11-02T18:49:27Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/83d945ff4d13df8bb38c9a90e8d1f2bb231db43e); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/83d945ff4d13df8bb38c9a90e8d1f2bb231db43e/Formula/s/syft.rb) |
-| `Formula/t/tele.rb` | 2026-11-02T19:50:00Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/415bd7008e07bcebfc895275b61118466b714899); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/415bd7008e07bcebfc895275b61118466b714899/Formula/t/tele.rb) |
-| `Formula/t/telegraf.rb` | 2026-11-02T18:49:30Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/06e7f5fbd750c9f1fd0fec8f2fe9c206d7ea5e28); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/06e7f5fbd750c9f1fd0fec8f2fe9c206d7ea5e28/Formula/t/telegraf.rb) |
-| `Formula/t/translate-toolkit.rb` | 2026-11-02T19:18:15Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/43b35ef499eeb3b20192a10ff6eb5a8a746df1f6); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/43b35ef499eeb3b20192a10ff6eb5a8a746df1f6/Formula/t/translate-toolkit.rb) |
-| `Formula/v/vcluster.rb` | 2026-11-02T18:48:55Z | Linux, macOS | [Diff](https://github.com/Homebrew/homebrew-core/commit/059b5021f8bb5d1565c89e18e3d703532c59d399); [pinned formula](https://github.com/Homebrew/homebrew-core/blob/059b5021f8bb5d1565c89e18e3d703532c59d399/Formula/v/vcluster.rb) |
-
-Only added OS-specific checksum lines in the actual diff qualify; metadata-only edits do not. Formula source URLs, pinned contents URLs and diffs are retained. The official Homebrew catalogs are hosted on GitHub, but discovery was seeded by their own packaging activity, not by the original GitHub repository sample. Bottles were not downloaded or executed.
-
-### Independent discovery: winget
-
-Discovery endpoint: [winget feed/search](https://api.github.com/repos/microsoft/winget-pkgs/commits?since=2026-10-03T20%3A00%3A00Z&until=2026-11-02T20%3A00%3A00Z&per_page=100).
-
-**Selection:** Source-first recent changes/advisory endpoint; not seeded by the cohort.
-
-**Limits:** No findings collected; missing access is not a negative result. OSV/NVD dates concern advisories, not development.
-
-**Not assessed:** HTTPError: HTTP Error 403: Forbidden. No projects are counted as absent or single-OS because of this failure.
-
-### Independent discovery: OSV
-
-Discovery endpoint: [OSV feed/search](https://osv-vulnerabilities.storage.googleapis.com/PyPI/modified_id.csv).
-
-**Selection:** Source-first recent changes/advisory endpoint; not seeded by the cohort.
-
-**Limits:** No findings collected; missing access is not a negative result. OSV/NVD dates concern advisories, not development.
-
-**Not assessed:** URLError: <urlopen error [Errno -5] No address associated with hostname>. No projects are counted as absent or single-OS because of this failure.
-
-The alternate Google Storage bulk-index URL also returned HTTP 403. No package names from the original cohort were substituted to manufacture an independent result. Advisory modification dates would not establish recent development even with access.
-
-### Independent discovery: NVD
-
-Discovery endpoint: [NVD feed/search](https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=2026-10-03T20%3A00%3A00.000&pubEndDate=2026-11-02T19%3A59%3A59.999&resultsPerPage=100).
-
-**Selection:** Source-first recent changes/advisory endpoint; not seeded by the cohort.
-
-**Limits:** No findings collected; missing access is not a negative result. OSV/NVD dates concern advisories, not development.
-
-**Not assessed:** URLError: <urlopen error [Errno -5] No address associated with hostname>. No projects are counted as absent or single-OS because of this failure.
-
-The alternate NVD modified-feed host also failed DNS resolution. A future result would require inspecting affected CPE configurations; advisory dates alone are not OS support or release evidence.
-
-### Independent discovery audit trail
-
-[Independent discovery evidence](registry-research-2026-11-03-independent.json) records every root candidate, source query, selection rule, timestamp meaning, positive evidence tier, relevant file/source metadata and access failure. It is separate from the original cohort audit and does not change that cohort's classifications or totals. Sources without usable access are explicitly unassessed.
+Package and formula metadata are evidence of platform-specific distribution or source intent, not proof of successful builds or runtime compatibility. The bounded feeds are not exhaustive or representative; package names may not map one-to-one to upstream projects. No combined total or prevalence estimate is calculated. Machine-readable collection evidence remains available separately in [the source-first audit data](registry-research-2026-11-03-independent.json).

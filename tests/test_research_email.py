@@ -8,7 +8,7 @@ from discovery.research_email import build_html, build_message
 
 
 class ResearchEmailTests(unittest.TestCase):
-    def test_message_includes_report_and_audit_trails(self):
+    def test_message_includes_report_without_raw_audit_dumps(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             markdown, pdf = root / "research.md", root / "research.pdf"
@@ -23,7 +23,8 @@ class ResearchEmailTests(unittest.TestCase):
             self.assertTrue(message["Subject"].startswith("[Test]"))
             self.assertIn("discovery was not rerun", message.get_body().get_content())
             self.assertEqual([x.get_filename() for x in message.iter_attachments()],
-                             ["research.pdf", "research.md", "cohort.json", "independent.json"])
+                             ["research.pdf", "research.md"])
+            self.assertNotIn(".json", message.get_body().get_content())
             evidence[1].write_text(json.dumps({"window": {"start": "different", "end": "window"}}))
             with self.assertRaisesRegex(ValueError, "windows do not match"):
                 build_message(markdown, pdf, evidence, "s", "r", "url")

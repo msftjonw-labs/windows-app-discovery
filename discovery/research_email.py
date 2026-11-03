@@ -66,17 +66,14 @@ def build_message(markdown_path, pdf_path, evidence_paths, sender, recipient, so
         "Test-branch research report: original cohort audit plus independent discovery by source.\n"
         f"Evidence window (UTC): {evidence[0]['window']['start']} -> {evidence[0]['window']['end']}\n"
         "This sends the saved research snapshot; discovery was not rerun.\n"
-        "Evidence tiers and source-access gaps are documented in the attached report.\n"
+        "The report retains its existing format with one high-level independent-source summary table.\n"
         "Packaging updates and source indicators are not verified runtime compatibility.\n"
         f"Source: {source_url}\n"
-        "Attached: PDF, Markdown, and both JSON audit trails.\n"
+        "Attached: PDF and Markdown report.\n"
     )
     message.add_attachment(pdf, maintype="application", subtype="pdf", filename=pdf_path.name)
     message.add_attachment(markdown_path.read_text(encoding="utf-8"), subtype="markdown",
                            filename=markdown_path.name)
-    for path in evidence_paths:
-        message.add_attachment(path.read_bytes(), maintype="application", subtype="json",
-                               filename=path.name)
     return message
 
 
