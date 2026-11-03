@@ -445,6 +445,21 @@ class EmailTests(unittest.TestCase):
         self.assertIn("±10.05", body)
         self.assertIn("https://p/", body)
 
+    def test_message_attaches_weekly_and_research_pdfs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            weekly = Path(folder) / "weekly.pdf"
+            research = Path(folder) / "research-analysis-2026-11-03.pdf"
+            weekly.write_bytes(b"%PDF-weekly")
+            research.write_bytes(b"%PDF-research")
+            message = send_email.build_message(sample_report(), weekly, "me@gmail.com",
+                                               "you@gmail.com", research_pdf_path=research)
+        parsed = BytesParser(policy=policy.default).parsebytes(message.as_bytes())
+        attachments = list(parsed.iter_attachments())
+        self.assertEqual([x.get_filename() for x in attachments],
+                         ["app-observatory-2026-10-19.pdf", "research-analysis-2026-11-03.pdf"])
+        self.assertTrue(all(x.get_content_type() == "application/pdf" for x in attachments))
+        self.assertIn("cross-OS public-source research report is also attached", parsed.get_body(("plain",)).get_content())
+
     def test_rejects_non_pdf_attachment(self):
         with tempfile.TemporaryDirectory() as folder:
             bad = Path(folder) / "r.pdf"

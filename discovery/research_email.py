@@ -5,6 +5,7 @@ Uses the existing Gmail configuration; collection is not rerun.
 """
 
 import argparse
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from html import escape
 import json
@@ -77,9 +78,25 @@ def build_message(markdown_path, pdf_path, evidence_paths, sender, recipient, so
     return message
 
 
+def archive_name(generated_at):
+    moment = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    if moment.tzinfo is None:
+        raise ValueError("generated_at must include a UTC offset")
+    return f"research-analysis-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
+
+
+def archive_pdf(pdf, generated_at, directory):
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / archive_name(generated_at)
+    shutil.copyfile(pdf, target)
+    return target
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "research-mail")
+    parser.add_argument("--archive-dir", type=Path)
     parser.add_argument("--send", action="store_true", help="Send to the configured report recipient")
     args = parser.parse_args()
     token = os.environ.get("GH_TOKEN", "").strip()
@@ -96,6 +113,9 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / (REPORT.stem + ".html")).write_text(html, encoding="utf-8")
     pdf = render_pdf(html, args.output_dir / (REPORT.stem + ".pdf"))
+    if args.archive_dir:
+        archived = archive_pdf(pdf, datetime.now(timezone.utc).isoformat(), args.archive_dir)
+        print(archived)
     for path in (REPORT, *EVIDENCE):
         shutil.copyfile(path, args.output_dir / path.name)
     source_url = f"https://github.com/{repository}/blob/{ref}/reports/{REPORT.name}"

@@ -4,10 +4,23 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
-from discovery.research_email import build_html, build_message
+from discovery.research_email import archive_name, archive_pdf, build_html, build_message
 
 
 class ResearchEmailTests(unittest.TestCase):
+    def test_research_archive_uses_utc_calendar_day_and_keeps_history(self):
+        self.assertEqual(archive_name("2026-10-19T20:00:00-07:00"), "research-analysis-2026-10-20.pdf")
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "research.pdf"
+            source.write_bytes(b"%PDF-first")
+            first = archive_pdf(source, "2026-10-19T17:00:00Z", directory)
+            source.write_bytes(b"%PDF-second")
+            second = archive_pdf(source, "2026-10-20T17:00:00Z", directory)
+            self.assertEqual(first.name, "research-analysis-2026-10-19.pdf")
+            self.assertEqual(second.name, "research-analysis-2026-10-20.pdf")
+            self.assertEqual(first.read_bytes(), b"%PDF-first")
+            self.assertEqual(second.read_bytes(), b"%PDF-second")
+
     def test_message_includes_report_without_raw_audit_dumps(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

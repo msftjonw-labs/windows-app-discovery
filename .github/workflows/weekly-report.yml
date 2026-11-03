@@ -125,6 +125,24 @@ jobs:
           path: new-report-history/report-*.pdf
           if-no-files-found: error
           retention-days: 90
+      - name: Render cross-OS research PDF and archive it
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m discovery.research_email --output-dir research-mail --archive-dir research-history
+      - name: Keep cross-OS research PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-pdf
+          path: research-mail/registry-research-2026-11-03.pdf
+          if-no-files-found: error
+          retention-days: 90
+      - name: Keep cross-OS research history
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-history
+          path: research-history/research-analysis-*.pdf
+          if-no-files-found: error
+          retention-days: 90
       - name: Keep report and PDF
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,11 +176,15 @@ jobs:
         with:
           name: report-history
           path: report-history
+      - uses: actions/download-artifact@v4
+        with:
+          name: research-history
+          path: research-history
       - name: Commit latest repository report and archived PDF
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json report-history/report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json report-history/report-*.pdf research-history/research-analysis-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else
@@ -200,13 +222,17 @@ jobs:
         with:
           name: weekly-report
           path: site
+      - uses: actions/download-artifact@v4
+        with:
+          name: research-pdf
+          path: site/research
       - name: Send PDF to Gmail
         env:
           GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
           PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-        run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf
+        run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf --research-pdf site/research/registry-research-2026-11-03.pdf
 
   research:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.research_report }}
@@ -218,7 +244,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Research email tests
-        run: python -m unittest tests.test_research_email -v
+        run: python -m unittest tests.test_research_email tests.test_weekly.EmailTests -v
       - name: Render saved research report and optionally email it
         env:
           GH_TOKEN: ${{ github.token }}
@@ -227,7 +253,7 @@ jobs:
           REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
           SEND_EMAIL: ${{ inputs.email }}
         run: |
-          $arguments = @("--output-dir", "research-mail")
+          $arguments = @("--output-dir", "research-mail", "--archive-dir", "research-history")
           if ($env:SEND_EMAIL -eq "true") { $arguments += "--send" }
           python -m discovery.research_email @arguments
       - name: Keep research report and audit trails
@@ -235,6 +261,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: research-report-email
-          path: research-mail
+          path: |
+            research-mail
+            research-history/research-analysis-*.pdf
           if-no-files-found: warn
           retention-days: 90

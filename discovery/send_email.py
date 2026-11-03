@@ -70,7 +70,7 @@ def summary_lines(report):
     return lines
 
 
-def build_message(report, pdf_path, sender, recipient, pages_url=None):
+def build_message(report, pdf_path, sender, recipient, pages_url=None, research_pdf_path=None):
     message = EmailMessage()
     message["Subject"] = f"Public App Development Observatory — week ending {report['window']['end'][:10]}"
     message["From"] = sender
@@ -78,13 +78,21 @@ def build_message(report, pdf_path, sender, recipient, pages_url=None):
     body = summary_lines(report)
     if pages_url:
         body.append(f"Dashboard: {pages_url}")
-    body.append("The full report is attached as a PDF.")
+    body.append("The full weekly report is attached as a PDF.")
+    if research_pdf_path:
+        body.append("The cross-OS public-source research report is also attached as a PDF.")
     message.set_content("\n".join(body) + "\n")
     pdf = Path(pdf_path).read_bytes()
     if pdf[:5] != b"%PDF-":
         raise ValueError(f"{pdf_path} is not a PDF")
     message.add_attachment(pdf, maintype="application", subtype="pdf",
                            filename=f"app-observatory-{report['window']['end'][:10]}.pdf")
+    if research_pdf_path:
+        research_pdf = Path(research_pdf_path).read_bytes()
+        if not research_pdf.startswith(b"%PDF-"):
+            raise ValueError(f"{research_pdf_path} is not a PDF")
+        message.add_attachment(research_pdf, maintype="application", subtype="pdf",
+                               filename=Path(research_pdf_path).name)
     return message
 
 
@@ -98,6 +106,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, default=ROOT / "site" / "data" / "latest.json")
     parser.add_argument("--pdf", type=Path, default=ROOT / "site" / "report.pdf")
+    parser.add_argument("--research-pdf", type=Path,
+                        help="Also attach the cross-OS research PDF")
     args = parser.parse_args()
     sender = os.environ.get("GMAIL_ADDRESS", "").strip()
     # Google displays app passwords in groups separated by spaces.
@@ -107,7 +117,8 @@ def main():
     if missing:
         raise SystemExit(f"Missing required secret(s): {', '.join(missing)}; email not sent")
     report = json.loads(args.report.read_text(encoding="utf-8"))
-    send(build_message(report, args.pdf, sender, recipient, os.environ.get("PAGES_URL")), sender, password)
+    send(build_message(report, args.pdf, sender, recipient, os.environ.get("PAGES_URL"),
+                       args.research_pdf), sender, password)
     print(f"Report emailed to {recipient.split('@')[0][:2]}***@{recipient.split('@')[-1]}")
 
 

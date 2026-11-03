@@ -21,6 +21,9 @@ The [latest weekly report](reports/README.md) shows metrics, tables, and inline 
 charts directly in the repository—no GitHub Pages visit required. It appears after
 the first successful weekly run on the default branch with this feature enabled.
 The interactive Pages dashboard remains available as an optional companion.
+The scheduled weekly email includes the cross-OS research PDF as a second attachment.
+Each run also archives a copy under root `research-history/` as
+`research-analysis-yyyy-mm-dd.pdf` (UTC); same-day reruns replace that day's file.
 
 The [public-source cross-OS research report](reports/registry-research-2026-11-03.md)
 includes both an audit of the existing 100-project cohort and separate source-first
