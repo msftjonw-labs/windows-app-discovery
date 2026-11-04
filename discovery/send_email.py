@@ -98,7 +98,7 @@ def build_message(report, pdf_path, sender, recipient, pages_url=None, gitlab_re
     if pdf[:5] != b"%PDF-":
         raise ValueError(f"{pdf_path} is not a PDF")
     message.add_attachment(pdf, maintype="application", subtype="pdf",
-                           filename=f"{'gitlab-' if report.get('source_platform') == 'GitLab' else ''}"
+                           filename=f"{'gitlab-' if report.get('source_platform') == 'GitLab' else 'github-'}"
                                     f"app-observatory-{report['window']['end'][:10]}.pdf")
     if gitlab_report is not None:
         pdf = Path(gitlab_pdf).read_bytes()

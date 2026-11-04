@@ -293,6 +293,13 @@ def sample_report(representative=True):
 
 
 class PdfReportTests(unittest.TestCase):
+    def test_github_pdf_title_and_archive_filename(self):
+        html = report_pdf.build_html(sample_report())
+        self.assertIn("<h1>Public App Development Observatory - GitHub</h1>", html)
+        self.assertIn("<title>Public App Development Observatory - GitHub", html)
+        self.assertEqual(report_pdf.archive_name("2026-11-04T12:00:00Z", "github-app-observatory"),
+                         "github-app-observatory-2026-11-04.pdf")
+
     def test_platform_mix_highlights_only_windows_related_percentages(self):
         rendered = report_pdf.platform_mix({"platforms": [
             {"label": "Windows", "percent": 20},
@@ -463,7 +470,7 @@ class EmailTests(unittest.TestCase):
         parsed = BytesParser(policy=policy.default).parsebytes(message.as_bytes())
         attachments = list(parsed.iter_attachments())
         self.assertEqual([a.get_filename() for a in attachments],
-                         ["app-observatory-2026-10-19.pdf", "gitlab-app-observatory-2026-10-19.pdf"])
+                         ["github-app-observatory-2026-10-19.pdf", "gitlab-app-observatory-2026-10-19.pdf"])
         self.assertEqual([a.get_payload(decode=True) for a in attachments], [b"%PDF-github", b"%PDF-gitlab"])
         self.assertTrue(all(a.get_content_type() == "application/pdf" for a in attachments))
         body = parsed.get_body(("plain",)).get_content()
@@ -504,7 +511,7 @@ class EmailTests(unittest.TestCase):
         parsed = BytesParser(policy=policy.default).parsebytes(message.as_bytes())
         attachment = next(parsed.iter_attachments())
         self.assertEqual(attachment.get_content_type(), "application/pdf")
-        self.assertEqual(attachment.get_filename(), "app-observatory-2026-10-19.pdf")
+        self.assertEqual(attachment.get_filename(), "github-app-observatory-2026-10-19.pdf")
         body = parsed.get_body(("plain",)).get_content()
         self.assertIn("1,234,567", body)
         self.assertIn("±10.05", body)
@@ -545,7 +552,7 @@ class WeeklyWorkflowTests(unittest.TestCase):
         self.assertIn("needs.gitlab.result == 'success'", weekly)
         self.assertIn("--gitlab-report gitlab-reports/latest.json --gitlab-pdf gitlab-reports/report.pdf", weekly)
         self.assertIn("report-history/gitlab-report-*.pdf", weekly)
-        self.assertIn("report-history/report-*.pdf", weekly)
+        self.assertIn("report-history/github-app-observatory-*.pdf", weekly)
         self.assertNotIn("  schedule:", gitlab)
         for workflow in (weekly, gitlab):
             self.assertNotIn("research", workflow)

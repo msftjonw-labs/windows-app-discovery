@@ -89,9 +89,12 @@ registry research or research PDF is collected, attached, or archived.
 
 Successful default-branch weekly runs publish `reports/` and `gitlab-reports/` and
 save both PDFs in [`report-history/`](report-history/README.md):
-`report-yyyy-mm-dd.pdf` for GitHub (preserving existing filenames) and
+`github-app-observatory-yyyy-mm-dd.pdf` for GitHub and
 `gitlab-report-yyyy-mm-dd.pdf` for GitLab. Dates use each report's UTC generation
 date; same-day reruns replace that source's PDF without overwriting the other.
+Older GitHub archives retain their existing filenames. GitHub email attachments
+also use `github-app-observatory-yyyy-mm-dd.pdf`; the PDF title is
+`Public App Development Observatory - GitHub`.
 There is no `research-history/` or separate GitLab history directory.
 Artifacts and diagnostics are retained for 90 days. GitLab collection never writes
 the GitHub dashboard's `site/data/latest.json`.
@@ -242,7 +245,7 @@ python -m discovery.send_email --report site\data\latest.json --pdf site\report.
 ```
 
 Add `--archive-dir report-history` to also keep a copy named after the report's
-generation date in UTC (for example `report-history\report-2026-10-19.pdf`). The weekly
+generation date in UTC (for example `report-history\github-app-observatory-2026-10-19.pdf`). The weekly
 workflow does this and commits each PDF to [`report-history/`](report-history/README.md),
 so historical reports are kept and tracked alongside the latest one.
 

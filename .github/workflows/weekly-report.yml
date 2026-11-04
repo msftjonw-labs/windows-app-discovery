@@ -129,7 +129,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: report-history
-          path: new-report-history/report-*.pdf
+          path: new-report-history/github-app-observatory-*.pdf
           if-no-files-found: error
           retention-days: 90
       - name: Keep report and PDF
@@ -177,7 +177,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json gitlab-reports report-history/report-*.pdf report-history/gitlab-report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json gitlab-reports report-history/github-app-observatory-*.pdf report-history/gitlab-report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else

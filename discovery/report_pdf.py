@@ -229,9 +229,11 @@ def build_html(report, pages_url=None):
         "source. Each repository is counted in exactly one category, so shares add up to 100%.")
     parts = [
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
-        f"<title>Public App Development Observatory — {text(window['end'][:10])}</title><style>{CSS}</style></head><body>",
+        f"<title>Public App Development Observatory"
+        f"{' — GitLab' if report.get('source_platform') == 'GitLab' else ' - GitHub'}"
+        f" — {text(window['end'][:10])}</title><style>{CSS}</style></head><body>",
         ("<h1>Public App Development Observatory — GitLab</h1>"
-         if report.get("source_platform") == "GitLab" else "<h1>Public App Development Observatory</h1>"),
+         if report.get("source_platform") == "GitLab" else "<h1>Public App Development Observatory - GitHub</h1>"),
         f"<p class=\"muted\">Window {text(window['start'])} → {text(window['end'])} (UTC) · generated {text(report['generated_at'])}"
         f" · ruleset {text(report['ruleset_version'])} · Microsoft Application Inspector {text(report['inspector_version'])}</p>",
         f"<p class=\"notice\">{text(notice)}</p>",
@@ -356,8 +358,8 @@ def archive_name(generated_at, prefix="report"):
     moment = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     if moment.tzinfo is None:
         raise ValueError("generated_at must include a UTC offset")
-    if prefix not in {"report", "gitlab-report"}:
-        raise ValueError("Archive prefix must be report or gitlab-report")
+    if prefix not in {"report", "github-app-observatory", "gitlab-report"}:
+        raise ValueError("Archive prefix must be report, github-app-observatory or gitlab-report")
     return f"{prefix}-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
 
 
@@ -377,8 +379,9 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "site" / "report.pdf")
     parser.add_argument("--pages-url", default=os.environ.get("PAGES_URL"))
     parser.add_argument("--archive-dir", type=Path,
-                        help="Also copy the PDF here as report-<generated UTC date yyyy-mm-dd>.pdf (e.g. report-history)")
-    parser.add_argument("--archive-prefix", choices=("report", "gitlab-report"), default="report",
+                        help="Also copy the PDF here under its prefix and generated UTC date (e.g. report-history)")
+    parser.add_argument("--archive-prefix", choices=("report", "github-app-observatory", "gitlab-report"),
+                        default="github-app-observatory",
                         help="Distinguish GitHub and GitLab PDFs in the shared history directory")
     args = parser.parse_args()
     report = json.loads(args.input.read_text(encoding="utf-8"))
