@@ -3,7 +3,7 @@
 A reproducible research pipeline for recently human-active public GitHub
 repositories, with platform/framework classification, Windows technology detection
 using **Microsoft Application Inspector**, a static GitHub Pages dashboard, and a
-weekly PDF report emailed through Gmail.
+weekly GitHub and GitLab PDF reports emailed together through Gmail.
 
 By default each report is a **uniform random sample of 100 repositories** drawn from
 every public repository with qualifying human issue/PR activity in the last 30 days,
@@ -69,7 +69,7 @@ Run on Windows x64, or supply an existing compatible Inspector executable:
 $env:GITLAB_TOKEN = "<GitLab API token>"
 python -m discovery.gitlab --limit 100 --project-budget 500 --install-inspector
 python -m discovery.report_markdown --input gitlab-reports/latest.json --output gitlab-reports
-python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir gitlab-report-history
+python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir report-history --archive-prefix gitlab-report
 ```
 
 `--end` fixes the activity-window end; `--event-pages` accepts 1–5 and
@@ -78,16 +78,26 @@ no synthetic findings or silent GitHub fallback are used. A missing cohort or no
 complete scans fails the run. `GITLAB_TOKEN` is sent only to the fixed GitLab.com
 API; GitHub credentials are used only by the existing Inspector release installer.
 
-The separate **GitLab public-project report** workflow supports manual dispatch and
-runs Mondays at 10:00 America/Los_Angeles after it is merged to the default branch.
-It saves report artifacts and diagnostics for 90 days. Successful default-branch
-runs commit only `gitlab-reports/` and `gitlab-report-history/` (dated PDF names use
-the existing `report-yyyy-mm-dd.pdf` UTC convention). It never deploys the GitHub
-dashboard or writes `reports/`, `report-history/` or `site/data/latest.json`.
+The **GitLab public-project report** workflow supports manual dispatch and is also
+called by the existing weekly GitHub workflow. There is only one weekly schedule:
+Mondays at 09:00 America/Los_Angeles, after these changes reach the default branch.
+GitHub collection and GitLab collection run independently in that workflow; after
+both succeed, one email includes **two PDFs**, using the existing Gmail/recipient
+configuration. If either collection fails, no incomplete combined email is sent.
+GitHub's collection, classifiers, and report layout are otherwise unchanged; no
+registry research or research PDF is collected, attached, or archived.
+
+Successful default-branch weekly runs publish `reports/` and `gitlab-reports/` and
+save both PDFs in [`report-history/`](report-history/README.md):
+`report-yyyy-mm-dd.pdf` for GitHub (preserving existing filenames) and
+`gitlab-report-yyyy-mm-dd.pdf` for GitLab. Dates use each report's UTC generation
+date; same-day reruns replace that source's PDF without overwriting the other.
+There is no `research-history/` or separate GitLab history directory.
+Artifacts and diagnostics are retained for 90 days. GitLab collection never writes
+the GitHub dashboard's `site/data/latest.json`.
 Configure an optional `GITLAB_TOKEN` Actions secret for public API access.
-Manual email defaults off; scheduled email is enabled only with repository variable
-`GITLAB_EMAIL_ENABLED=true`, using the existing Gmail/recipient configuration.
-GitLab mail has a distinct subject and attachment filename.
+A standalone manual GitLab run keeps artifacts and can optionally email its PDF;
+it has no independent schedule or publication job. Its email defaults off.
 
 ## Run locally (Windows x64)
 
@@ -164,7 +174,8 @@ workflow input to a previous run that retained a `weekly-report` artifact. This 
 discovery and the existing Windows analysis, preserves the activity window and pinned
 commits, then reruns GitHub evidence classification, rendering, and the selected
 email/publishing steps. Cross-OS classifications are recalculated from pinned evidence;
-the cohort itself remains unchanged. The optional Windows-candidate AI analysis is
+the GitHub cohort itself remains unchanged. GitLab discovery still runs independently
+for the combined email. The optional Windows-candidate AI analysis is
 disabled by default for manual runs and can be enabled explicitly.
 
 The PDF's **Identified Windows repositories** table contains only Windows candidates
@@ -561,11 +572,13 @@ syntax checks on pushes/PRs. [.github/workflows/weekly-report.yml](.github/workf
 runs **every Monday at 09:00 America/Los_Angeles** (PST in winter, PDT in summer;
 uses the Actions schedule `timezone` key) or manually. It runs tests, installs
 Inspector, draws the GH Archive sample, scans it, assesses Windows-container base-image
-evidence, enriches Windows candidates with OpenAI purpose/community analysis, renders
-`site/report.pdf`, keeps
-the JSON and PDF as a 90-day artifact, commits the latest Markdown report and seven SVG
-charts under `reports/`, optionally deploys Pages (the dashboard links the PDF), and
-emails the PDF. Scheduled workflows run only from the default branch. Repository
+evidence, optionally enriches Windows candidates with OpenAI purpose/community analysis,
+and renders `site/report.pdf`. In parallel it calls the GitLab collector and renders
+`gitlab-reports/report.pdf`. It keeps JSON/PDF artifacts for 90 days, commits the latest
+Markdown reports and charts under `reports/` and `gitlab-reports/`, archives both PDFs
+in `report-history/`, optionally deploys Pages (the dashboard links the GitHub PDF),
+and sends one email with both PDFs. Registry research is excluded.
+Scheduled workflows run only from the default branch. Repository
 publishing also runs only on the default branch; manual runs on other branches
 keep generated reports as artifacts without committing them.
 
@@ -573,7 +586,8 @@ The publishing job alone has `contents: write`; collection remains read-only.
 Repository rules must permit `github-actions[bot]` to push report updates to the
 default branch. If direct pushes are prohibited, publishing fails visibly; the
 generated report remains available as the `repository-report` Actions artifact.
-PDF and JSON remain artifacts rather than adding binary files or raw reports to git.
+Both PDFs are also committed to `report-history/`; GitHub JSON remains an artifact
+and GitLab JSON is published under `gitlab-reports/`.
 
 Pages is optional: uncheck **pages** for a manual run, or set the repository Actions
 variable `ENABLE_PAGES` to `false` for scheduled runs. Repository publishing and
@@ -588,10 +602,11 @@ When you choose to deploy:
 2. In repository **Settings → Pages**, select **GitHub Actions** as the source.
 3. Create a Gmail **app password** (Google Account → Security → 2-Step Verification
    must be on → App passwords).
-4. Add repository secrets: `GMAIL_ADDRESS` (the sending Gmail account),
-   `GMAIL_APP_PASSWORD`, optionally `REPORT_RECIPIENT` (defaults to `GMAIL_ADDRESS`),
+4. Add repository variables `GMAIL_ADDRESS` (the sending Gmail account) and optionally
+   `REPORT_RECIPIENT` (defaults to `GMAIL_ADDRESS`). Add secrets `GMAIL_APP_PASSWORD`
    and recommended `DISCOVERY_TOKEN` (a fine-grained token with public read access).
-5. Add the `OPENAI_API_KEY` repository secret for the Analysis column, and optionally
+   An optional `GITLAB_TOKEN` secret can authenticate public GitLab API access.
+5. To enable the optional Analysis column, add the `OPENAI_API_KEY` secret and optionally
    set the `OPENAI_MODEL` repository variable (default `gpt-4o`).
 6. Run **Weekly report** manually once (optionally with a small limit and email off).
 

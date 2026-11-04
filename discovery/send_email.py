@@ -3,6 +3,8 @@
 Required environment: GMAIL_ADDRESS, GMAIL_APP_PASSWORD (a Google app password; requires 2-Step
 Verification). Optional: REPORT_RECIPIENT (defaults to GMAIL_ADDRESS), PAGES_URL.
 Run with: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf
+Add --gitlab-report gitlab-reports/latest.json --gitlab-pdf gitlab-reports/report.pdf
+to send both source reports in one email.
 """
 
 import argparse
@@ -72,7 +74,12 @@ def summary_lines(report):
     return lines
 
 
-def build_message(report, pdf_path, sender, recipient, pages_url=None):
+def build_message(report, pdf_path, sender, recipient, pages_url=None, gitlab_report=None, gitlab_pdf=None):
+    if (gitlab_report is None) != (gitlab_pdf is None):
+        raise ValueError("GitLab report metadata and PDF must be supplied together")
+    if gitlab_report is not None and (
+            gitlab_report.get("source_platform") != "GitLab" or report.get("source_platform") == "GitLab"):
+        raise ValueError("Combined email requires a GitHub report and a GitLab report")
     message = EmailMessage()
     message["Subject"] = f"Public App Development Observatory — week ending {report['window']['end'][:10]}"
     if report.get("source_platform") == "GitLab":
@@ -80,9 +87,12 @@ def build_message(report, pdf_path, sender, recipient, pages_url=None):
     message["From"] = sender
     message["To"] = recipient
     body = summary_lines(report)
+    if gitlab_report is not None:
+        body = ["GitHub report", *body, "", "GitLab report", *summary_lines(gitlab_report)]
     if pages_url:
         body.append(f"Dashboard: {pages_url}")
-    body.append("The full report is attached as a PDF.")
+    body.append("The GitHub and GitLab reports are attached as separate PDFs."
+                if gitlab_report is not None else "The full report is attached as a PDF.")
     message.set_content("\n".join(body) + "\n")
     pdf = Path(pdf_path).read_bytes()
     if pdf[:5] != b"%PDF-":
@@ -90,6 +100,12 @@ def build_message(report, pdf_path, sender, recipient, pages_url=None):
     message.add_attachment(pdf, maintype="application", subtype="pdf",
                            filename=f"{'gitlab-' if report.get('source_platform') == 'GitLab' else ''}"
                                     f"app-observatory-{report['window']['end'][:10]}.pdf")
+    if gitlab_report is not None:
+        pdf = Path(gitlab_pdf).read_bytes()
+        if pdf[:5] != b"%PDF-":
+            raise ValueError(f"{gitlab_pdf} is not a PDF")
+        message.add_attachment(pdf, maintype="application", subtype="pdf",
+                               filename=f"gitlab-app-observatory-{gitlab_report['window']['end'][:10]}.pdf")
     return message
 
 
@@ -103,7 +119,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, default=ROOT / "site" / "data" / "latest.json")
     parser.add_argument("--pdf", type=Path, default=ROOT / "site" / "report.pdf")
+    parser.add_argument("--gitlab-report", type=Path, help="GitLab JSON metadata for the second PDF")
+    parser.add_argument("--gitlab-pdf", type=Path, help="Attach the GitLab PDF alongside the GitHub PDF")
     args = parser.parse_args()
+    if (args.gitlab_report is None) != (args.gitlab_pdf is None):
+        parser.error("--gitlab-report and --gitlab-pdf must be supplied together")
     sender = os.environ.get("GMAIL_ADDRESS", "").strip()
     # Google displays app passwords in groups separated by spaces.
     password = os.environ.get("GMAIL_APP_PASSWORD", "").replace(" ", "")
@@ -112,7 +132,10 @@ def main():
     if missing:
         raise SystemExit(f"Missing required secret(s): {', '.join(missing)}; email not sent")
     report = json.loads(args.report.read_text(encoding="utf-8"))
-    send(build_message(report, args.pdf, sender, recipient, os.environ.get("PAGES_URL")), sender, password)
+    gitlab_report = (json.loads(args.gitlab_report.read_text(encoding="utf-8"))
+                     if args.gitlab_report is not None else None)
+    send(build_message(report, args.pdf, sender, recipient, os.environ.get("PAGES_URL"),
+                       gitlab_report, args.gitlab_pdf), sender, password)
     print(f"Report emailed to {recipient.split('@')[0][:2]}***@{recipient.split('@')[-1]}")
 
 

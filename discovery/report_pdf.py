@@ -351,19 +351,21 @@ def render_pdf(html, output, browser=None):
     return output
 
 
-def archive_name(generated_at):
+def archive_name(generated_at, prefix="report"):
     """Return a sortable, filesystem-safe file name for a report generated at an ISO-8601 time."""
     moment = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     if moment.tzinfo is None:
         raise ValueError("generated_at must include a UTC offset")
-    return f"report-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
+    if prefix not in {"report", "gitlab-report"}:
+        raise ValueError("Archive prefix must be report or gitlab-report")
+    return f"{prefix}-{moment.astimezone(timezone.utc):%Y-%m-%d}.pdf"
 
 
-def archive_pdf(pdf, generated_at, directory):
-    """Copy the PDF into directory (created if needed) under its dated name (replacing a same-day report) and return the path."""
+def archive_pdf(pdf, generated_at, directory, prefix="report"):
+    """Archive a source's PDF under its UTC date, replacing only its same-day copy."""
     directory = Path(directory)
+    target = directory / archive_name(generated_at, prefix)
     directory.mkdir(parents=True, exist_ok=True)
-    target = directory / archive_name(generated_at)
     shutil.copyfile(pdf, target)
     return target
 
@@ -376,12 +378,14 @@ def main():
     parser.add_argument("--pages-url", default=os.environ.get("PAGES_URL"))
     parser.add_argument("--archive-dir", type=Path,
                         help="Also copy the PDF here as report-<generated UTC date yyyy-mm-dd>.pdf (e.g. report-history)")
+    parser.add_argument("--archive-prefix", choices=("report", "gitlab-report"), default="report",
+                        help="Distinguish GitHub and GitLab PDFs in the shared history directory")
     args = parser.parse_args()
     report = json.loads(args.input.read_text(encoding="utf-8"))
     output = render_pdf(build_html(report, args.pages_url), args.output)
     print(output)
     if args.archive_dir:
-        print(archive_pdf(output, report["generated_at"], args.archive_dir))
+        print(archive_pdf(output, report["generated_at"], args.archive_dir, args.archive_prefix))
 
 
 if __name__ == "__main__":

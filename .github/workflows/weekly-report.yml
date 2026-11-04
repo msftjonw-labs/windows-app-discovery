@@ -1,4 +1,4 @@
-name: Weekly report — collect, publish reports, email PDF
+name: Weekly report — GitHub and GitLab PDFs
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
         options: [auto, gharchive, graphql-search]
         default: auto
       email:
-        description: Email the PDF report
+        description: Email the GitHub and GitLab PDF reports together
         type: boolean
         default: true
       pages:
@@ -42,6 +42,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gitlab:
+    uses: ./.github/workflows/gitlab-report.yml
+    with:
+      limit: ${{ inputs.limit || '100' }}
+    secrets: inherit
+
   collect:
     runs-on: windows-latest
     timeout-minutes: 300
@@ -136,7 +142,7 @@ jobs:
           path: site
 
   publish:
-    needs: collect
+    needs: [collect, gitlab]
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
@@ -153,15 +159,23 @@ jobs:
         with:
           name: report-history
           path: report-history
-      - name: Commit latest repository report and archived PDF
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlab-report
+          path: gitlab-reports
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlab-report-history
+          path: report-history
+      - name: Commit latest repository reports and both archived PDFs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json report-history/report-*.pdf
+          git add -- reports/README.md reports/platforms.svg reports/languages.svg reports/frameworks.svg reports/project_types.svg reports/application_types.svg reports/components.svg reports/candidate_components.svg reports/cross-os-assessments.json gitlab-reports report-history/report-*.pdf report-history/gitlab-report-*.pdf
           if git diff --cached --quiet; then
             echo "Report unchanged."
           else
-            git commit -m "Publish latest weekly discovery report and archive PDF"
+            git commit -m "Publish weekly GitHub and GitLab reports and archive PDFs"
             git push
           fi
 
@@ -183,8 +197,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   email:
-    needs: [collect, deploy]
-    if: always() && needs.collect.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') && (github.event_name == 'schedule' || inputs.email)
+    needs: [collect, gitlab, deploy]
+    if: always() && needs.collect.result == 'success' && needs.gitlab.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') && (github.event_name == 'schedule' || inputs.email)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -195,10 +209,14 @@ jobs:
         with:
           name: weekly-report
           path: site
-      - name: Send PDF to Gmail
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlab-report
+          path: gitlab-reports
+      - name: Send GitHub and GitLab PDFs together to Gmail
         env:
           GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
           PAGES_URL: ${{ needs.deploy.outputs.page_url }}
-        run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf
+        run: python -m discovery.send_email --report site/data/latest.json --pdf site/report.pdf --gitlab-report gitlab-reports/latest.json --gitlab-pdf gitlab-reports/report.pdf

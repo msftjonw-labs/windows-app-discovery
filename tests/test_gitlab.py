@@ -279,8 +279,10 @@ class OutputTests(unittest.TestCase):
                          "gitlab-report-history", "secrets.GITLAB_TOKEN"]:
             self.assertIn(expected, workflow)
         for excluded in ["registry-research", "discovery.research_email", "site/data/latest.json",
-                         "gharchive", "discovery.analysis"]:
+                         "gharchive", "discovery.analysis", "  schedule:", "  publish:"]:
             self.assertNotIn(excluded, workflow)
+        self.assertIn("  workflow_call:", workflow)
+        self.assertIn("--archive-prefix gitlab-report", workflow)
 
 
 class CliTests(unittest.TestCase):

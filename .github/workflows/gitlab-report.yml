@@ -15,9 +15,19 @@ on:
         description: Send the separate GitLab PDF to the configured report recipient
         type: boolean
         default: false
-  schedule:
-    - cron: "0 10 * * 1"
-      timezone: "America/Los_Angeles"
+  workflow_call:
+    inputs:
+      limit:
+        type: string
+        default: "100"
+      project_budget:
+        type: string
+        default: "500"
+    secrets:
+      GITLAB_TOKEN:
+        required: false
+      GMAIL_APP_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -51,44 +61,26 @@ jobs:
       - name: Render GitLab Markdown and charts
         run: python -m discovery.report_markdown --input gitlab-reports/latest.json --output gitlab-reports
       - name: Render GitLab PDF
-        run: python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir gitlab-report-history
+        run: python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir new-gitlab-report-history --archive-prefix gitlab-report
+      - name: Keep archived GitLab PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-report-history
+          path: new-gitlab-report-history/gitlab-report-*.pdf
+          if-no-files-found: error
+          retention-days: 90
       - name: Keep GitLab reports and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitlab-report
-          path: |
-            gitlab-reports
-            gitlab-report-history
+          path: gitlab-reports
           if-no-files-found: warn
           retention-days: 90
 
-  publish:
-    needs: collect
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
-      - uses: actions/download-artifact@v4
-        with:
-          name: gitlab-report
-      - name: Commit isolated GitLab reports and PDF history
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- gitlab-reports gitlab-report-history
-          if ! git diff --cached --quiet; then
-            git commit -m "Publish GitLab public-project report"
-            git push
-          fi
-
   email:
     needs: collect
-    if: (github.event_name == 'workflow_dispatch' && inputs.email) || (github.event_name == 'schedule' && vars.GITLAB_EMAIL_ENABLED == 'true')
+    if: github.event_name == 'workflow_dispatch' && inputs.email
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,6 +90,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: gitlab-report
+          path: gitlab-reports
       - name: Send GitLab PDF
         env:
           GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}

@@ -429,8 +429,73 @@ class PdfReportTests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), b"%PDF-first")
             self.assertEqual(second.read_bytes(), b"%PDF-second")
 
+    def test_same_day_source_archives_do_not_overwrite_each_other(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            pdf, history = Path(temporary) / "report.pdf", Path(temporary) / "report-history"
+            pdf.write_bytes(b"%PDF-github")
+            github = report_pdf.archive_pdf(pdf, "2026-11-03T20:00:00-07:00", history)
+            pdf.write_bytes(b"%PDF-gitlab")
+            gitlab = report_pdf.archive_pdf(pdf, "2026-11-04T06:00:00Z", history, "gitlab-report")
+            self.assertEqual(github.name, "report-2026-11-04.pdf")
+            self.assertEqual(gitlab.name, "gitlab-report-2026-11-04.pdf")
+            self.assertEqual(github.read_bytes(), b"%PDF-github")
+            self.assertEqual(gitlab.read_bytes(), b"%PDF-gitlab")
+            pdf.write_bytes(b"%PDF-gitlab-rerun")
+            report_pdf.archive_pdf(pdf, "2026-11-04T20:00:00Z", history, "gitlab-report")
+            self.assertEqual(gitlab.read_bytes(), b"%PDF-gitlab-rerun")
+            self.assertEqual(github.read_bytes(), b"%PDF-github")
+            self.assertEqual(len(list(history.iterdir())), 2)
+        with self.assertRaises(ValueError):
+            report_pdf.archive_name("2026-11-04T06:00:00Z", "../bad")
+
 
 class EmailTests(unittest.TestCase):
+    def test_combined_message_attaches_exact_source_pdfs_and_separate_summaries(self):
+        gitlab_report = sample_report(False)
+        gitlab_report["source_platform"] = "GitLab"
+        with tempfile.TemporaryDirectory() as folder:
+            github, gitlab = Path(folder) / "github.pdf", Path(folder) / "gitlab.pdf"
+            github.write_bytes(b"%PDF-github")
+            gitlab.write_bytes(b"%PDF-gitlab")
+            message = send_email.build_message(
+                sample_report(), github, "from@example.com", "to@example.com",
+                gitlab_report=gitlab_report, gitlab_pdf=gitlab)
+        parsed = BytesParser(policy=policy.default).parsebytes(message.as_bytes())
+        attachments = list(parsed.iter_attachments())
+        self.assertEqual([a.get_filename() for a in attachments],
+                         ["app-observatory-2026-10-19.pdf", "gitlab-app-observatory-2026-10-19.pdf"])
+        self.assertEqual([a.get_payload(decode=True) for a in attachments], [b"%PDF-github", b"%PDF-gitlab"])
+        self.assertTrue(all(a.get_content_type() == "application/pdf" for a in attachments))
+        body = parsed.get_body(("plain",)).get_content()
+        self.assertIn("GitHub report", body)
+        self.assertIn("GitLab report", body)
+        self.assertIn("Bounded GitLab.com", body)
+        self.assertIn("separate PDFs", body)
+        self.assertNotIn("research", body.lower())
+
+    def test_combined_message_requires_valid_gitlab_metadata_and_pdf(self):
+        gitlab_report = {**sample_report(False), "source_platform": "GitLab"}
+        with tempfile.TemporaryDirectory() as folder:
+            github, gitlab = Path(folder) / "github.pdf", Path(folder) / "gitlab.pdf"
+            github.write_bytes(b"%PDF-github")
+            gitlab.write_bytes(b"<html>")
+            for kwargs in (
+                {"gitlab_report": gitlab_report},
+                {"gitlab_pdf": gitlab},
+                {"gitlab_report": sample_report(), "gitlab_pdf": gitlab},
+                {"gitlab_report": gitlab_report, "gitlab_pdf": gitlab},
+            ):
+                with self.assertRaises(ValueError):
+                    send_email.build_message(sample_report(), github, "from@example.com", "to@example.com", **kwargs)
+
+    def test_unpaired_gitlab_cli_arguments_fail_before_sending(self):
+        for flag in ("--gitlab-pdf", "--gitlab-report"):
+            with mock.patch("sys.argv", ["send_email", flag, "missing"]), \
+                    mock.patch.object(send_email, "send") as sender:
+                with self.assertRaises(SystemExit):
+                    send_email.main()
+                sender.assert_not_called()
+
     def test_message_attaches_pdf_and_summarizes_sample(self):
         with tempfile.TemporaryDirectory() as folder:
             pdf = Path(folder) / "r.pdf"
@@ -466,6 +531,24 @@ class EmailTests(unittest.TestCase):
         smtp.assert_called_once()
         self.assertEqual(smtp.call_args.args, ("smtp.gmail.com", 465))
         smtp.return_value.__enter__.return_value.login.assert_called_once_with("me@gmail.com", "app-password")
+
+
+class WeeklyWorkflowTests(unittest.TestCase):
+    def test_weekly_run_coordinates_both_sources_without_registry_research(self):
+        weekly = (pilot.ROOT / ".github/workflows/weekly-report.yml").read_text()
+        gitlab = (pilot.ROOT / ".github/workflows/gitlab-report.yml").read_text()
+        self.assertIn("uses: ./.github/workflows/gitlab-report.yml", weekly)
+        self.assertIn("needs: [collect, gitlab]", weekly)
+        self.assertIn("needs: [collect, gitlab, deploy]", weekly)
+        self.assertIn("needs.gitlab.result == 'success'", weekly)
+        self.assertIn("--gitlab-report gitlab-reports/latest.json --gitlab-pdf gitlab-reports/report.pdf", weekly)
+        self.assertIn("report-history/gitlab-report-*.pdf", weekly)
+        self.assertIn("report-history/report-*.pdf", weekly)
+        self.assertNotIn("  schedule:", gitlab)
+        for workflow in (weekly, gitlab):
+            self.assertNotIn("research", workflow)
+            self.assertNotIn("registry", workflow)
+        self.assertFalse((pilot.ROOT / "research-history").exists())
 
 
 if __name__ == "__main__":
