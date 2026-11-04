@@ -17,6 +17,9 @@ on:
         default: false
   workflow_call:
     inputs:
+      email:
+        type: boolean
+        default: false
       limit:
         type: string
         default: "100"
@@ -75,6 +78,7 @@ jobs:
         with:
           name: gitlab-report
           path: gitlab-reports
+          overwrite: true
           if-no-files-found: warn
           retention-days: 90
 

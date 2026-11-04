@@ -538,6 +538,8 @@ class WeeklyWorkflowTests(unittest.TestCase):
         weekly = (pilot.ROOT / ".github/workflows/weekly-report.yml").read_text()
         gitlab = (pilot.ROOT / ".github/workflows/gitlab-report.yml").read_text()
         self.assertIn("uses: ./.github/workflows/gitlab-report.yml", weekly)
+        self.assertIn("      email: false", weekly)
+        self.assertIn("          overwrite: true", gitlab)
         self.assertIn("needs: [collect, gitlab]", weekly)
         self.assertIn("needs: [collect, gitlab, deploy]", weekly)
         self.assertIn("needs.gitlab.result == 'success'", weekly)

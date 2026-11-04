@@ -51,6 +51,7 @@ jobs:
     with:
       limit: ${{ inputs.limit || '100' }}
       project_budget: ${{ inputs.gitlab_project_budget || '500' }}
+      email: false
     secrets: inherit
 
   collect:
