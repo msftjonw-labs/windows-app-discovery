@@ -48,9 +48,10 @@ def chart_svg(rows, title):
 
 def build_markdown(report):
     metrics, coverage = report["metrics"], report["coverage"]
+    gitlab = report.get("source_platform") == "GitLab"
     confidence = metrics.get("confidence_level") if coverage.get("representative_sample") else None
     lines = [
-        "# Windows app discovery — latest report", "",
+        "# Windows app discovery — latest GitLab report" if gitlab else "# Windows app discovery — latest report", "",
         f"Activity window (UTC): {text(report['window']['start'])} → {text(report['window']['end'])}",
         f"Generated: {text(report['generated_at'])}  ",
         f"Ruleset: {text(report['ruleset_version'])}; Application Inspector: {text(report['inspector_version'])}", "",
@@ -66,6 +67,16 @@ def build_markdown(report):
         if confidence:
             lines.append(f"{round(confidence * 100)}% Wilson confidence intervals; worst-case margin for complete "
                          f"scans: ±{text(number(metrics.get('margin_of_error')))} percentage points.")
+    elif gitlab:
+        lines.extend([
+            "**Bounded, non-representative GitLab.com cohort.** Percentages describe the analyzed cohort "
+            "only; no confidence intervals are reported.",
+            f"Public projects examined: {coverage['projects_examined']} / budget {coverage['project_budget']}; "
+            f"events examined: {coverage['events_examined']}; "
+            f"event histories bounded: {len(coverage['event_history_bounded'])}; "
+            f"project event retrieval errors: {len(coverage['discovery_errors'])}.",
+            text(coverage["activity"]),
+        ])
     else:
         lines.append("**Bounded, non-representative GraphQL cohort.** Percentages describe the analyzed cohort "
                      "only; no confidence intervals are reported.")
@@ -88,6 +99,8 @@ def build_markdown(report):
             lines.append("| Review incomplete | N/A | N/A |")
         lines.extend(["", text(groups["method"])])
     for key, title, note in SECTIONS:
+        if gitlab:
+            note = note.replace("GitHub's primary language", "GitLab's largest reported language percentage")
         lines.extend(["", f"## {title}", "", note, ""])
         if key in EXCLUSIVE:
             lines.extend([f"Each repository belongs to one category; shares total 100% across the "

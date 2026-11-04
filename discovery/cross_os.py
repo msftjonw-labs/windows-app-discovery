@@ -307,7 +307,8 @@ def summary(report):
             })
     return {"complete": complete, "selected": total, "assessed": denominator,
             "ambiguous": ambiguous, "skipped": 0,
-            "failed": failures, "missing": missing, "rows": rows, "method": METHOD}
+            "failed": failures, "missing": missing, "rows": rows,
+            "method": METHOD.replace("GitHub", "GitLab") if report.get("source_platform") == "GitLab" else METHOD}
 
 
 def write_assessments(report, output):

@@ -1,0 +1,104 @@
+name: GitLab public-project report
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: GitLab cohort size (1-100)
+        default: "100"
+        required: true
+      project_budget:
+        description: Maximum recent public projects examined (up to 1000)
+        default: "500"
+        required: true
+      email:
+        description: Send the separate GitLab PDF to the configured report recipient
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      email:
+        type: boolean
+        default: false
+      limit:
+        type: string
+        default: "100"
+      project_budget:
+        type: string
+        default: "500"
+    secrets:
+      GITLAB_TOKEN:
+        required: false
+      GMAIL_APP_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitlab-public-report
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Check GitLab.com DNS and public API
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          Resolve-DnsName gitlab.com -ErrorAction Stop
+          python -c "import os; from discovery.gitlab import Client; token = os.environ.get('GITLAB_TOKEN'); print('GitLab authentication: ' + ('token' if token else 'anonymous')); Client(token).get('/projects', visibility='public', per_page=1); print('GitLab public API request succeeded')"
+      - name: Discover and analyze public GitLab.com projects
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          COHORT_LIMIT: ${{ inputs.limit || '100' }}
+          PROJECT_BUDGET: ${{ inputs.project_budget || '500' }}
+        run: python -m discovery.gitlab --install-inspector --limit $env:COHORT_LIMIT --project-budget $env:PROJECT_BUDGET
+      - name: Render GitLab Markdown and charts
+        run: python -m discovery.report_markdown --input gitlab-reports/latest.json --output gitlab-reports
+      - name: Render GitLab PDF
+        run: python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir new-gitlab-report-history --archive-prefix gitlab-report
+      - name: Keep archived GitLab PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-report-history
+          path: new-gitlab-report-history/gitlab-report-*.pdf
+          if-no-files-found: error
+          retention-days: 90
+      - name: Keep GitLab reports and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitlab-report
+          path: gitlab-reports
+          overwrite: true
+          if-no-files-found: warn
+          retention-days: 90
+
+  email:
+    needs: collect
+    if: github.event_name == 'workflow_dispatch' && inputs.email
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlab-report
+          path: gitlab-reports
+      - name: Send GitLab PDF
+        env:
+          GMAIL_ADDRESS: ${{ vars.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_RECIPIENT: ${{ vars.REPORT_RECIPIENT }}
+        run: python -m discovery.send_email --report gitlab-reports/latest.json --pdf gitlab-reports/report.pdf

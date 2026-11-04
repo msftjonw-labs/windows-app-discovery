@@ -1,7 +1,12 @@
 # Report history
 
-Every weekly run on the default branch archives its PDF report here as
-`report-<generated UTC date>.pdf` in `yyyy-mm-dd` form (for example `report-2026-10-19.pdf`).
-The date is taken from the report's `generated_at` value, so file names sort chronologically
-and earlier reports are kept. A rerun on the same UTC day replaces that day's file.
-The newest file is the latest report.
+Every successful weekly run on the default branch archives both PDFs here:
+
+- GitHub: `github-app-observatory-yyyy-mm-dd.pdf`.
+- GitLab: `gitlab-report-yyyy-mm-dd.pdf`.
+
+Each date comes from that report's `generated_at` value in UTC. Earlier reports are
+kept; same-day reruns replace that source's PDF, never the other source's PDF.
+Older GitHub archives retain their original `report-yyyy-mm-dd.pdf` filenames.
+The weekly email attaches these two reports together. Registry research PDFs are
+not part of the workflow.
