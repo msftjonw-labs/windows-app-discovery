@@ -27,6 +27,8 @@ def summary_lines(report):
                      f"repositories (GH Archive, seed {coverage.get('seed')}); "
                      f"{round(metrics['confidence_level'] * 100)}% confidence, worst-case margin "
                      f"±{metrics.get('margin_of_error')} pts.")
+    elif report.get("source_platform") == "GitLab":
+        lines.append("Bounded GitLab.com public-project cohort; not a random sample.")
     else:
         lines.append("Bounded GraphQL-search cohort (GH Archive fallback); not a random sample.")
     lines.append(f"Scans: {metrics['successful']} complete, {metrics['partial']} partial, {metrics['failed']} failed, "
@@ -73,6 +75,8 @@ def summary_lines(report):
 def build_message(report, pdf_path, sender, recipient, pages_url=None):
     message = EmailMessage()
     message["Subject"] = f"Public App Development Observatory — week ending {report['window']['end'][:10]}"
+    if report.get("source_platform") == "GitLab":
+        message.replace_header("Subject", f"GitLab — {message['Subject']}")
     message["From"] = sender
     message["To"] = recipient
     body = summary_lines(report)
@@ -84,7 +88,8 @@ def build_message(report, pdf_path, sender, recipient, pages_url=None):
     if pdf[:5] != b"%PDF-":
         raise ValueError(f"{pdf_path} is not a PDF")
     message.add_attachment(pdf, maintype="application", subtype="pdf",
-                           filename=f"app-observatory-{report['window']['end'][:10]}.pdf")
+                           filename=f"{'gitlab-' if report.get('source_platform') == 'GitLab' else ''}"
+                                    f"app-observatory-{report['window']['end'][:10]}.pdf")
     return message
 
 

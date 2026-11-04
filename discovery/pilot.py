@@ -253,7 +253,7 @@ CI_SYSTEMS = (("GitHub Actions", ".github/workflows/"), ("AppVeyor", "appveyor")
               ("Azure Pipelines", "azure-pipelines"), ("GitLab CI", ".gitlab-ci"), ("CircleCI", ".circleci/"))
 CI_WINDOWS_LINE = re.compile(
     r"windows-(?:latest|\d{2,4})|\bGOOS\s*[:=]\s*['\"]?windows|\bVisual Studio\b"
-    r"|(?:runs-on|vmImage|\bos\b|\bimage\b|platform|executor|goos|matrix)\b.*\bwindows\b"
+    r"|(?:runs-on|vmImage|\bos\b|\bimage\b|platform|executor|goos|matrix|tags)\b.*\bwindows\b"
     r"|^\s*-\s*['\"]?windows[-\w.]*['\"]?\s*$", re.I)
 CI_TEST_COMMAND = re.compile(r"\b(?:pytest|unittest|tox|nox|go\s+test|go\s+build|npm\s+(?:run\s+)?test|dotnet\s+test|"
                              r"cargo\s+test|ctest|mvn\s+test|gradlew?\s+test)\b", re.I)
@@ -682,48 +682,8 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
             source = work / "source"
             source.mkdir()
             files, skipped, source_method = acquire_sources(repo["nameWithOwner"], sha, source)
-            container_images = base_images(files)
-            ci_files = [item for item in files if is_ci_file(item[0])]
-            files = [item for item in files if not is_ci_file(item[0])]
-            for path, _ in ci_files:
-                (source / path).unlink(missing_ok=True)
-            analysis = classify(files)
-            analysis["container_base_images"] = container_images
-            analysis["ci"] = ci_signals(ci_files)
-            analysis.update({"files_scanned": len(files), "excluded": skipped, "source_method": source_method,
-                             "components": [], "application_types": [], "windows_scan": "not_applicable"})
-            inspector_incomplete = {}
-            project_inspector_evidence = []
-            if "Windows" in analysis["platforms"]:
-                result = inspect_sources(source, inspector, work)
-                analysis["components"] = result["components"]
-                analysis["frameworks"] = sorted((set(analysis["frameworks"]) - {"Unknown"}) | set(result["frameworks"])) or ["Unknown"]
-                analysis["evidence"] = (result["evidence"] + analysis["evidence"])[:200]
-                project_inspector_evidence = [item for item in result["evidence"] if item.get("label")]
-                inspector_incomplete = result["incomplete"]
-                analysis["windows_scan"] = "partial" if inspector_incomplete else "success"
-            analysis["inspector_incomplete"] = inspector_incomplete
-            supplemental = semgrep_engine.scan(source, semgrep, work, files)
-            analysis["semgrep"] = {**supplemental, "configuration": engine_config}
-            analysis["projects"] = classify_projects(files, classify, project_inspector_evidence + supplemental["evidence"])
-            project_types = {label for project in analysis["projects"] for label in project["labels"]
-                             if label.startswith(("PowerShell", "Cross-platform:"))
-                             or label in {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP",
-                                          "Windows service", "Service management"}}
-            if "Windows" in analysis["platforms"]:
-                # Inspector's broad service component includes management APIs.
-                # Only project host evidence promotes it to an application type.
-                type_components = [component for component in analysis["components"]
-                                   if component != "Windows services" or "Windows service" in project_types]
-                analysis["application_types"] = application_types(analysis["frameworks"], type_components)
-            analysis["application_types"] = sorted(set(analysis["application_types"]) | project_types)
-            analysis["inspector_strategy"] = INSPECTOR_STRATEGY
-            analysis["status"] = "partial" if inspector_incomplete or any(skipped.get(k) for k in PARTIAL_REASONS) else "success"
-            if not files and analysis["status"] == "success":
-                analysis["status"] = "not_applicable"
-                analysis["purpose"] = "No eligible source"
-                analysis["note"] = "Repository inventory completed, but no in-scope source files were found; not a complete code scan."
-            analysis["scanned_at"] = stamp(datetime.now(timezone.utc))
+            analysis = analyze_sources(files, skipped, source_method, source, inspector, work,
+                                       semgrep, engine_config)
             cache.mkdir(parents=True, exist_ok=True)
             cached.write_text(json.dumps(analysis), encoding="utf-8")
     return {
@@ -734,6 +694,52 @@ def analyze_repository(candidate, inspector, cache, semgrep=None):
         "languages_truncated": repo["languages"]["pageInfo"]["hasNextPage"],
         **analysis,
     }
+
+
+def analyze_sources(files, skipped, source_method, source, inspector, work, semgrep=None, engine_config=None):
+    """Run the same source-level analysis regardless of the repository host."""
+    container_images = base_images(files)
+    ci_files = [item for item in files if is_ci_file(item[0])]
+    files = [item for item in files if not is_ci_file(item[0])]
+    for path, _ in ci_files:
+        (source / path).unlink(missing_ok=True)
+    analysis = classify(files)
+    analysis["container_base_images"] = container_images
+    analysis["ci"] = ci_signals(ci_files)
+    analysis.update({"files_scanned": len(files), "excluded": skipped, "source_method": source_method,
+                     "components": [], "application_types": [], "windows_scan": "not_applicable"})
+    inspector_incomplete = {}
+    project_inspector_evidence = []
+    if "Windows" in analysis["platforms"]:
+        result = inspect_sources(source, inspector, work)
+        analysis["components"] = result["components"]
+        analysis["frameworks"] = sorted((set(analysis["frameworks"]) - {"Unknown"}) | set(result["frameworks"])) or ["Unknown"]
+        analysis["evidence"] = (result["evidence"] + analysis["evidence"])[:200]
+        project_inspector_evidence = [item for item in result["evidence"] if item.get("label")]
+        inspector_incomplete = result["incomplete"]
+        analysis["windows_scan"] = "partial" if inspector_incomplete else "success"
+    analysis["inspector_incomplete"] = inspector_incomplete
+    supplemental = semgrep_engine.scan(source, semgrep, work, files)
+    analysis["semgrep"] = {**supplemental, "configuration": engine_config}
+    analysis["projects"] = classify_projects(files, classify, project_inspector_evidence + supplemental["evidence"])
+    project_types = {label for project in analysis["projects"] for label in project["labels"]
+                     if label.startswith(("PowerShell", "Cross-platform:"))
+                     or label in {"Windows Forms", "WPF", "WinUI / Windows App SDK", "UWP",
+                                  "Windows service", "Service management"}}
+    if "Windows" in analysis["platforms"]:
+        # Inspector's broader service component includes management APIs.
+        type_components = [component for component in analysis["components"]
+                           if component != "Windows services" or "Windows service" in project_types]
+        analysis["application_types"] = application_types(analysis["frameworks"], type_components)
+    analysis["application_types"] = sorted(set(analysis["application_types"]) | project_types)
+    analysis["inspector_strategy"] = INSPECTOR_STRATEGY
+    analysis["status"] = "partial" if inspector_incomplete or any(skipped.get(k) for k in PARTIAL_REASONS) else "success"
+    if not files and analysis["status"] == "success":
+        analysis["status"] = "not_applicable"
+        analysis["purpose"] = "No eligible source"
+        analysis["note"] = "Repository inventory completed, but no in-scope source files were found; not a complete code scan."
+    analysis["scanned_at"] = stamp(datetime.now(timezone.utc))
+    return analysis
 
 
 def z_score(confidence):

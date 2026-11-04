@@ -186,7 +186,8 @@ def cross_os_section(report):
             f'<p class="muted">Distribution denominator: all {total} sampled repositories. '
             'Groups are mutually exclusive: Cross-OS first, then Windows candidates excluding Cross-OS, '
             'then Others. Windows indicates a detected Windows signal, not Windows-only support. '
-            'Languages use GitHub\'s primary language per repository; percentages are within each category. '
+            f'Languages use {"GitLab" if report.get("source_platform") == "GitLab" else "GitHub"}'
+            '\'s primary language per repository; percentages are within each category. '
             'Ties are retained. The second column of languages shows the next distinct frequency rank.</p>')
     parts.append(f'<p class="muted">{text(assessment["method"])}</p></section>')
     return "".join(parts)
@@ -201,6 +202,16 @@ def build_html(report, pages_url=None):
                   f"{coverage.get('population_size', 'N/A'):,} public repositories with qualifying human activity in "
                   f"GH Archive. Source-scan shares carry {round(confidence * 100)}% Wilson confidence intervals; worst-case margin "
                   f"for complete scans is ±{number(metrics.get('margin_of_error'))} percentage points.")
+    elif report.get("source_platform") == "GitLab":
+        notice = (
+            "Bounded, non-representative cohort from GitLab.com public projects and project events. "
+            "Percentages describe the analyzed cohort only; no confidence intervals are reported. "
+            f"Projects examined: {coverage['projects_examined']} / budget {coverage['project_budget']}; "
+            f"events examined: {coverage['events_examined']}; "
+            f"event histories bounded: {len(coverage['event_history_bounded'])}; "
+            f"project event retrieval errors: {len(coverage['discovery_errors'])}. "
+            + coverage["activity"]
+        )
     else:
         notice = ("Bounded, non-representative cohort from GitHub GraphQL search (GH Archive fallback). "
                   "Percentages describe the analyzed cohort only; no confidence intervals are reported.")
@@ -219,7 +230,8 @@ def build_html(report, pages_url=None):
     parts = [
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">",
         f"<title>Public App Development Observatory — {text(window['end'][:10])}</title><style>{CSS}</style></head><body>",
-        "<h1>Public App Development Observatory</h1>",
+        ("<h1>Public App Development Observatory — GitLab</h1>"
+         if report.get("source_platform") == "GitLab" else "<h1>Public App Development Observatory</h1>"),
         f"<p class=\"muted\">Window {text(window['start'])} → {text(window['end'])} (UTC) · generated {text(report['generated_at'])}"
         f" · ruleset {text(report['ruleset_version'])} · Microsoft Application Inspector {text(report['inspector_version'])}</p>",
         f"<p class=\"notice\">{text(notice)}</p>",
@@ -234,6 +246,8 @@ def build_html(report, pages_url=None):
     if pages_url:
         parts.append(f'<p>Interactive dashboard: <a href="{escape(pages_url, quote=True)}">{text(pages_url)}</a></p>')
     for key, title, note in SECTIONS:
+        if report.get("source_platform") == "GitLab":
+            note = note.replace("GitHub's primary language", "GitLab's largest reported language percentage")
         parts.append(f"<h2>{text(title)}</h2>")
         if key in EXCLUSIVE:
             parts.append(f'<p class="denominator-note"><strong>{text(denominator_note)}</strong></p>')
@@ -278,7 +292,7 @@ def build_html(report, pages_url=None):
                 name = text(repository.get("name"))
                 url = repository.get("url", "")
                 repository_link = (f'<a href="{escape(url, quote=True)}">{name}</a>'
-                                   if url.startswith("https://github.com/") else name)
+                                   if url.startswith(("https://github.com/", "https://gitlab.com/")) else name)
                 parts.append(f"<tr><td>{repository_link}</td><td>{text(existing)}</td>"
                              f"<td>{text(potential)}</td><td>{text(evidence)}</td></tr>")
             parts.append("</tbody></table>")

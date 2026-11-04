@@ -22,6 +22,73 @@ charts directly in the repository—no GitHub Pages visit required. It appears a
 the first successful weekly run on the default branch with this feature enabled.
 The interactive Pages dashboard remains available as an optional companion.
 
+## GitLab.com analysis (separate pipeline)
+
+`python -m discovery.gitlab` applies the same deterministic source classifiers,
+project-type rules, pinned Application Inspector version, explicit cross-OS
+documentation rules, and Windows-container screening to public GitLab.com projects.
+It does **not** include registry research, OpenAI analysis, private projects,
+self-managed GitLab instances, or changes to the existing GitHub report/dashboard.
+
+The discovery frame is necessarily different from GitHub's GH Archive sample:
+up to 500 public projects ordered by latest activity are examined, selecting up to
+100 with qualifying issue/merge-request events in a 30-day UTC window. At most two
+100-event pages per project are inspected by default. Exact timestamps filter out
+events outside the window; issue/MR openings/reopenings, conversation notes and MR
+approvals qualify. Pushes, system notes and identified bot accounts do not.
+The bot filter is heuristic; unidentified automation may remain. Projects whose
+only recent work is commits will not qualify, matching the GitHub pipeline's focus
+on conversation activity rather than commit activity. Project ordering, event
+retention/visibility, pagination bounds and API failures can bias coverage.
+
+This is a **bounded, non-representative cohort**, not a GitLab-wide random sample:
+there are no population estimates or confidence intervals. The report records
+projects/events examined, bounded histories and discovery errors. GitHub and GitLab
+percentages have separate denominators and must not be added or interpreted as
+hosting-platform market shares. Forks are retained and labeled, as in the main
+collector; mirrors and cross-host duplicates are not automatically deduplicated.
+
+The default-branch SHA is pinned when each selected project is scanned. Both source
+analysis and cross-OS citations refer to that SHA, not necessarily a commit made
+during the activity window. Cross-OS requires explicit documentation of application
+support for two OS families; CI tags/configuration indicate intent, not successful
+pipeline runs. The same source extraction limits apply (150 MiB download, 256 MiB
+eligible source, 8 MiB per source file); oversized GitLab archives fail explicitly
+rather than switching to GitHub's file-retrieval fallback. Documentation review is
+bounded to 100 documents, 1 MiB per file, 2 MiB total and 96,000 excerpt characters.
+GitLab language percentages determine the primary language and are not byte counts.
+Retrieval/scan failures remain visible; failed pinned reviews withhold the OS-group
+distribution instead of being counted as Others. Optional AI purpose/community
+summaries are not generated; their report cells remain explicitly uncollected.
+No project builds, scripts or tests are executed by this static analysis.
+
+Run on Windows x64, or supply an existing compatible Inspector executable:
+
+```powershell
+# Optional read-only token when anonymous API access is insufficient.
+$env:GITLAB_TOKEN = "<GitLab API token>"
+python -m discovery.gitlab --limit 100 --project-budget 500 --install-inspector
+python -m discovery.report_markdown --input gitlab-reports/latest.json --output gitlab-reports
+python -m discovery.report_pdf --input gitlab-reports/latest.json --output gitlab-reports/report.pdf --archive-dir gitlab-report-history
+```
+
+`--end` fixes the activity-window end; `--event-pages` accepts 1–5 and
+`--project-budget` accepts up to 1000. Authentication/network errors are surfaced;
+no synthetic findings or silent GitHub fallback are used. A missing cohort or no
+complete scans fails the run. `GITLAB_TOKEN` is sent only to the fixed GitLab.com
+API; GitHub credentials are used only by the existing Inspector release installer.
+
+The separate **GitLab public-project report** workflow supports manual dispatch and
+runs Mondays at 10:00 America/Los_Angeles after it is merged to the default branch.
+It saves report artifacts and diagnostics for 90 days. Successful default-branch
+runs commit only `gitlab-reports/` and `gitlab-report-history/` (dated PDF names use
+the existing `report-yyyy-mm-dd.pdf` UTC convention). It never deploys the GitHub
+dashboard or writes `reports/`, `report-history/` or `site/data/latest.json`.
+Configure an optional `GITLAB_TOKEN` Actions secret for public API access.
+Manual email defaults off; scheduled email is enabled only with repository variable
+`GITLAB_EMAIL_ENABLED=true`, using the existing Gmail/recipient configuration.
+GitLab mail has a distinct subject and attachment filename.
+
 ## Run locally (Windows x64)
 
 Requirements: Python 3.11+, GitHub CLI (`gh`), and a GitHub login with public
