@@ -96,6 +96,17 @@ There is no `research-history/` or separate GitLab history directory.
 Artifacts and diagnostics are retained for 90 days. GitLab collection never writes
 the GitHub dashboard's `site/data/latest.json`.
 Configure an optional `GITLAB_TOKEN` Actions secret for public API access.
+A read-only token is recommended for scheduled collection to reduce dependence on
+shared anonymous runner quotas; it does not eliminate GitLab rate limits.
+The client paces API requests (one per second anonymously, two per second with a
+token), spaces archive requests at least 15 seconds apart, and waits for quota resets
+when successful responses report no remaining requests. HTTP 429 responses use
+`Retry-After` (seconds or HTTP date) and rate-limit reset headers, with exponential
+backoff when necessary. Server-requested waits are never truncated to 60 seconds.
+Recovery is bounded to six attempts per request and 30 minutes of 429 cooldown per
+client; if exhausted, further requests stop and the run fails visibly rather than
+hammering each subsequent project. Other failures, including missing/oversized
+archives, remain failures and cannot be fixed by rate-limit recovery.
 A standalone manual GitLab run keeps artifacts and can optionally email its PDF;
 it has no independent schedule or publication job. Its email defaults off.
 

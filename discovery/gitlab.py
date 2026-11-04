@@ -2,9 +2,11 @@
 
 import argparse
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 import io
 import json
 import logging
+import math
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -34,29 +36,93 @@ ACTIVITY = (
 class Client:
     def __init__(self, token=None):
         self.token = token
+        self.next_request = 0
+        self.next_archive = 0
+        self.rate_limit_wait = 0
+        self.rate_limit_error = None
+
+    @staticmethod
+    def cooldown(headers):
+        """Respect server cooldowns without shortening long Retry-After values."""
+        now = time.time()
+        delays = []
+        retry = headers.get("Retry-After")
+        if isinstance(retry, str):
+            try:
+                delay = float(retry)
+            except ValueError:
+                try:
+                    delay = parsedate_to_datetime(retry).timestamp() - now
+                except (ValueError, TypeError, OverflowError):
+                    delay = 0
+            if math.isfinite(delay):
+                delays.append(max(0, delay))
+        for key in ("RateLimit-Reset", "X-RateLimit-Reset"):
+            reset = headers.get(key)
+            if isinstance(reset, str):
+                try:
+                    delay = float(reset) - now + 1
+                except ValueError:
+                    continue
+                if math.isfinite(delay):
+                    delays.append(max(0, delay))
+        return max(delays, default=0)
+
+    def wait(self, archive):
+        delay = max(self.next_request, self.next_archive if archive else 0) - time.monotonic()
+        if delay > 0:
+            time.sleep(delay)
+        now = time.monotonic()
+        self.next_request = now + (0.5 if self.token else 1)
+        if archive:
+            self.next_archive = now + 15
 
     def get(self, endpoint, *, binary=False, maximum=12 * 1024 * 1024, **params):
         if not endpoint.startswith("/") or endpoint.startswith("//"):
             raise ValueError("GitLab API endpoint must be a relative absolute path")
+        if self.rate_limit_error:
+            raise pilot.PilotError(self.rate_limit_error)
         url = API + endpoint + ("?" + urlencode(params) if params else "")
         headers = {"User-Agent": "windows-app-discovery", "Accept": "application/json"}
-        for attempt in range(3):
+        server_errors = 0
+        archive = endpoint.endswith("/repository/archive.zip")
+        for attempt in range(6):
+            self.wait(archive)
             try:
                 request = urllib.request.Request(url, headers=headers)
                 if self.token:
                     request.add_unredirected_header("PRIVATE-TOKEN", self.token)
                 with urllib.request.urlopen(request, timeout=90) as response:
                     data = response.read(maximum + 1)
+                    remaining = response.headers.get("RateLimit-Remaining")
+                    if remaining is None:
+                        remaining = response.headers.get("X-RateLimit-Remaining")
+                    if remaining == "0":
+                        delay = self.cooldown(response.headers) or 60
+                        self.next_request = max(self.next_request, time.monotonic() + delay)
                 if len(data) > maximum:
                     raise pilot.DownloadLimitError(f"GitLab response exceeds {maximum} bytes: {endpoint}")
                 return data if binary else json.loads(data)
             except urllib.error.HTTPError as error:
-                if error.code not in {429, 500, 502, 503, 504} or attempt == 2:
+                if error.code == 429:
+                    delay = max(self.cooldown(error.headers), min(600, 60 * 2 ** attempt))
+                    if attempt == 5 or self.rate_limit_wait + delay > 1800:
+                        self.rate_limit_error = (
+                            f"GitLab API HTTP 429: rate-limit recovery exhausted at {endpoint}; "
+                            "further requests stopped. Retry later or configure a read-only GITLAB_TOKEN."
+                        )
+                        raise pilot.PilotError(self.rate_limit_error) from error
+                    self.rate_limit_wait += delay
+                    self.next_request = max(self.next_request, time.monotonic() + delay)
+                    LOG.warning("GitLab HTTP 429; cooling down all requests for %.0fs before retrying %s "
+                                "(attempt %s/6)", delay, endpoint, attempt + 2)
+                    continue
+                server_errors += 1
+                if error.code not in {500, 502, 503, 504} or server_errors >= 3 or attempt == 5:
                     raise pilot.PilotError(f"GitLab API HTTP {error.code}: {endpoint}") from error
-                retry = error.headers.get("Retry-After", "")
-                delay = min(60, int(retry)) if retry.isdigit() else 5 * (attempt + 1)
+                delay = max(self.cooldown(error.headers), 5 * server_errors)
                 LOG.warning("GitLab HTTP %s; retrying %s in %ss", error.code, endpoint, delay)
-                time.sleep(delay)
+                self.next_request = max(self.next_request, time.monotonic() + delay)
         raise AssertionError("Unreachable")
 
 

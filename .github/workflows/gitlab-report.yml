@@ -51,10 +51,11 @@ jobs:
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Check GitLab.com DNS and public API
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
           Resolve-DnsName gitlab.com -ErrorAction Stop
-          $response = Invoke-WebRequest -Uri "https://gitlab.com/api/v4/projects?visibility=public&per_page=1" -TimeoutSec 60
-          Write-Host "GitLab public API HTTP status: $($response.StatusCode)"
+          python -c "import os; from discovery.gitlab import Client; token = os.environ.get('GITLAB_TOKEN'); print('GitLab authentication: ' + ('token' if token else 'anonymous')); Client(token).get('/projects', visibility='public', per_page=1); print('GitLab public API request succeeded')"
       - name: Discover and analyze public GitLab.com projects
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}

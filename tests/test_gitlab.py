@@ -37,6 +37,26 @@ def event(identifier=1, **values):
 
 
 class ClientTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 0.0
+        self.sleeps = []
+        def sleep(delay):
+            self.sleeps.append(delay)
+            self.now += delay
+        clock = patch("discovery.gitlab.time.monotonic", side_effect=lambda: self.now)
+        sleeper = patch("discovery.gitlab.time.sleep", side_effect=sleep)
+        clock.start()
+        sleeper.start()
+        self.addCleanup(clock.stop)
+        self.addCleanup(sleeper.stop)
+
+    @staticmethod
+    def response(headers=None):
+        response = MagicMock()
+        response.read.return_value = b'{"ok": true}'
+        response.headers = headers or {}
+        return response
+
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_api_query_token_and_bounded_json(self, urlopen):
         response = MagicMock()
@@ -59,15 +79,116 @@ class ClientTests(unittest.TestCase):
         with self.assertRaises(pilot.DownloadLimitError):
             gitlab.Client().get("/archive.zip", binary=True, maximum=3)
 
-    @patch("discovery.gitlab.time.sleep")
     @patch("discovery.gitlab.urllib.request.urlopen")
-    def test_retries_rate_limits_but_surfaces_final_failure_without_token(self, urlopen, sleep):
+    def test_retries_rate_limits_but_surfaces_final_failure_without_token(self, urlopen):
         urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "1000"}, None)
+        client = gitlab.Client("secret-value")
         with self.assertRaisesRegex(pilot.PilotError, "HTTP 429") as raised:
-            gitlab.Client("secret-value").get("/projects")
+            client.get("/projects")
         self.assertNotIn("secret-value", str(raised.exception))
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(self.sleeps, [1000])
+        with self.assertRaisesRegex(pilot.PilotError, "further requests stopped"):
+            client.get("/projects/2")
+        self.assertEqual(urlopen.call_count, 2)
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_global_and_archive_requests_are_paced(self, urlopen):
+        urlopen.return_value.__enter__.return_value = self.response()
+        client = gitlab.Client()
+        client.get("/projects")
+        client.get("/projects/1")
+        client.get("/projects/1/repository/archive.zip", binary=True)
+        client.get("/projects/2")
+        client.get("/projects/2/repository/archive.zip", binary=True)
+        self.assertEqual(self.sleeps, [1, 1, 1, 14])
+        self.assertEqual(urlopen.call_count, 5)
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_authenticated_requests_are_paced(self, urlopen):
+        urlopen.return_value.__enter__.return_value = self.response()
+        client = gitlab.Client("test-token")
+        client.get("/projects")
+        client.get("/projects/1")
+        self.assertEqual(self.sleeps, [0.5])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_headerless_429_uses_exponential_backoff_and_recovers(self, urlopen):
+        response = MagicMock()
+        response.__enter__.return_value = self.response()
+        urlopen.side_effect = [
+            urllib.error.HTTPError("url", 429, "rate limited", {}, None),
+            urllib.error.HTTPError("url", 429, "rate limited", {}, None),
+            response,
+        ]
+        self.assertEqual(gitlab.Client().get("/projects"), {"ok": True})
+        self.assertEqual(self.sleeps, [60, 120])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_persistent_429_has_bounded_retries_and_opens_circuit(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {}, None)
+        client = gitlab.Client()
+        with self.assertRaisesRegex(pilot.PilotError, "HTTP 429"):
+            client.get("/projects")
+        self.assertEqual(urlopen.call_count, 6)
+        self.assertEqual(self.sleeps, [60, 120, 240, 480, 600])
+        self.assertEqual(sum(self.sleeps), 1500)
+        with self.assertRaises(pilot.PilotError):
+            client.get("/projects/2")
+        self.assertEqual(urlopen.call_count, 6)
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_wait_beyond_recovery_budget_fails_without_early_retry(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "3600"}, None)
+        client = gitlab.Client()
+        with self.assertRaisesRegex(pilot.PilotError, "recovery exhausted"):
+            client.get("/projects")
+        self.assertEqual(self.sleeps, [])
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("discovery.gitlab.time.time", return_value=1000)
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_429_waits_for_later_reset_before_success(self, urlopen, _):
+        response = MagicMock()
+        response.__enter__.return_value = self.response()
+        urlopen.side_effect = [
+            urllib.error.HTTPError("url", 429, "rate limited",
+                                   {"Retry-After": "60", "RateLimit-Reset": "1400"}, None),
+            response,
+        ]
+        self.assertEqual(gitlab.Client().get("/projects"), {"ok": True})
+        self.assertEqual(self.sleeps, [401])
+
+    @patch("discovery.gitlab.time.time", return_value=1000)
+    def test_cooldown_supports_dates_reset_headers_and_invalid_values(self, _):
+        self.assertEqual(gitlab.Client.cooldown({"Retry-After": "Thu, 01 Jan 1970 00:25:00 GMT"}), 500)
+        self.assertEqual(gitlab.Client.cooldown({"RateLimit-Reset": "1600"}), 601)
+        self.assertEqual(gitlab.Client.cooldown({"X-RateLimit-Reset": "1700", "Retry-After": "900"}), 900)
+        self.assertEqual(gitlab.Client.cooldown({"Retry-After": "bad", "RateLimit-Reset": "bad"}), 0)
+        for value in ("nan", "inf", "-10"):
+            self.assertEqual(gitlab.Client.cooldown({"Retry-After": value}), 0)
+
+    @patch("discovery.gitlab.time.time", return_value=1000)
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_successful_response_exhausting_quota_delays_next_request(self, urlopen, _):
+        first, second = MagicMock(), MagicMock()
+        first.__enter__.return_value = self.response({"RateLimit-Remaining": "0", "RateLimit-Reset": "1400"})
+        second.__enter__.return_value = self.response()
+        urlopen.side_effect = [first, second]
+        client = gitlab.Client()
+        client.get("/projects")
+        client.get("/projects/1")
+        self.assertEqual(self.sleeps, [401])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_server_errors_remain_bounded_and_do_not_trip_rate_limit_circuit(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 503, "unavailable", {}, None)
+        client = gitlab.Client()
+        with self.assertRaisesRegex(pilot.PilotError, "HTTP 503"):
+            client.get("/projects")
         self.assertEqual(urlopen.call_count, 3)
-        self.assertEqual([x.args[0] for x in sleep.call_args_list], [60, 60])
+        self.assertEqual(self.sleeps, [5, 10])
+        self.assertIsNone(client.rate_limit_error)
 
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_rejects_non_api_endpoints_and_permission_failures(self, urlopen):
