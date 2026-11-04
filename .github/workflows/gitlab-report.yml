@@ -1,6 +1,9 @@
 name: GitLab public-project report
 
 on:
+  push:
+    branches: [feature/gitlab-discovery]
+    paths: [.github/workflows/gitlab-report.yml]
   workflow_dispatch:
     inputs:
       limit:
@@ -37,11 +40,16 @@ jobs:
           python-version: "3.11"
       - name: Unit tests
         run: python -m unittest discover -s tests -v
+      - name: Check GitLab.com DNS and public API
+        run: |
+          Resolve-DnsName gitlab.com -ErrorAction Stop
+          $response = Invoke-WebRequest -Uri "https://gitlab.com/api/v4/projects?visibility=public&per_page=1" -TimeoutSec 60
+          Write-Host "GitLab public API HTTP status: $($response.StatusCode)"
       - name: Discover and analyze public GitLab.com projects
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-          COHORT_LIMIT: ${{ inputs.limit || '100' }}
-          PROJECT_BUDGET: ${{ inputs.project_budget || '500' }}
+          COHORT_LIMIT: ${{ inputs.limit || (github.event_name == 'push' && '10') || '100' }}
+          PROJECT_BUDGET: ${{ inputs.project_budget || (github.event_name == 'push' && '50') || '500' }}
         run: python -m discovery.gitlab --install-inspector --limit $env:COHORT_LIMIT --project-budget $env:PROJECT_BUDGET
       - name: Render GitLab Markdown and charts
         run: python -m discovery.report_markdown --input gitlab-reports/latest.json --output gitlab-reports
