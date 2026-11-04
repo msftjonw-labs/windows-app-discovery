@@ -12,6 +12,10 @@ on:
         type: choice
         options: [auto, gharchive, graphql-search]
         default: auto
+      gitlab_project_budget:
+        description: Maximum recent GitLab projects examined (up to 1000)
+        default: "500"
+        required: true
       email:
         description: Email the GitHub and GitLab PDF reports together
         type: boolean
@@ -46,6 +50,7 @@ jobs:
     uses: ./.github/workflows/gitlab-report.yml
     with:
       limit: ${{ inputs.limit || '100' }}
+      project_budget: ${{ inputs.gitlab_project_budget || '500' }}
     secrets: inherit
 
   collect:
