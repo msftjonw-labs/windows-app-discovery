@@ -350,6 +350,29 @@ class SourceTests(unittest.TestCase):
             self.assertEqual(client.get.call_count, 1)
 
     @patch("discovery.gitlab.discover")
+    def test_empty_and_oversized_projects_are_excluded_without_blocking_complete_reviews(self, discover):
+        candidates = [{"project_id": i, "name": f"group/project{i}"} for i in range(1, 4)]
+        discover.return_value = (candidates, {"representative_sample": False, "cohort_size": 3})
+        client = MagicMock()
+        client.get.side_effect = [
+            {**project(1), "default_branch": None},
+            project(2), {"id": SHA}, {}, pilot.DownloadLimitError("Archive exceeds limit"),
+            project(3), {"id": SHA}, {"Python": 100.0},
+            archive([("root/main.py", "print('hello')\n")]),
+        ]
+        report = gitlab.collect(client, 3, START, END, Path("inspector"))
+        self.assertEqual(report["coverage"]["cohort_size"], 3)
+        excluded = report["coverage"]["excluded_projects"]
+        self.assertEqual([row["name"] for row in excluded], ["group/project1", "group/project2"])
+        self.assertIn("no default branch", excluded[0]["reason"])
+        self.assertEqual(excluded[1]["reason"], "Archive exceeds limit")
+        self.assertEqual(report["metrics"]["selected"], 1)
+        self.assertEqual(report["metrics"]["successful"], 1)
+        self.assertEqual(report["metrics"]["failed"], 0)
+        self.assertTrue(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(sum(row["count"] for row in report["metrics"]["cross_os"]["rows"]), 1)
+
+    @patch("discovery.gitlab.discover")
     @patch("discovery.gitlab.analyze_repository")
     def test_scan_failure_is_not_counted_as_others(self, analyze, discover):
         discover.return_value = ([{"name": "group/failed", "project_id": 1}], {"representative_sample": False})
@@ -393,6 +416,20 @@ class OutputTests(unittest.TestCase):
         self.assertTrue(parsed["Subject"].startswith("GitLab"))
         self.assertNotIn("GraphQL", parsed.get_body().get_content())
         self.assertTrue(next(parsed.iter_attachments()).get_filename().startswith("gitlab-"))
+
+    def test_reports_show_excluded_projects_and_reasons(self):
+        report = self.gitlab_report()
+        report["coverage"]["excluded_projects"] = [
+            {"name": "group/empty", "reason": "GitLab project has no default branch"},
+            {"name": "group/large", "reason": "Archive exceeds limit"},
+        ]
+        for output in (report_markdown.build_markdown(report), report_pdf.build_html(report)):
+            self.assertIn("Projects excluded before assessment: 2", output)
+            self.assertIn("group/empty", output)
+            self.assertIn("no default branch", output)
+            self.assertIn("group/large", output)
+            self.assertIn("Archive exceeds limit", output)
+            self.assertIn("not counted in assessment totals or percentages", output)
 
     def test_workflow_does_not_touch_github_outputs_or_registries(self):
         workflow = (pilot.ROOT / ".github/workflows/gitlab-report.yml").read_text()
@@ -449,13 +486,24 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             with self.assertRaisesRegex(pilot.PilotError, "publishing withheld"):
-                self.run_collection(directory, pilot.DownloadLimitError("Archive exceeds limit"))
+                self.run_collection(directory, pilot.PilotError("GitLab API HTTP 403"))
             output = directory / "gitlab-reports" / "latest.json"
             report = json.loads(output.read_text(encoding="utf-8"))
             self.assertTrue(output.with_name("cross-os-assessments.json").is_file())
             self.assertEqual(report["metrics"]["failed"], 1)
-            self.assertEqual(report["repositories"][0]["error"], "Archive exceeds limit")
+            self.assertEqual(report["repositories"][0]["error"], "GitLab API HTTP 403")
             self.assertFalse(report["metrics"]["cross_os"]["complete"])
+
+    def test_all_excluded_collection_saves_reasons_and_blocks_publication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            with self.assertRaisesRegex(pilot.PilotError, "publishing withheld"):
+                self.run_collection(directory, pilot.DownloadLimitError("Archive exceeds limit"))
+            report = json.loads((directory / "gitlab-reports/latest.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["repositories"], [])
+        self.assertEqual(report["metrics"]["successful"], 0)
+        self.assertFalse(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(report["coverage"]["excluded_projects"][0]["reason"], "Archive exceeds limit")
 
 
 if __name__ == "__main__":

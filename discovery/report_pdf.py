@@ -212,6 +212,11 @@ def build_html(report, pages_url=None):
             f"project event retrieval errors: {len(coverage['discovery_errors'])}. "
             + coverage["activity"]
         )
+        excluded = coverage.get("excluded_projects", [])
+        notice += (f" Projects excluded before assessment: {len(excluded)}. "
+                   "Excluded projects are not counted in assessment totals or percentages.")
+        for project in excluded:
+            notice += f" Excluded {project['name']}: {project['reason']}."
     else:
         notice = ("Bounded, non-representative cohort from GitHub GraphQL search (GH Archive fallback). "
                   "Percentages describe the analyzed cohort only; no confidence intervals are reported.")

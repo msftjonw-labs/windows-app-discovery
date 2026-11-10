@@ -37,6 +37,10 @@ ACTIVITY = (
 MAX_RATE_LIMIT_WAIT = 5400
 
 
+class ExcludedProject(pilot.PilotError):
+    """A project that cannot be assessed within the collection bounds."""
+
+
 class Client:
     def __init__(self, token=None):
         self.token = token
@@ -295,15 +299,18 @@ def analyze_repository(client, candidate, inspector):
         raise pilot.RepositoryUnavailable("GitLab project is no longer public")
     branch = project.get("default_branch")
     if not branch:
-        raise pilot.PilotError("GitLab project has no default branch")
+        raise ExcludedProject("GitLab project has no default branch")
     commit = client.get(f"/projects/{project_id}/repository/commits/{quote(branch, safe='')}")
     sha = commit["id"]
     if not re.fullmatch(r"[a-fA-F0-9]{40,64}", sha):
         raise pilot.PilotError("Invalid GitLab commit SHA")
     url = project_url(project)
     languages = client.get(f"/projects/{project_id}/languages")
-    data = client.get(f"/projects/{project_id}/repository/archive.zip", sha=sha,
-                      binary=True, maximum=pilot.MAX_DOWNLOAD)
+    try:
+        data = client.get(f"/projects/{project_id}/repository/archive.zip", sha=sha,
+                          binary=True, maximum=pilot.MAX_DOWNLOAD)
+    except pilot.DownloadLimitError as error:
+        raise ExcludedProject(str(error)) from error
     scratch = pilot.ROOT / ".cache" / "gitlab-work"
     scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="gitlab-", dir=scratch) as temporary:
@@ -330,11 +337,16 @@ def analyze_repository(client, candidate, inspector):
 
 def collect(client, limit, start, end, inspector, project_budget=500, event_pages=2):
     candidates, coverage = discover(client, limit, start, end, project_budget, event_pages)
+    coverage["excluded_projects"] = []
     records = []
     for candidate in candidates:
         LOG.info("Analyzing GitLab project %s", candidate["name"])
         try:
             record = analyze_repository(client, candidate, inspector)
+        except ExcludedProject as error:
+            LOG.warning("GitLab project excluded %s: %s", candidate["name"], error)
+            coverage["excluded_projects"].append({**candidate, "reason": str(error)})
+            continue
         except (pilot.PilotError, urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError,
                 subprocess.TimeoutExpired, zipfile.BadZipFile) as error:
             LOG.error("%s: %s", candidate["name"], error)

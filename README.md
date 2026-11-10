@@ -53,8 +53,13 @@ analysis and cross-OS citations refer to that SHA, not necessarily a commit made
 during the activity window. Cross-OS requires explicit documentation of application
 support for two OS families; CI tags/configuration indicate intent, not successful
 pipeline runs. The same source extraction limits apply (150 MiB download, 256 MiB
-eligible source, 8 MiB per source file); oversized GitLab archives fail explicitly
-rather than switching to GitHub's file-retrieval fallback. Documentation review is
+eligible source, 8 MiB per source file). Projects without a default branch and
+archives exceeding the download limit are excluded before assessment, rather than
+switching to GitHub's file-retrieval fallback. Each exclusion and its reason appear
+in the JSON coverage, Markdown and PDF reports; excluded projects are not counted
+in assessment totals or percentages and are not replaced. Other retrieval/scan
+failures still block publication, as does a cohort with no successful scans.
+Documentation review is
 bounded to 100 documents, 1 MiB per file, 2 MiB total and 96,000 excerpt characters.
 GitLab language percentages determine the primary language and are not byte counts.
 Retrieval/scan failures remain visible; failed pinned reviews withhold the OS-group
