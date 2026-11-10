@@ -81,13 +81,13 @@ class ClientTests(unittest.TestCase):
 
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_retries_rate_limits_but_surfaces_final_failure_without_token(self, urlopen):
-        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "1000"}, None)
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "3000"}, None)
         client = gitlab.Client("secret-value")
         with self.assertRaisesRegex(pilot.PilotError, "HTTP 429") as raised:
             client.get("/projects")
         self.assertNotIn("secret-value", str(raised.exception))
         self.assertEqual(urlopen.call_count, 2)
-        self.assertEqual(self.sleeps, [1000])
+        self.assertEqual(self.sleeps, [3000])
         with self.assertRaisesRegex(pilot.PilotError, "further requests stopped"):
             client.get("/projects/2")
         self.assertEqual(urlopen.call_count, 2)
@@ -139,7 +139,7 @@ class ClientTests(unittest.TestCase):
 
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_wait_beyond_recovery_budget_fails_without_early_retry(self, urlopen):
-        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "3600"}, None)
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "7200"}, None)
         client = gitlab.Client()
         with self.assertRaisesRegex(pilot.PilotError, "recovery exhausted"):
             client.get("/projects")

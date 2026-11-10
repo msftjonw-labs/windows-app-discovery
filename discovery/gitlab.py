@@ -33,6 +33,10 @@ ACTIVITY = (
 )
 
 
+# Anonymous GitLab event cooldowns can exceed 25 minutes; the job allows 180.
+MAX_RATE_LIMIT_WAIT = 5400
+
+
 class Client:
     def __init__(self, token=None):
         self.token = token
@@ -106,7 +110,7 @@ class Client:
             except urllib.error.HTTPError as error:
                 if error.code == 429:
                     delay = max(self.cooldown(error.headers), min(600, 60 * 2 ** attempt))
-                    if attempt == 5 or self.rate_limit_wait + delay > 1800:
+                    if attempt == 5 or self.rate_limit_wait + delay > MAX_RATE_LIMIT_WAIT:
                         self.rate_limit_error = (
                             f"GitLab API HTTP 429: rate-limit recovery exhausted at {endpoint}; "
                             "further requests stopped. Retry later or configure a read-only GITLAB_TOKEN."
