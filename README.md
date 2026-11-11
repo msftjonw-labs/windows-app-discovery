@@ -57,8 +57,15 @@ eligible source, 8 MiB per source file). Projects without a default branch and
 archives exceeding the download limit are excluded before assessment, rather than
 switching to GitHub's file-retrieval fallback. Each exclusion and its reason appear
 in the JSON coverage, Markdown and PDF reports; excluded projects are not counted
-in assessment totals or percentages and are not replaced. Other retrieval/scan
-failures still block publication, as does a cohort with no successful scans.
+in assessment totals or percentages and are not replaced. Empty, disabled or
+no-longer-public repositories, repository resources returning HTTP 403/404/410
+(including missing default-branch commits), and archives with unsafe paths or
+more than 100,000 entries are also excluded with explicit reasons. Unsafe archives
+are rejected as a whole; path-safety checks are not relaxed. These exclusions can
+bias the analyzed cohort. Network errors and server errors have bounded retries;
+authentication errors, exhausted retries, corrupt archives and other unexpected
+retrieval/scan failures still block publication, as does a cohort with no
+successful scans.
 Documentation review is
 bounded to 100 documents, 1 MiB per file, 2 MiB total and 96,000 excerpt characters.
 GitLab language percentages determine the primary language and are not byte counts.

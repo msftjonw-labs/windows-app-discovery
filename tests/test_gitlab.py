@@ -58,6 +58,30 @@ class ClientTests(unittest.TestCase):
         return response
 
     @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_network_errors_retry_and_recover(self, urlopen):
+        response = MagicMock()
+        response.__enter__.return_value = self.response()
+        urlopen.side_effect = [urllib.error.URLError("connection reset"), TimeoutError("timeout"), response]
+        self.assertEqual(gitlab.Client().get("/projects"), {"ok": True})
+        self.assertEqual(self.sleeps, [5, 10])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_persistent_network_errors_have_bounded_retries(self, urlopen):
+        urlopen.side_effect = urllib.error.URLError("connection reset")
+        with self.assertRaisesRegex(pilot.PilotError, "network request failed"):
+            gitlab.Client().get("/projects")
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual(self.sleeps, [5, 10])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_http_error_preserves_status_without_retrying_authentication(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 401, "unauthorized", {}, None)
+        with self.assertRaises(gitlab.APIError) as raised:
+            gitlab.Client().get("/projects")
+        self.assertEqual(raised.exception.status, 401)
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
     def test_api_query_token_and_bounded_json(self, urlopen):
         response = MagicMock()
         response.read.return_value = b'{"ok": true}'
@@ -278,6 +302,42 @@ class ActivityTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_unavailable_resources_are_excluded_but_auth_and_server_errors_are_not(self):
+        for stage in range(4):
+            for status in (401, 403, 404, 410, 500):
+                with self.subTest(stage=stage, status=status):
+                    client = MagicMock()
+                    responses = [project(), {"id": SHA}, {"Python": 100.0}]
+                    client.get.side_effect = responses[:stage] + [gitlab.APIError(status, "/resource")]
+                    expected = gitlab.ExcludedProject if status in {403, 404, 410} else gitlab.APIError
+                    with self.assertRaises(expected):
+                        gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                    self.assertEqual(client.get.call_count, stage + 1)
+
+    def test_repository_metadata_exclusions_stop_before_commit_download(self):
+        for metadata in (
+            {"visibility": "private"}, {"empty_repo": True},
+            {"repository_access_level": "disabled"}, {"default_branch": None},
+        ):
+            with self.subTest(metadata=metadata):
+                client = MagicMock()
+                client.get.return_value = {**project(), **metadata}
+                with self.assertRaises(gitlab.ExcludedProject):
+                    gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                self.assertEqual(client.get.call_count, 1)
+
+    def test_unsafe_archive_is_excluded_before_extraction(self):
+        for path in ("root/../escape.py", "/root/main.py", "root/pgai:checkup.md", r"root\main.py"):
+            with self.subTest(path=path):
+                client = MagicMock()
+                client.get.side_effect = [project(), {"id": SHA}, {}, archive([(path, "text")])]
+                with patch("discovery.gitlab.pilot.extract_sources") as extract:
+                    with self.assertRaisesRegex(gitlab.ExcludedProject, "Unsafe archive path"):
+                        gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                extract.assert_not_called()
+        with self.assertRaises(zipfile.BadZipFile):
+            gitlab.validate_archive(b"invalid archive")
+
     def test_pinned_documentation_requires_support_not_ci_or_portability(self):
         data = archive([
             ("root/README.md", "Example app\nRuns on Windows, Linux and macOS.\n"),
