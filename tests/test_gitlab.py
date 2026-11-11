@@ -334,7 +334,8 @@ class SourceTests(unittest.TestCase):
                 # ZipInfo normalizes backslashes on Windows; preserve the raw ZIP entry.
                 data = data.replace(path.replace("\\", "/").encode(), path.encode())
                 client.get.side_effect = [project(), {"id": SHA}, {}, data]
-                with patch("discovery.gitlab.pilot.extract_sources") as extract:
+                with patch("discovery.gitlab.pilot.extract_sources") as extract, \
+                        patch("zipfile.os.sep", "\\"):
                     with self.assertRaisesRegex(gitlab.ExcludedProject, "Unsafe archive path"):
                         gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
                 extract.assert_not_called()

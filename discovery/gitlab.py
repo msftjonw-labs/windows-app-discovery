@@ -322,7 +322,7 @@ def validate_archive(data):
             raise ExcludedProject("Archive has too many entries")
         for member in members:
             try:
-                pilot.safe_path(member.filename)
+                pilot.safe_path(member.orig_filename)
             except pilot.PilotError as error:
                 raise ExcludedProject(str(error)) from error
 
