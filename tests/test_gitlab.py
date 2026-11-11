@@ -330,7 +330,10 @@ class SourceTests(unittest.TestCase):
         for path in ("root/../escape.py", "/root/main.py", "root/pgai:checkup.md", r"root\main.py"):
             with self.subTest(path=path):
                 client = MagicMock()
-                client.get.side_effect = [project(), {"id": SHA}, {}, archive([(path, "text")])]
+                data = archive([(path.replace("\\", "/"), "text")])
+                # ZipInfo normalizes backslashes on Windows; preserve the raw ZIP entry.
+                data = data.replace(path.replace("\\", "/").encode(), path.encode())
+                client.get.side_effect = [project(), {"id": SHA}, {}, data]
                 with patch("discovery.gitlab.pilot.extract_sources") as extract:
                     with self.assertRaisesRegex(gitlab.ExcludedProject, "Unsafe archive path"):
                         gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
