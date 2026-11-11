@@ -58,6 +58,30 @@ class ClientTests(unittest.TestCase):
         return response
 
     @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_network_errors_retry_and_recover(self, urlopen):
+        response = MagicMock()
+        response.__enter__.return_value = self.response()
+        urlopen.side_effect = [urllib.error.URLError("connection reset"), TimeoutError("timeout"), response]
+        self.assertEqual(gitlab.Client().get("/projects"), {"ok": True})
+        self.assertEqual(self.sleeps, [5, 10])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_persistent_network_errors_have_bounded_retries(self, urlopen):
+        urlopen.side_effect = urllib.error.URLError("connection reset")
+        with self.assertRaisesRegex(pilot.PilotError, "network request failed"):
+            gitlab.Client().get("/projects")
+        self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual(self.sleeps, [5, 10])
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
+    def test_http_error_preserves_status_without_retrying_authentication(self, urlopen):
+        urlopen.side_effect = urllib.error.HTTPError("url", 401, "unauthorized", {}, None)
+        with self.assertRaises(gitlab.APIError) as raised:
+            gitlab.Client().get("/projects")
+        self.assertEqual(raised.exception.status, 401)
+        self.assertEqual(urlopen.call_count, 1)
+
+    @patch("discovery.gitlab.urllib.request.urlopen")
     def test_api_query_token_and_bounded_json(self, urlopen):
         response = MagicMock()
         response.read.return_value = b'{"ok": true}'
@@ -81,13 +105,13 @@ class ClientTests(unittest.TestCase):
 
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_retries_rate_limits_but_surfaces_final_failure_without_token(self, urlopen):
-        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "1000"}, None)
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "3000"}, None)
         client = gitlab.Client("secret-value")
         with self.assertRaisesRegex(pilot.PilotError, "HTTP 429") as raised:
             client.get("/projects")
         self.assertNotIn("secret-value", str(raised.exception))
         self.assertEqual(urlopen.call_count, 2)
-        self.assertEqual(self.sleeps, [1000])
+        self.assertEqual(self.sleeps, [3000])
         with self.assertRaisesRegex(pilot.PilotError, "further requests stopped"):
             client.get("/projects/2")
         self.assertEqual(urlopen.call_count, 2)
@@ -139,7 +163,7 @@ class ClientTests(unittest.TestCase):
 
     @patch("discovery.gitlab.urllib.request.urlopen")
     def test_wait_beyond_recovery_budget_fails_without_early_retry(self, urlopen):
-        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "3600"}, None)
+        urlopen.side_effect = urllib.error.HTTPError("url", 429, "rate limited", {"Retry-After": "7200"}, None)
         client = gitlab.Client()
         with self.assertRaisesRegex(pilot.PilotError, "recovery exhausted"):
             client.get("/projects")
@@ -278,6 +302,46 @@ class ActivityTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_unavailable_resources_are_excluded_but_auth_and_server_errors_are_not(self):
+        for stage in range(4):
+            for status in (401, 403, 404, 410, 500):
+                with self.subTest(stage=stage, status=status):
+                    client = MagicMock()
+                    responses = [project(), {"id": SHA}, {"Python": 100.0}]
+                    client.get.side_effect = responses[:stage] + [gitlab.APIError(status, "/resource")]
+                    expected = gitlab.ExcludedProject if status in {403, 404, 410} else gitlab.APIError
+                    with self.assertRaises(expected):
+                        gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                    self.assertEqual(client.get.call_count, stage + 1)
+
+    def test_repository_metadata_exclusions_stop_before_commit_download(self):
+        for metadata in (
+            {"visibility": "private"}, {"empty_repo": True},
+            {"repository_access_level": "disabled"}, {"default_branch": None},
+        ):
+            with self.subTest(metadata=metadata):
+                client = MagicMock()
+                client.get.return_value = {**project(), **metadata}
+                with self.assertRaises(gitlab.ExcludedProject):
+                    gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                self.assertEqual(client.get.call_count, 1)
+
+    def test_unsafe_archive_is_excluded_before_extraction(self):
+        for path in ("root/../escape.py", "/root/main.py", "root/pgai:checkup.md", r"root\main.py"):
+            with self.subTest(path=path):
+                client = MagicMock()
+                data = archive([(path.replace("\\", "/"), "text")])
+                # ZipInfo normalizes backslashes on Windows; preserve the raw ZIP entry.
+                data = data.replace(path.replace("\\", "/").encode(), path.encode())
+                client.get.side_effect = [project(), {"id": SHA}, {}, data]
+                with patch("discovery.gitlab.pilot.extract_sources") as extract, \
+                        patch("zipfile.os.sep", "\\"):
+                    with self.assertRaisesRegex(gitlab.ExcludedProject, "Unsafe archive path"):
+                        gitlab.analyze_repository(client, {"project_id": 1}, Path("inspector"))
+                extract.assert_not_called()
+        with self.assertRaises(zipfile.BadZipFile):
+            gitlab.validate_archive(b"invalid archive")
+
     def test_pinned_documentation_requires_support_not_ci_or_portability(self):
         data = archive([
             ("root/README.md", "Example app\nRuns on Windows, Linux and macOS.\n"),
@@ -350,6 +414,29 @@ class SourceTests(unittest.TestCase):
             self.assertEqual(client.get.call_count, 1)
 
     @patch("discovery.gitlab.discover")
+    def test_empty_and_oversized_projects_are_excluded_without_blocking_complete_reviews(self, discover):
+        candidates = [{"project_id": i, "name": f"group/project{i}"} for i in range(1, 4)]
+        discover.return_value = (candidates, {"representative_sample": False, "cohort_size": 3})
+        client = MagicMock()
+        client.get.side_effect = [
+            {**project(1), "default_branch": None},
+            project(2), {"id": SHA}, {}, pilot.DownloadLimitError("Archive exceeds limit"),
+            project(3), {"id": SHA}, {"Python": 100.0},
+            archive([("root/main.py", "print('hello')\n")]),
+        ]
+        report = gitlab.collect(client, 3, START, END, Path("inspector"))
+        self.assertEqual(report["coverage"]["cohort_size"], 3)
+        excluded = report["coverage"]["excluded_projects"]
+        self.assertEqual([row["name"] for row in excluded], ["group/project1", "group/project2"])
+        self.assertIn("no default branch", excluded[0]["reason"])
+        self.assertEqual(excluded[1]["reason"], "Archive exceeds limit")
+        self.assertEqual(report["metrics"]["selected"], 1)
+        self.assertEqual(report["metrics"]["successful"], 1)
+        self.assertEqual(report["metrics"]["failed"], 0)
+        self.assertTrue(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(sum(row["count"] for row in report["metrics"]["cross_os"]["rows"]), 1)
+
+    @patch("discovery.gitlab.discover")
     @patch("discovery.gitlab.analyze_repository")
     def test_scan_failure_is_not_counted_as_others(self, analyze, discover):
         discover.return_value = ([{"name": "group/failed", "project_id": 1}], {"representative_sample": False})
@@ -393,6 +480,20 @@ class OutputTests(unittest.TestCase):
         self.assertTrue(parsed["Subject"].startswith("GitLab"))
         self.assertNotIn("GraphQL", parsed.get_body().get_content())
         self.assertTrue(next(parsed.iter_attachments()).get_filename().startswith("gitlab-"))
+
+    def test_reports_show_excluded_projects_and_reasons(self):
+        report = self.gitlab_report()
+        report["coverage"]["excluded_projects"] = [
+            {"name": "group/empty", "reason": "GitLab project has no default branch"},
+            {"name": "group/large", "reason": "Archive exceeds limit"},
+        ]
+        for output in (report_markdown.build_markdown(report), report_pdf.build_html(report)):
+            self.assertIn("Projects excluded before assessment: 2", output)
+            self.assertIn("group/empty", output)
+            self.assertIn("no default branch", output)
+            self.assertIn("group/large", output)
+            self.assertIn("Archive exceeds limit", output)
+            self.assertIn("not counted in assessment totals or percentages", output)
 
     def test_workflow_does_not_touch_github_outputs_or_registries(self):
         workflow = (pilot.ROOT / ".github/workflows/gitlab-report.yml").read_text()
@@ -449,13 +550,24 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             with self.assertRaisesRegex(pilot.PilotError, "publishing withheld"):
-                self.run_collection(directory, pilot.DownloadLimitError("Archive exceeds limit"))
+                self.run_collection(directory, pilot.PilotError("GitLab API HTTP 403"))
             output = directory / "gitlab-reports" / "latest.json"
             report = json.loads(output.read_text(encoding="utf-8"))
             self.assertTrue(output.with_name("cross-os-assessments.json").is_file())
             self.assertEqual(report["metrics"]["failed"], 1)
-            self.assertEqual(report["repositories"][0]["error"], "Archive exceeds limit")
+            self.assertEqual(report["repositories"][0]["error"], "GitLab API HTTP 403")
             self.assertFalse(report["metrics"]["cross_os"]["complete"])
+
+    def test_all_excluded_collection_saves_reasons_and_blocks_publication(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            with self.assertRaisesRegex(pilot.PilotError, "publishing withheld"):
+                self.run_collection(directory, pilot.DownloadLimitError("Archive exceeds limit"))
+            report = json.loads((directory / "gitlab-reports/latest.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["repositories"], [])
+        self.assertEqual(report["metrics"]["successful"], 0)
+        self.assertFalse(report["metrics"]["cross_os"]["complete"])
+        self.assertEqual(report["coverage"]["excluded_projects"][0]["reason"], "Archive exceeds limit")
 
 
 if __name__ == "__main__":

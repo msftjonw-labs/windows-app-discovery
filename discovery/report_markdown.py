@@ -77,6 +77,11 @@ def build_markdown(report):
             f"project event retrieval errors: {len(coverage['discovery_errors'])}.",
             text(coverage["activity"]),
         ])
+        excluded = coverage.get("excluded_projects", [])
+        lines.append(f"Projects excluded before assessment: {len(excluded)}. "
+                     "Excluded projects are not counted in assessment totals or percentages.")
+        for project in excluded:
+            lines.append(f"- {text(project['name'])}: {text(project['reason'])}")
     else:
         lines.append("**Bounded, non-representative GraphQL cohort.** Percentages describe the analyzed cohort "
                      "only; no confidence intervals are reported.")

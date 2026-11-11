@@ -33,6 +33,20 @@ ACTIVITY = (
 )
 
 
+# Anonymous GitLab event cooldowns can exceed 25 minutes; the job allows 180.
+MAX_RATE_LIMIT_WAIT = 5400
+
+
+class ExcludedProject(pilot.PilotError):
+    """A project that cannot be assessed within the collection bounds."""
+
+
+class APIError(pilot.PilotError):
+    def __init__(self, status, endpoint):
+        self.status = status
+        super().__init__(f"GitLab API HTTP {status}: {endpoint}")
+
+
 class Client:
     def __init__(self, token=None):
         self.token = token
@@ -106,7 +120,7 @@ class Client:
             except urllib.error.HTTPError as error:
                 if error.code == 429:
                     delay = max(self.cooldown(error.headers), min(600, 60 * 2 ** attempt))
-                    if attempt == 5 or self.rate_limit_wait + delay > 1800:
+                    if attempt == 5 or self.rate_limit_wait + delay > MAX_RATE_LIMIT_WAIT:
                         self.rate_limit_error = (
                             f"GitLab API HTTP 429: rate-limit recovery exhausted at {endpoint}; "
                             "further requests stopped. Retry later or configure a read-only GITLAB_TOKEN."
@@ -119,9 +133,16 @@ class Client:
                     continue
                 server_errors += 1
                 if error.code not in {500, 502, 503, 504} or server_errors >= 3 or attempt == 5:
-                    raise pilot.PilotError(f"GitLab API HTTP {error.code}: {endpoint}") from error
+                    raise APIError(error.code, endpoint) from error
                 delay = max(self.cooldown(error.headers), 5 * server_errors)
                 LOG.warning("GitLab HTTP %s; retrying %s in %ss", error.code, endpoint, delay)
+                self.next_request = max(self.next_request, time.monotonic() + delay)
+            except (urllib.error.URLError, TimeoutError) as error:
+                server_errors += 1
+                if server_errors >= 3 or attempt == 5:
+                    raise pilot.PilotError(f"GitLab network request failed: {endpoint}: {error}") from error
+                delay = 5 * server_errors
+                LOG.warning("GitLab network error; retrying %s in %ss: %s", endpoint, delay, error)
                 self.next_request = max(self.next_request, time.monotonic() + delay)
         raise AssertionError("Unreachable")
 
@@ -284,22 +305,52 @@ def document_evidence(data, url, sha):
     return {"sources": sources, "limitations": sorted(set(limits))}
 
 
+def repository_get(client, endpoint, **params):
+    try:
+        return client.get(endpoint, **params)
+    except APIError as error:
+        if error.status in {403, 404, 410}:
+            raise ExcludedProject(f"Repository resource unavailable: {error}") from error
+        raise
+
+
+def validate_archive(data):
+    """Reject the entire repository rather than weaken shared extraction safety."""
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        members = archive.infolist()
+        if len(members) > 100000:
+            raise ExcludedProject("Archive has too many entries")
+        for member in members:
+            try:
+                pilot.safe_path(member.orig_filename)
+            except pilot.PilotError as error:
+                raise ExcludedProject(str(error)) from error
+
+
 def analyze_repository(client, candidate, inspector):
     project_id = candidate["project_id"]
-    project = client.get(f"/projects/{project_id}")
+    project = repository_get(client, f"/projects/{project_id}")
     if project.get("visibility") != "public":
-        raise pilot.RepositoryUnavailable("GitLab project is no longer public")
+        raise ExcludedProject("GitLab project is no longer public")
+    if project.get("empty_repo"):
+        raise ExcludedProject("GitLab repository is empty")
+    if project.get("repository_access_level") == "disabled":
+        raise ExcludedProject("GitLab repository access is disabled")
     branch = project.get("default_branch")
     if not branch:
-        raise pilot.PilotError("GitLab project has no default branch")
-    commit = client.get(f"/projects/{project_id}/repository/commits/{quote(branch, safe='')}")
+        raise ExcludedProject("GitLab project has no default branch")
+    commit = repository_get(client, f"/projects/{project_id}/repository/commits/{quote(branch, safe='')}")
     sha = commit["id"]
     if not re.fullmatch(r"[a-fA-F0-9]{40,64}", sha):
         raise pilot.PilotError("Invalid GitLab commit SHA")
     url = project_url(project)
-    languages = client.get(f"/projects/{project_id}/languages")
-    data = client.get(f"/projects/{project_id}/repository/archive.zip", sha=sha,
-                      binary=True, maximum=pilot.MAX_DOWNLOAD)
+    languages = repository_get(client, f"/projects/{project_id}/languages")
+    try:
+        data = repository_get(client, f"/projects/{project_id}/repository/archive.zip", sha=sha,
+                              binary=True, maximum=pilot.MAX_DOWNLOAD)
+    except pilot.DownloadLimitError as error:
+        raise ExcludedProject(str(error)) from error
+    validate_archive(data)
     scratch = pilot.ROOT / ".cache" / "gitlab-work"
     scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="gitlab-", dir=scratch) as temporary:
@@ -326,11 +377,16 @@ def analyze_repository(client, candidate, inspector):
 
 def collect(client, limit, start, end, inspector, project_budget=500, event_pages=2):
     candidates, coverage = discover(client, limit, start, end, project_budget, event_pages)
+    coverage["excluded_projects"] = []
     records = []
     for candidate in candidates:
         LOG.info("Analyzing GitLab project %s", candidate["name"])
         try:
             record = analyze_repository(client, candidate, inspector)
+        except ExcludedProject as error:
+            LOG.warning("GitLab project excluded %s: %s", candidate["name"], error)
+            coverage["excluded_projects"].append({**candidate, "reason": str(error)})
+            continue
         except (pilot.PilotError, urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError,
                 subprocess.TimeoutExpired, zipfile.BadZipFile) as error:
             LOG.error("%s: %s", candidate["name"], error)
